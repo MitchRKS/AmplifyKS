@@ -273,3 +273,25 @@ export function getChamber(billNumber?: string): 'House' | 'Senate' | 'Unknown' 
   
   return 'Unknown';
 }
+
+/**
+ * Get full chamber name from chamber code
+ */
+export function getFullChamberName(chamberCode: string): string {
+  const code = chamberCode.toUpperCase();
+  if (code === 'H') {
+    return 'House';
+  } else if (code === 'S') {
+    return 'Senate';
+  }
+  return chamberCode; // Return as-is if unknown
+}
+
+/**
+ * Format committee name with chamber prefix
+ * Converts API committee data to full format like "House Committee on Education"
+ */
+export function formatCommitteeName(chamber: string, name: string): string {
+  const fullChamber = getFullChamberName(chamber);
+  return `${fullChamber} Committee on ${name}`;
+}

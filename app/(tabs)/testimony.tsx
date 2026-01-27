@@ -1,3 +1,4 @@
+import * as MailComposer from "expo-mail-composer";
 import * as Print from "expo-print";
 import { useLocalSearchParams } from "expo-router";
 import * as Sharing from "expo-sharing";
@@ -15,6 +16,7 @@ import {
 
 import { ThemedText } from "@/components/themed-text";
 import { ThemedView } from "@/components/themed-view";
+import { getCommitteeEmail, hasCommitteeEmail } from "@/constants/committee-emails";
 import { useThemeColor } from "@/hooks/use-theme-color";
 
 type Position = "support" | "neutral" | "oppose";
@@ -182,6 +184,93 @@ export default function TestimonyScreen() {
   </body>
 </html>
     `;
+  };
+
+  const generateTestimonyText = () => {
+    const positionText = position.charAt(0).toUpperCase() + position.slice(1);
+    const fullName = `${firstName} ${lastName}`.trim();
+
+    // Build plain text version for email
+    let fullTestimony = '';
+    if (STOCK_OPENING.trim()) {
+      fullTestimony += STOCK_OPENING.trim() + '\n\n';
+    }
+    if (testimony.trim()) {
+      fullTestimony += testimony.trim();
+    }
+    if (STOCK_CLOSING.trim()) {
+      fullTestimony += '\n\n' + STOCK_CLOSING.trim();
+    }
+    if (fullName) {
+      fullTestimony += '\n\n' + fullName;
+    }
+    if (city.trim()) {
+      fullTestimony += '\n' + city.trim();
+    }
+
+    return fullTestimony;
+  };
+
+  const handleSubmitEmail = async () => {
+    if (!canSubmit) {
+      Alert.alert(
+        "Missing required info",
+        "Please fill in your first name, last name, email, bill number, and testimony.",
+      );
+      return;
+    }
+
+    if (!committee.trim()) {
+      Alert.alert(
+        "Committee Required",
+        "Please specify which committee should receive this testimony.",
+      );
+      return;
+    }
+
+    // Check if we have an email address for this committee
+    const committeeEmail = getCommitteeEmail(committee.trim());
+    
+    if (!committeeEmail) {
+      Alert.alert(
+        "Committee Email Not Found",
+        `No email address is configured for "${committee}". Please check the committee name or contact support to add this committee's email address.`,
+      );
+      return;
+    }
+
+    try {
+      // Check if mail composer is available
+      const isAvailable = await MailComposer.isAvailableAsync();
+      
+      if (!isAvailable) {
+        Alert.alert(
+          "Email Not Available",
+          "Email functionality is not available on this device. Please use the Preview option to save your testimony and send it manually.",
+        );
+        return;
+      }
+
+      const positionText = position.charAt(0).toUpperCase() + position.slice(1);
+      const subject = `${positionText} Testimony on ${billNumber}`;
+      const body = generateTestimonyText();
+
+      // Open email composer with pre-filled information
+      await MailComposer.composeAsync({
+        recipients: [committeeEmail],
+        subject: subject,
+        body: body,
+      });
+
+      // Note: We can't detect if the user actually sent the email or cancelled,
+      // so we don't show a success message here
+    } catch (error) {
+      console.error("Error opening email composer:", error);
+      Alert.alert(
+        "Error",
+        "Unable to open email composer. Please try again.",
+      );
+    }
   };
 
   const handlePreview = async () => {
@@ -570,16 +659,77 @@ export default function TestimonyScreen() {
             />
           </View>
 
-          <Pressable
-            accessibilityRole="button"
-            style={[
-              styles.submitButton,
-              { backgroundColor: canSubmit ? tint : inputBorder },
-            ]}
-            onPress={handlePreview}
-          >
-            <ThemedText style={styles.submitText}>Preview Testimony</ThemedText>
-          </Pressable>
+          {committee.trim() && hasCommitteeEmail(committee.trim()) ? (
+            <>
+              <Pressable
+                accessibilityRole="button"
+                style={[
+                  styles.submitButton,
+                  styles.primaryButton,
+                  { backgroundColor: canSubmit ? tint : inputBorder },
+                ]}
+                onPress={handleSubmitEmail}
+                disabled={!canSubmit}
+              >
+                <ThemedText style={styles.submitText}>Submit via Email</ThemedText>
+              </Pressable>
+
+              <Pressable
+                accessibilityRole="button"
+                style={[
+                  styles.submitButton,
+                  styles.secondaryButton,
+                  { 
+                    backgroundColor: 'transparent',
+                    borderColor: canSubmit ? tint : inputBorder,
+                    borderWidth: 1,
+                  },
+                ]}
+                onPress={handlePreview}
+                disabled={!canSubmit}
+              >
+                <ThemedText style={[styles.submitText, { color: canSubmit ? tint : inputBorder }]}>
+                  Preview Testimony
+                </ThemedText>
+              </Pressable>
+
+              <ThemedText style={[styles.footerText, { color: mutedText }]}>
+                This will open your email app with the testimony pre-filled and addressed to {committee}.
+              </ThemedText>
+            </>
+          ) : committee.trim() ? (
+            <>
+              <View style={[styles.infoBox, { backgroundColor: inputBackground, borderColor: separator }]}>
+                <ThemedText style={[styles.infoBoxText, { color: mutedText }]}>
+                  No email address configured for "{committee}". Use Preview to save your testimony and submit it manually.
+                </ThemedText>
+              </View>
+
+              <Pressable
+                accessibilityRole="button"
+                style={[
+                  styles.submitButton,
+                  { backgroundColor: canSubmit ? tint : inputBorder },
+                ]}
+                onPress={handlePreview}
+                disabled={!canSubmit}
+              >
+                <ThemedText style={styles.submitText}>Preview Testimony</ThemedText>
+              </Pressable>
+            </>
+          ) : (
+            <Pressable
+              accessibilityRole="button"
+              style={[
+                styles.submitButton,
+                { backgroundColor: canSubmit ? tint : inputBorder },
+              ]}
+              onPress={handlePreview}
+              disabled={!canSubmit}
+            >
+              <ThemedText style={styles.submitText}>Preview Testimony</ThemedText>
+            </Pressable>
+          )}
 
           <ThemedText style={[styles.footerText, { color: mutedText }]}>
             Submitted testimony becomes part of the public record.
@@ -665,12 +815,29 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginTop: 8,
   },
+  primaryButton: {
+    marginBottom: 8,
+  },
+  secondaryButton: {
+    marginBottom: 8,
+  },
   submitText: {
     color: "#fff",
     fontWeight: "600",
   },
   footerText: {
     fontSize: 13,
+    textAlign: "center",
+  },
+  infoBox: {
+    borderWidth: 1,
+    borderRadius: 12,
+    padding: 12,
+    marginBottom: 8,
+  },
+  infoBoxText: {
+    fontSize: 14,
+    lineHeight: 20,
     textAlign: "center",
   },
   billInfoCard: {
