@@ -321,7 +321,7 @@ export default function BillDetailScreen() {
           }}>
           <IconSymbol name="doc.text.fill" size={20} color="#fff" />
           <ThemedText style={styles.testimonyButtonText}>
-            Submit Testimony for {bill.billNumber}
+            Draft Testimony for {bill.billNumber}
           </ThemedText>
         </Pressable>
 

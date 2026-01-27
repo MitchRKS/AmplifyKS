@@ -10,6 +10,8 @@ import {
   TextInput,
   View,
 } from "react-native";
+import * as Print from "expo-print";
+import * as Sharing from "expo-sharing";
 
 import { ThemedText } from "@/components/themed-text";
 import { ThemedView } from "@/components/themed-view";
@@ -68,6 +70,10 @@ export default function TestimonyScreen() {
     { light: "#D1D1D6", dark: "#2C2C2E" },
     "background",
   );
+  const inputText = useThemeColor(
+    { light: "#000000", dark: "#FFFFFF" },
+    "text",
+  );
   const placeholder = useThemeColor(
     { light: "#8E8E93", dark: "#8E8E93" },
     "text",
@@ -94,7 +100,67 @@ export default function TestimonyScreen() {
     testimony.trim(),
   );
 
-  const handleSubmit = () => {
+  const escapeHtml = (text: string) => {
+    return text
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#039;');
+  };
+
+  const generateTestimonyHTML = () => {
+    const positionText = position.charAt(0).toUpperCase() + position.slice(1);
+    const fullName = `${firstName} ${lastName}`.trim();
+
+    return `
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+      body {
+        font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+        font-size: 12pt;
+        line-height: 1.6;
+        margin: 40px;
+        color: #000;
+      }
+      .title {
+        font-size: 18pt;
+        font-weight: bold;
+        margin-bottom: 30px;
+        text-align: center;
+      }
+      .name {
+        font-size: 12pt;
+        margin-bottom: 5px;
+      }
+      .city {
+        font-size: 12pt;
+        margin-bottom: 30px;
+      }
+      .testimony-text {
+        white-space: pre-wrap;
+        line-height: 1.8;
+        text-align: justify;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="title">${escapeHtml(positionText)} Testimony on ${escapeHtml(billNumber)}</div>
+    
+    <div class="name">${escapeHtml(fullName)}</div>
+    <div class="city">${escapeHtml(city || '')}</div>
+
+    <div class="testimony-text">${escapeHtml(testimony)}</div>
+  </body>
+</html>
+    `;
+  };
+
+  const handlePreview = async () => {
     if (!canSubmit) {
       Alert.alert(
         "Missing required info",
@@ -103,10 +169,54 @@ export default function TestimonyScreen() {
       return;
     }
 
-    Alert.alert(
-      "Ready to submit",
-      "Your testimony is ready to submit. Hook this up to your backend to finalize the request.",
-    );
+    try {
+      const html = generateTestimonyHTML();
+      
+      // On web, open in new window
+      if (Platform.OS === "web") {
+        const newWindow = window.open("", "_blank");
+        if (newWindow) {
+          newWindow.document.write(html);
+          newWindow.document.close();
+          // Trigger print dialog after a short delay to ensure content is loaded
+          setTimeout(() => {
+            newWindow.print();
+          }, 250);
+        } else {
+          Alert.alert(
+            "Popup Blocked",
+            "Please allow popups to preview your testimony.",
+          );
+        }
+      }
+      // On iOS, use printAsync to show native print preview
+      else if (Platform.OS === "ios") {
+        await Print.printAsync({ 
+          html,
+          width: 612, // 8.5 inches at 72 DPI
+          height: 792, // 11 inches at 72 DPI
+        });
+      } 
+      // On Android, generate PDF file and share it
+      else {
+        const { uri } = await Print.printToFileAsync({ html });
+        const isAvailable = await Sharing.isAvailableAsync();
+        if (isAvailable) {
+          await Sharing.shareAsync(uri);
+        } else {
+          Alert.alert(
+            "PDF Generated",
+            `Your testimony has been generated as a PDF at: ${uri}`,
+          );
+        }
+      }
+    } catch (error) {
+      console.error("Error generating PDF:", error);
+      Alert.alert(
+        "Error",
+        "Unable to generate PDF preview. Please try again.",
+      );
+    }
   };
 
   return (
@@ -122,7 +232,7 @@ export default function TestimonyScreen() {
         >
           <View style={styles.headerContainer}>
             <ThemedText type="title" style={styles.centeredTitle}>
-              Submit Testimony
+              Draft Testimony
             </ThemedText>
             <ThemedText style={[styles.subtitle, styles.centeredSubtitle]}>
               Provide your testimony for the selected piece of legislation.
@@ -194,7 +304,7 @@ export default function TestimonyScreen() {
               style={[
                 styles.input,
                 styles.multiline,
-                { backgroundColor: inputBackground, borderColor: inputBorder },
+                { backgroundColor: inputBackground, borderColor: inputBorder, color: inputText },
               ]}
               placeholder="Add detailed testimony..."
               placeholderTextColor={placeholder}
@@ -243,7 +353,7 @@ export default function TestimonyScreen() {
             <TextInput
               style={[
                 styles.input,
-                { backgroundColor: inputBackground, borderColor: inputBorder },
+                { backgroundColor: inputBackground, borderColor: inputBorder, color: inputText },
               ]}
               placeholder="Jane"
               placeholderTextColor={placeholder}
@@ -260,7 +370,7 @@ export default function TestimonyScreen() {
               ref={lastNameRef}
               style={[
                 styles.input,
-                { backgroundColor: inputBackground, borderColor: inputBorder },
+                { backgroundColor: inputBackground, borderColor: inputBorder, color: inputText },
               ]}
               placeholder="Doe"
               placeholderTextColor={placeholder}
@@ -277,7 +387,7 @@ export default function TestimonyScreen() {
               ref={emailRef}
               style={[
                 styles.input,
-                { backgroundColor: inputBackground, borderColor: inputBorder },
+                { backgroundColor: inputBackground, borderColor: inputBorder, color: inputText },
               ]}
               placeholder="jane@example.org"
               placeholderTextColor={placeholder}
@@ -297,7 +407,7 @@ export default function TestimonyScreen() {
               ref={streetAddressRef}
               style={[
                 styles.input,
-                { backgroundColor: inputBackground, borderColor: inputBorder },
+                { backgroundColor: inputBackground, borderColor: inputBorder, color: inputText },
               ]}
               placeholder="123 Main Street"
               placeholderTextColor={placeholder}
@@ -315,7 +425,7 @@ export default function TestimonyScreen() {
               ref={cityRef}
               style={[
                 styles.input,
-                { backgroundColor: inputBackground, borderColor: inputBorder },
+                { backgroundColor: inputBackground, borderColor: inputBorder, color: inputText },
               ]}
               placeholder="Topeka"
               placeholderTextColor={placeholder}
@@ -333,7 +443,7 @@ export default function TestimonyScreen() {
               ref={stateRef}
               style={[
                 styles.input,
-                { backgroundColor: inputBackground, borderColor: inputBorder },
+                { backgroundColor: inputBackground, borderColor: inputBorder, color: inputText },
               ]}
               placeholder="KS"
               placeholderTextColor={placeholder}
@@ -351,7 +461,7 @@ export default function TestimonyScreen() {
               ref={zipCodeRef}
               style={[
                 styles.input,
-                { backgroundColor: inputBackground, borderColor: inputBorder },
+                { backgroundColor: inputBackground, borderColor: inputBorder, color: inputText },
               ]}
               placeholder="66612"
               placeholderTextColor={placeholder}
@@ -374,7 +484,7 @@ export default function TestimonyScreen() {
               ref={billNumberRef}
               style={[
                 styles.input,
-                { backgroundColor: inputBackground, borderColor: inputBorder },
+                { backgroundColor: inputBackground, borderColor: inputBorder, color: inputText },
               ]}
               placeholder="HB 2543"
               placeholderTextColor={placeholder}
@@ -390,7 +500,7 @@ export default function TestimonyScreen() {
               ref={committeeRef}
               style={[
                 styles.input,
-                { backgroundColor: inputBackground, borderColor: inputBorder },
+                { backgroundColor: inputBackground, borderColor: inputBorder, color: inputText },
               ]}
               placeholder="Senate Judiciary"
               placeholderTextColor={placeholder}
@@ -408,9 +518,9 @@ export default function TestimonyScreen() {
               styles.submitButton,
               { backgroundColor: canSubmit ? tint : inputBorder },
             ]}
-            onPress={handleSubmit}
+            onPress={handlePreview}
           >
-            <ThemedText style={styles.submitText}>Submit Testimony</ThemedText>
+            <ThemedText style={styles.submitText}>Preview Testimony</ThemedText>
           </Pressable>
 
           <ThemedText style={[styles.footerText, { color: mutedText }]}>
