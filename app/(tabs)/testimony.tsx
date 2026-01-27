@@ -1,5 +1,5 @@
-import { useLocalSearchParams } from 'expo-router';
-import { useEffect, useRef, useState } from 'react';
+import { useLocalSearchParams } from "expo-router";
+import { useEffect, useRef, useState } from "react";
 import {
   Alert,
   KeyboardAvoidingView,
@@ -9,41 +9,49 @@ import {
   StyleSheet,
   TextInput,
   View,
-} from 'react-native';
+} from "react-native";
 
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { useThemeColor } from '@/hooks/use-theme-color';
+import { ThemedText } from "@/components/themed-text";
+import { ThemedView } from "@/components/themed-view";
+import { useThemeColor } from "@/hooks/use-theme-color";
 
-type Position = 'support' | 'neutral' | 'oppose';
+type Position = "support" | "neutral" | "oppose";
 
 export default function TestimonyScreen() {
   const params = useLocalSearchParams();
-  
-  const [firstName, setFirstName] = useState('');
-  const [lastName, setLastName] = useState('');
-  const [email, setEmail] = useState('');
-  const [phone, setPhone] = useState('');
-  const [organization, setOrganization] = useState('');
-  const [role, setRole] = useState('');
-  const [billNumber, setBillNumber] = useState('');
-  const [committee, setCommittee] = useState('');
-  const [position, setPosition] = useState<Position>('support');
-  const [summary, setSummary] = useState('');
-  const [testimony, setTestimony] = useState('');
+
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
+  const [email, setEmail] = useState("");
+  const [streetAddress, setStreetAddress] = useState("");
+  const [city, setCity] = useState("");
+  const [state, setState] = useState("");
+  const [zipCode, setZipCode] = useState("");
+  const [phone, setPhone] = useState("");
+  const [organization, setOrganization] = useState("");
+  const [role, setRole] = useState("");
+  const [billNumber, setBillNumber] = useState("");
+  const [committee, setCommittee] = useState("");
+  const [position, setPosition] = useState<Position>("support");
+  const [summary, setSummary] = useState("");
+  const [testimony, setTestimony] = useState("");
 
   // Pre-fill bill number and committee if coming from bill detail page
   useEffect(() => {
-    if (params.billNumber && typeof params.billNumber === 'string') {
+    if (params.billNumber && typeof params.billNumber === "string") {
       setBillNumber(params.billNumber);
     }
-    if (params.committee && typeof params.committee === 'string') {
+    if (params.committee && typeof params.committee === "string") {
       setCommittee(params.committee);
     }
   }, [params.billNumber, params.committee]);
 
   const lastNameRef = useRef<TextInput>(null);
   const emailRef = useRef<TextInput>(null);
+  const streetAddressRef = useRef<TextInput>(null);
+  const cityRef = useRef<TextInput>(null);
+  const stateRef = useRef<TextInput>(null);
+  const zipCodeRef = useRef<TextInput>(null);
   const phoneRef = useRef<TextInput>(null);
   const organizationRef = useRef<TextInput>(null);
   const roleRef = useRef<TextInput>(null);
@@ -52,62 +60,124 @@ export default function TestimonyScreen() {
   const summaryRef = useRef<TextInput>(null);
   const testimonyRef = useRef<TextInput>(null);
 
-  const inputBackground = useThemeColor({ light: '#F2F2F7', dark: '#1C1C1E' }, 'background');
-  const inputBorder = useThemeColor({ light: '#D1D1D6', dark: '#2C2C2E' }, 'background');
-  const placeholder = useThemeColor({ light: '#8E8E93', dark: '#8E8E93' }, 'text');
-  const tint = useThemeColor({ light: '#0a7ea4', dark: '#0a7ea4' }, 'tint');
-  const mutedText = useThemeColor({ light: '#6C6C70', dark: '#A1A1A6' }, 'text');
-  const cardBackground = useThemeColor({ light: '#FFFFFF', dark: '#1C1C1E' }, 'background');
-  const separator = useThemeColor({ light: '#E5E5EA', dark: '#38383A' }, 'background');
+  const inputBackground = useThemeColor(
+    { light: "#F2F2F7", dark: "#1C1C1E" },
+    "background",
+  );
+  const inputBorder = useThemeColor(
+    { light: "#D1D1D6", dark: "#2C2C2E" },
+    "background",
+  );
+  const placeholder = useThemeColor(
+    { light: "#8E8E93", dark: "#8E8E93" },
+    "text",
+  );
+  const tint = useThemeColor({ light: "#0a7ea4", dark: "#0a7ea4" }, "tint");
+  const mutedText = useThemeColor(
+    { light: "#6C6C70", dark: "#A1A1A6" },
+    "text",
+  );
+  const cardBackground = useThemeColor(
+    { light: "#FFFFFF", dark: "#1C1C1E" },
+    "background",
+  );
+  const separator = useThemeColor(
+    { light: "#E5E5EA", dark: "#38383A" },
+    "background",
+  );
 
-  const canSubmit = Boolean(firstName.trim() && lastName.trim() && email.trim() && billNumber.trim() && testimony.trim());
+  const canSubmit = Boolean(
+    firstName.trim() &&
+    lastName.trim() &&
+    email.trim() &&
+    billNumber.trim() &&
+    testimony.trim(),
+  );
 
   const handleSubmit = () => {
     if (!canSubmit) {
-      Alert.alert('Missing required info', 'Please fill in your first name, last name, email, bill number, and testimony.');
+      Alert.alert(
+        "Missing required info",
+        "Please fill in your first name, last name, email, bill number, and testimony.",
+      );
       return;
     }
 
     Alert.alert(
-      'Ready to submit',
-      'Your testimony is ready to submit. Hook this up to your backend to finalize the request.'
+      "Ready to submit",
+      "Your testimony is ready to submit. Hook this up to your backend to finalize the request.",
     );
   };
 
   return (
     <KeyboardAvoidingView
       style={styles.keyboard}
-      behavior={Platform.select({ ios: 'padding', android: undefined })}>
+      behavior={Platform.select({ ios: "padding", android: undefined })}
+    >
       <ThemedView style={styles.container}>
         <ScrollView
           contentContainerStyle={styles.content}
           keyboardShouldPersistTaps="handled"
-          showsVerticalScrollIndicator={false}>
-          <ThemedText type="title">Submit Testimony</ThemedText>
-          <ThemedText style={styles.subtitle}>
-            Provide your testimony for the selected piece of legislation. Required fields are marked.
-          </ThemedText>
+          showsVerticalScrollIndicator={false}
+        >
+          <View style={styles.headerContainer}>
+            <ThemedText type="title" style={styles.centeredTitle}>
+              Submit Testimony
+            </ThemedText>
+            <ThemedText style={[styles.subtitle, styles.centeredSubtitle]}>
+              Provide your testimony for the selected piece of legislation.
+              Required fields are marked.
+            </ThemedText>
+          </View>
 
           {(params.billNumber || params.committee) && (
-            <View style={[styles.billInfoCard, { backgroundColor: cardBackground, borderColor: separator }]}>
+            <View
+              style={[
+                styles.billInfoCard,
+                styles.billInfoCardCentered,
+                { backgroundColor: cardBackground, borderColor: separator },
+              ]}
+            >
               {params.billNumber && (
                 <View style={styles.billInfoRow}>
-                  <ThemedText style={[styles.billInfoLabel, { color: mutedText }]}>Bill</ThemedText>
-                  <ThemedText type="defaultSemiBold" style={[styles.billInfoValue, { color: tint }]}>
+                  <ThemedText
+                    style={[styles.billInfoLabel, { color: mutedText }]}
+                  >
+                    Bill
+                  </ThemedText>
+                  <ThemedText
+                    type="defaultSemiBold"
+                    style={[styles.billInfoValue, { color: tint }]}
+                  >
                     {params.billNumber}
                   </ThemedText>
                 </View>
               )}
               {params.committee && (
                 <View style={styles.billInfoRow}>
-                  <ThemedText style={[styles.billInfoLabel, { color: mutedText }]}>Committee</ThemedText>
-                  <ThemedText style={styles.billInfoValue}>{params.committee}</ThemedText>
+                  <ThemedText
+                    style={[styles.billInfoLabel, { color: mutedText }]}
+                  >
+                    Committee
+                  </ThemedText>
+                  <ThemedText style={styles.billInfoValue}>
+                    {params.committee}
+                  </ThemedText>
                 </View>
               )}
               {params.billTitle && (
                 <View style={[styles.billInfoRow, styles.billInfoRowFull]}>
-                  <ThemedText style={[styles.billInfoLabel, { color: mutedText }]}>Title</ThemedText>
-                  <ThemedText style={[styles.billInfoValue, styles.billInfoValueMultiline]}>
+                  <ThemedText
+                    style={[styles.billInfoLabel, { color: mutedText }]}
+                  >
+                    Title
+                  </ThemedText>
+                  <ThemedText
+                    style={[
+                      styles.billInfoValue,
+                      styles.billInfoValueMultiline,
+                    ]}
+                  >
                     {params.billTitle}
                   </ThemedText>
                 </View>
@@ -116,11 +186,65 @@ export default function TestimonyScreen() {
           )}
 
           <View style={styles.section}>
+            <ThemedText type="subtitle">Testimony</ThemedText>
+
+            <ThemedText style={styles.label}>Full testimony *</ThemedText>
+            <TextInput
+              ref={testimonyRef}
+              style={[
+                styles.input,
+                styles.multiline,
+                { backgroundColor: inputBackground, borderColor: inputBorder },
+              ]}
+              placeholder="Add detailed testimony..."
+              placeholderTextColor={placeholder}
+              value={testimony}
+              onChangeText={setTestimony}
+              multiline
+              textAlignVertical="top"
+            />
+          </View>
+
+          <ThemedText style={styles.label}>Position *</ThemedText>
+          <View style={styles.segment}>
+            {(["support", "neutral", "oppose"] as Position[]).map((choice) => {
+              const selected = position === choice;
+              return (
+                <Pressable
+                  key={choice}
+                  accessibilityRole="button"
+                  accessibilityState={{ selected }}
+                  style={[
+                    styles.segmentButton,
+                    {
+                      borderColor: selected ? tint : inputBorder,
+                      backgroundColor: selected ? tint : inputBackground,
+                    },
+                  ]}
+                  onPress={() => setPosition(choice)}
+                >
+                  <ThemedText
+                    style={[
+                      styles.segmentText,
+                      selected && styles.segmentTextSelected,
+                    ]}
+                  >
+                    {choice.charAt(0).toUpperCase() + choice.slice(1)}
+                  </ThemedText>
+                </Pressable>
+              );
+            })}
+          </View>
+
+          <View style={styles.section}>
             <ThemedText type="subtitle">Your Information</ThemedText>
 
             <ThemedText style={styles.label}>First name *</ThemedText>
             <TextInput
-              style={[styles.input, { backgroundColor: inputBackground, borderColor: inputBorder }]}
+              style={[
+                styles.input,
+                { backgroundColor: inputBackground, borderColor: inputBorder },
+              ]}
               placeholder="Jane"
               placeholderTextColor={placeholder}
               value={firstName}
@@ -134,7 +258,10 @@ export default function TestimonyScreen() {
             <ThemedText style={styles.label}>Last name *</ThemedText>
             <TextInput
               ref={lastNameRef}
-              style={[styles.input, { backgroundColor: inputBackground, borderColor: inputBorder }]}
+              style={[
+                styles.input,
+                { backgroundColor: inputBackground, borderColor: inputBorder },
+              ]}
               placeholder="Doe"
               placeholderTextColor={placeholder}
               value={lastName}
@@ -148,7 +275,10 @@ export default function TestimonyScreen() {
             <ThemedText style={styles.label}>Email *</ThemedText>
             <TextInput
               ref={emailRef}
-              style={[styles.input, { backgroundColor: inputBackground, borderColor: inputBorder }]}
+              style={[
+                styles.input,
+                { backgroundColor: inputBackground, borderColor: inputBorder },
+              ]}
               placeholder="jane@example.org"
               placeholderTextColor={placeholder}
               value={email}
@@ -159,47 +289,78 @@ export default function TestimonyScreen() {
               inputMode="email"
               autoCapitalize="none"
               returnKeyType="next"
-              onSubmitEditing={() => phoneRef.current?.focus()}
+              onSubmitEditing={() => streetAddressRef.current?.focus()}
             />
 
-            <ThemedText style={styles.label}>Phone</ThemedText>
+            <ThemedText style={styles.label}>Street Address</ThemedText>
             <TextInput
-              ref={phoneRef}
-              style={[styles.input, { backgroundColor: inputBackground, borderColor: inputBorder }]}
-              placeholder="(555) 123-4567"
+              ref={streetAddressRef}
+              style={[
+                styles.input,
+                { backgroundColor: inputBackground, borderColor: inputBorder },
+              ]}
+              placeholder="123 Main Street"
               placeholderTextColor={placeholder}
-              value={phone}
-              onChangeText={setPhone}
-              textContentType="telephoneNumber"
-              autoComplete="tel"
-              keyboardType="phone-pad"
-              inputMode="tel"
-              returnKeyType="next"
-              onSubmitEditing={() => organizationRef.current?.focus()}
-            />
-
-            <ThemedText style={styles.label}>Organization</ThemedText>
-            <TextInput
-              ref={organizationRef}
-              style={[styles.input, { backgroundColor: inputBackground, borderColor: inputBorder }]}
-              placeholder="Kansas Health Alliance"
-              placeholderTextColor={placeholder}
-              value={organization}
-              onChangeText={setOrganization}
+              value={streetAddress}
+              onChangeText={setStreetAddress}
+              textContentType="streetAddressLine1"
+              autoComplete="street-address"
               autoCapitalize="words"
               returnKeyType="next"
-              onSubmitEditing={() => roleRef.current?.focus()}
+              onSubmitEditing={() => cityRef.current?.focus()}
             />
 
-            <ThemedText style={styles.label}>Role or title</ThemedText>
+            <ThemedText style={styles.label}>City</ThemedText>
             <TextInput
-              ref={roleRef}
-              style={[styles.input, { backgroundColor: inputBackground, borderColor: inputBorder }]}
-              placeholder="Policy Director"
+              ref={cityRef}
+              style={[
+                styles.input,
+                { backgroundColor: inputBackground, borderColor: inputBorder },
+              ]}
+              placeholder="Topeka"
               placeholderTextColor={placeholder}
-              value={role}
-              onChangeText={setRole}
+              value={city}
+              onChangeText={setCity}
+              textContentType="addressCity"
+              autoComplete="postal-address-locality"
               autoCapitalize="words"
+              returnKeyType="next"
+              onSubmitEditing={() => stateRef.current?.focus()}
+            />
+
+            <ThemedText style={styles.label}>State</ThemedText>
+            <TextInput
+              ref={stateRef}
+              style={[
+                styles.input,
+                { backgroundColor: inputBackground, borderColor: inputBorder },
+              ]}
+              placeholder="KS"
+              placeholderTextColor={placeholder}
+              value={state}
+              onChangeText={setState}
+              textContentType="addressState"
+              autoComplete="postal-address-region"
+              autoCapitalize="characters"
+              returnKeyType="next"
+              onSubmitEditing={() => zipCodeRef.current?.focus()}
+            />
+
+            <ThemedText style={styles.label}>Zip Code</ThemedText>
+            <TextInput
+              ref={zipCodeRef}
+              style={[
+                styles.input,
+                { backgroundColor: inputBackground, borderColor: inputBorder },
+              ]}
+              placeholder="66612"
+              placeholderTextColor={placeholder}
+              value={zipCode}
+              onChangeText={setZipCode}
+              textContentType="postalCode"
+              autoComplete="postal-code"
+              keyboardType="number-pad"
+              inputMode="numeric"
               returnKeyType="next"
               onSubmitEditing={() => billNumberRef.current?.focus()}
             />
@@ -211,7 +372,10 @@ export default function TestimonyScreen() {
             <ThemedText style={styles.label}>Bill number *</ThemedText>
             <TextInput
               ref={billNumberRef}
-              style={[styles.input, { backgroundColor: inputBackground, borderColor: inputBorder }]}
+              style={[
+                styles.input,
+                { backgroundColor: inputBackground, borderColor: inputBorder },
+              ]}
               placeholder="HB 2543"
               placeholderTextColor={placeholder}
               value={billNumber}
@@ -224,7 +388,10 @@ export default function TestimonyScreen() {
             <ThemedText style={styles.label}>Committee or hearing</ThemedText>
             <TextInput
               ref={committeeRef}
-              style={[styles.input, { backgroundColor: inputBackground, borderColor: inputBorder }]}
+              style={[
+                styles.input,
+                { backgroundColor: inputBackground, borderColor: inputBorder },
+              ]}
               placeholder="Senate Judiciary"
               placeholderTextColor={placeholder}
               value={committee}
@@ -232,61 +399,6 @@ export default function TestimonyScreen() {
               autoCapitalize="words"
               returnKeyType="next"
               onSubmitEditing={() => summaryRef.current?.focus()}
-            />
-
-            <ThemedText style={styles.label}>Position *</ThemedText>
-            <View style={styles.segment}>
-              {(['support', 'neutral', 'oppose'] as Position[]).map((choice) => {
-                const selected = position === choice;
-                return (
-                  <Pressable
-                    key={choice}
-                    accessibilityRole="button"
-                    accessibilityState={{ selected }}
-                    style={[
-                      styles.segmentButton,
-                      {
-                        borderColor: selected ? tint : inputBorder,
-                        backgroundColor: selected ? tint : inputBackground,
-                      },
-                    ]}
-                    onPress={() => setPosition(choice)}>
-                    <ThemedText style={[styles.segmentText, selected && styles.segmentTextSelected]}>
-                      {choice.charAt(0).toUpperCase() + choice.slice(1)}
-                    </ThemedText>
-                  </Pressable>
-                );
-              })}
-            </View>
-          </View>
-
-          <View style={styles.section}>
-            <ThemedText type="subtitle">Testimony</ThemedText>
-
-            <ThemedText style={styles.label}>Summary</ThemedText>
-            <TextInput
-              ref={summaryRef}
-              style={[styles.input, styles.multiline, { backgroundColor: inputBackground, borderColor: inputBorder }]}
-              placeholder="Short summary for the record"
-              placeholderTextColor={placeholder}
-              value={summary}
-              onChangeText={setSummary}
-              multiline
-              textAlignVertical="top"
-              returnKeyType="next"
-              onSubmitEditing={() => testimonyRef.current?.focus()}
-            />
-
-            <ThemedText style={styles.label}>Full testimony *</ThemedText>
-            <TextInput
-              ref={testimonyRef}
-              style={[styles.input, styles.multiline, { backgroundColor: inputBackground, borderColor: inputBorder }]}
-              placeholder="Add detailed testimony..."
-              placeholderTextColor={placeholder}
-              value={testimony}
-              onChangeText={setTestimony}
-              multiline
-              textAlignVertical="top"
             />
           </View>
 
@@ -296,7 +408,8 @@ export default function TestimonyScreen() {
               styles.submitButton,
               { backgroundColor: canSubmit ? tint : inputBorder },
             ]}
-            onPress={handleSubmit}>
+            onPress={handleSubmit}
+          >
             <ThemedText style={styles.submitText}>Submit Testimony</ThemedText>
           </Pressable>
 
@@ -321,15 +434,24 @@ const styles = StyleSheet.create({
     paddingBottom: 40,
     gap: 16,
   },
+  headerContainer: {
+    alignItems: "center",
+  },
+  centeredTitle: {
+    textAlign: "center",
+  },
   subtitle: {
     marginTop: 6,
+  },
+  centeredSubtitle: {
+    textAlign: "center",
   },
   section: {
     gap: 12,
   },
   label: {
     fontSize: 14,
-    fontWeight: '600',
+    fontWeight: "600",
   },
   input: {
     borderWidth: 1,
@@ -342,7 +464,7 @@ const styles = StyleSheet.create({
     minHeight: 120,
   },
   segment: {
-    flexDirection: 'row',
+    flexDirection: "row",
     gap: 8,
   },
   segmentButton: {
@@ -350,52 +472,57 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderRadius: 999,
     paddingVertical: 10,
-    alignItems: 'center',
+    alignItems: "center",
   },
   segmentText: {
-    fontWeight: '600',
+    fontWeight: "600",
   },
   segmentTextSelected: {
-    color: '#fff',
+    color: "#fff",
   },
   submitButton: {
     borderRadius: 14,
     paddingVertical: 14,
-    alignItems: 'center',
+    alignItems: "center",
     marginTop: 8,
   },
   submitText: {
-    color: '#fff',
-    fontWeight: '600',
+    color: "#fff",
+    fontWeight: "600",
   },
   footerText: {
     fontSize: 13,
-    textAlign: 'center',
+    textAlign: "center",
   },
   billInfoCard: {
     borderWidth: 1,
     borderRadius: 16,
     padding: 16,
     gap: 12,
-    shadowColor: '#000',
+    shadowColor: "#000",
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.05,
     shadowRadius: 2,
     elevation: 1,
   },
+  billInfoCardCentered: {
+    alignSelf: "center",
+    width: "100%",
+    maxWidth: 600,
+  },
   billInfoRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: 12,
   },
   billInfoRowFull: {
-    flexDirection: 'column',
-    alignItems: 'flex-start',
+    flexDirection: "column",
+    alignItems: "flex-start",
     gap: 4,
   },
   billInfoLabel: {
     fontSize: 14,
-    fontWeight: '600',
+    fontWeight: "600",
     minWidth: 80,
   },
   billInfoValue: {
