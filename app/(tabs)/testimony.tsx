@@ -1,4 +1,6 @@
+import * as Print from "expo-print";
 import { useLocalSearchParams } from "expo-router";
+import * as Sharing from "expo-sharing";
 import { useEffect, useRef, useState } from "react";
 import {
   Alert,
@@ -10,14 +12,17 @@ import {
   TextInput,
   View,
 } from "react-native";
-import * as Print from "expo-print";
-import * as Sharing from "expo-sharing";
 
 import { ThemedText } from "@/components/themed-text";
 import { ThemedView } from "@/components/themed-view";
 import { useThemeColor } from "@/hooks/use-theme-color";
 
 type Position = "support" | "neutral" | "oppose";
+
+// Stock opening and closing text for all testimonies
+const STOCK_OPENING = `Chair and members of the committee:`;
+
+const STOCK_CLOSING = `Thank you for the opportunity to testify and for your consideration of my testimony.`;
 
 export default function TestimonyScreen() {
   const params = useLocalSearchParams();
@@ -113,6 +118,25 @@ export default function TestimonyScreen() {
     const positionText = position.charAt(0).toUpperCase() + position.slice(1);
     const fullName = `${firstName} ${lastName}`.trim();
 
+    // Combine stock opening, main testimony, and stock closing with signature
+    let fullTestimony = '';
+    if (STOCK_OPENING.trim()) {
+      fullTestimony += escapeHtml(STOCK_OPENING.trim()) + '\n\n';
+    }
+    if (testimony.trim()) {
+      fullTestimony += escapeHtml(testimony.trim());
+    }
+    if (STOCK_CLOSING.trim()) {
+      fullTestimony += '\n\n' + escapeHtml(STOCK_CLOSING.trim());
+    }
+    // Add signature with name and city
+    if (fullName) {
+      fullTestimony += '\n\n' + escapeHtml(fullName);
+    }
+    if (city.trim()) {
+      fullTestimony += '\n' + escapeHtml(city.trim());
+    }
+
     return `
 <!DOCTYPE html>
 <html>
@@ -151,10 +175,10 @@ export default function TestimonyScreen() {
   <body>
     <div class="title">${escapeHtml(positionText)} Testimony on ${escapeHtml(billNumber)}</div>
     
-    <div class="name">${escapeHtml(fullName)}</div>
+    <div class="name">${fullName}</div>
     <div class="city">${escapeHtml(city || '')}</div>
 
-    <div class="testimony-text">${escapeHtml(testimony)}</div>
+    <div class="testimony-text">${fullTestimony}</div>
   </body>
 </html>
     `;
@@ -298,7 +322,21 @@ export default function TestimonyScreen() {
           <View style={styles.section}>
             <ThemedText type="subtitle">Testimony</ThemedText>
 
-            <ThemedText style={styles.label}>Full testimony *</ThemedText>
+            <ThemedText style={[styles.label, { color: mutedText }]}>
+              Stock opening (automatically included)
+            </ThemedText>
+            <View
+              style={[
+                styles.stockTextContainer,
+                { backgroundColor: inputBackground, borderColor: separator },
+              ]}
+            >
+              <ThemedText style={[styles.stockText, { color: mutedText }]}>
+                {STOCK_OPENING}
+              </ThemedText>
+            </View>
+
+            <ThemedText style={styles.label}>Your testimony *</ThemedText>
             <TextInput
               ref={testimonyRef}
               style={[
@@ -313,6 +351,26 @@ export default function TestimonyScreen() {
               multiline
               textAlignVertical="top"
             />
+
+            <ThemedText style={[styles.label, { color: mutedText }]}>
+              Stock closing (automatically included)
+            </ThemedText>
+            <View
+              style={[
+                styles.stockTextContainer,
+                { backgroundColor: inputBackground, borderColor: separator },
+              ]}
+            >
+              <ThemedText style={[styles.stockText, { color: mutedText }]}>
+                {STOCK_CLOSING}
+              </ThemedText>
+              <ThemedText style={[styles.stockText, { color: mutedText, marginTop: 12 }]}>
+                {firstName && lastName ? `${firstName} ${lastName}` : '[Your Name]'}
+              </ThemedText>
+              <ThemedText style={[styles.stockText, { color: mutedText }]}>
+                {city || '[Your City]'}
+              </ThemedText>
+            </View>
           </View>
 
           <ThemedText style={styles.label}>Position *</ThemedText>
@@ -508,7 +566,7 @@ export default function TestimonyScreen() {
               onChangeText={setCommittee}
               autoCapitalize="words"
               returnKeyType="next"
-              onSubmitEditing={() => summaryRef.current?.focus()}
+              onSubmitEditing={() => testimonyRef.current?.focus()}
             />
           </View>
 
@@ -572,6 +630,17 @@ const styles = StyleSheet.create({
   },
   multiline: {
     minHeight: 120,
+  },
+  stockTextContainer: {
+    borderWidth: 1,
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+  },
+  stockText: {
+    fontSize: 16,
+    lineHeight: 24,
+    fontStyle: "italic",
   },
   segment: {
     flexDirection: "row",

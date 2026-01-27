@@ -65,7 +65,9 @@ export default function BillDetailScreen() {
           status: LegiscanAPI.getStatusLabel(billData.status),
           chamber: LegiscanAPI.getChamber(billData.bill_number),
           sessionName: billData.session.session_name,
-          committee: billData.committee?.name,
+          committee: billData.committee?.chamber && billData.committee?.name 
+            ? `${billData.committee.chamber} ${billData.committee.name}`
+            : billData.committee?.name,
           url: billData.url,
           stateLink: billData.state_link,
           history: billData.history.map(h => ({
