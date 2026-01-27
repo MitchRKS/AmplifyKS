@@ -1,20 +1,42 @@
-# Welcome to your Expo app 👋
+# AmplifyKS
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+A mobile application for tracking Kansas Legislature bills and submitting testimony. Built with Expo and React Native.
 
-## Get started
+## Features
 
-1. Install dependencies
+- **Browse Bills**: View all bills from the current Kansas Legislature session
+- **Bill Details**: See comprehensive information including sponsors, status, legislative history, and bill text
+- **Search**: Search bills by number, title, or description
+- **Submit Testimony**: Submit testimony for legislation directly from the app
+- **Real-time Data**: Powered by the LegiScan API for up-to-date legislative information
 
-   ```bash
-   npm install
-   ```
+## Setup
 
-2. Start the app
+### 1. Install dependencies
 
-   ```bash
-   npx expo start
-   ```
+```bash
+npm install
+```
+
+### 2. Configure LegiScan API
+
+This app uses the [LegiScan API](https://legiscan.com/legiscan) to fetch Kansas Legislature data.
+
+1. Get your free API key from [LegiScan](https://legiscan.com/legiscan)
+2. Copy `.env.example` to `.env`
+3. Add your API key to the `.env` file:
+
+```
+LEGISCAN_API_KEY=your_api_key_here
+```
+
+**Note**: The `.env` file is already in `.gitignore` to keep your API key secure.
+
+### 3. Start the app
+
+```bash
+npx expo start
+```
 
 In the output, you'll find options to open the app in a
 
@@ -25,15 +47,35 @@ In the output, you'll find options to open the app in a
 
 You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
 
-## Get a fresh project
+## Project Structure
 
-When you're ready, run:
+```
+app/
+├── (tabs)/
+│   ├── _layout.tsx      # Tab navigation configuration
+│   ├── index.tsx        # Home screen
+│   ├── bills.tsx        # Bills list screen
+│   ├── testimony.tsx    # Testimony submission form
+│   └── explore.tsx      # Explore screen
+├── bill-detail.tsx      # Bill detail screen
+└── _layout.tsx          # Root layout
 
-```bash
-npm run reset-project
+services/
+└── legiscan.ts          # LegiScan API service
+
+components/
+├── themed-text.tsx      # Themed text component
+├── themed-view.tsx      # Themed view component
+└── ui/                  # UI components
 ```
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+## Technology Stack
+
+- **Framework**: [Expo](https://expo.dev) / React Native
+- **Language**: TypeScript
+- **Navigation**: Expo Router
+- **API**: LegiScan API
+- **State Management**: React Hooks
 
 ## Learn more
 
