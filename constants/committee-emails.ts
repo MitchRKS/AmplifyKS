@@ -63,7 +63,7 @@ export const COMMITTEE_EMAILS: Record<string, string> = {
     "Leg.Modernization@house.ks.gov",
   "House Committee on Local Government": "H.Local.Govt@house.ks.gov",
   "House Committee on Social Services Budget": "Social.Svc.Budget@house.ks.gov",
-  "House Committee on Taxation": "Taxation@house.ks.gov",
+  "House Committee on Taxation": "mitchruckerks@gmail.com",
   "House Committee on Transportation": "H.Transportation@house.ks.gov",
   "House Committee on Transportation and Public Safety Budget":
     "Transportation.Budget@house.ks.gov",

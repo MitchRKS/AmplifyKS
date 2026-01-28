@@ -21,6 +21,13 @@ import { useThemeColor } from "@/hooks/use-theme-color";
 
 type Position = "support" | "neutral" | "oppose";
 
+// Map position values to display labels
+const POSITION_LABELS: Record<Position, string> = {
+  support: "Proponent",
+  neutral: "Neutral",
+  oppose: "Opponent",
+};
+
 // Stock opening and closing text for all testimonies
 const STOCK_OPENING = `Chair and members of the committee:`;
 
@@ -117,8 +124,16 @@ export default function TestimonyScreen() {
   };
 
   const generateTestimonyHTML = () => {
-    const positionText = position.charAt(0).toUpperCase() + position.slice(1);
+    const positionText = POSITION_LABELS[position];
     const fullName = `${firstName} ${lastName}`.trim();
+    
+    // Format current date
+    const date = new Date();
+    const formattedDate = date.toLocaleDateString('en-US', { 
+      year: 'numeric', 
+      month: 'long', 
+      day: 'numeric' 
+    });
 
     // Combine stock opening, main testimony, and stock closing with signature
     let fullTestimony = '';
@@ -159,11 +174,11 @@ export default function TestimonyScreen() {
         margin-bottom: 30px;
         text-align: center;
       }
-      .name {
+      .metadata {
         font-size: 12pt;
         margin-bottom: 5px;
       }
-      .city {
+      .metadata-last {
         font-size: 12pt;
         margin-bottom: 30px;
       }
@@ -177,8 +192,8 @@ export default function TestimonyScreen() {
   <body>
     <div class="title">${escapeHtml(positionText)} Testimony on ${escapeHtml(billNumber)}</div>
     
-    <div class="name">${fullName}</div>
-    <div class="city">${escapeHtml(city || '')}</div>
+    <div class="metadata">${escapeHtml(formattedDate)}</div>
+    <div class="metadata-last">${escapeHtml(committee || 'Committee')}</div>
 
     <div class="testimony-text">${fullTestimony}</div>
   </body>
@@ -187,7 +202,7 @@ export default function TestimonyScreen() {
   };
 
   const generateTestimonyText = () => {
-    const positionText = position.charAt(0).toUpperCase() + position.slice(1);
+    const positionText = POSITION_LABELS[position];
     const fullName = `${firstName} ${lastName}`.trim();
 
     // Build plain text version for email
@@ -251,16 +266,46 @@ export default function TestimonyScreen() {
         return;
       }
 
-      const positionText = position.charAt(0).toUpperCase() + position.slice(1);
+      const positionText = POSITION_LABELS[position];
       const subject = `${positionText} Testimony on ${billNumber}`;
-      const body = generateTestimonyText();
-
-      // Open email composer with pre-filled information
-      await MailComposer.composeAsync({
-        recipients: [committeeEmail],
-        subject: subject,
-        body: body,
+      const fullName = `${firstName} ${lastName}`.trim();
+      
+      // Format current date
+      const date = new Date();
+      const formattedDate = date.toLocaleDateString('en-US', { 
+        year: 'numeric', 
+        month: 'long', 
+        day: 'numeric' 
       });
+      
+      // On native platforms, attach PDF. On web, send formatted text.
+      if (Platform.OS === 'web') {
+        // Web: Send formatted text email
+        const body = `${positionText} Testimony on ${billNumber}\n${formattedDate}\n${committee}\n\n${generateTestimonyText()}`;
+        
+        await MailComposer.composeAsync({
+          recipients: [committeeEmail],
+          subject: subject,
+          body: body,
+        });
+      } else {
+        // Native platforms: Generate PDF and attach it
+        const html = generateTestimonyHTML();
+        const { uri } = await Print.printToFileAsync({ 
+          html,
+          base64: false,
+        });
+        
+        // Simple email body with attachment reference
+        const body = `Please find attached my ${positionText.toLowerCase()} testimony on ${billNumber}.\n\n${fullName}\n${city || ''}`;
+
+        await MailComposer.composeAsync({
+          recipients: [committeeEmail],
+          subject: subject,
+          body: body,
+          attachments: [uri],
+        });
+      }
 
       // Note: We can't detect if the user actually sent the email or cancelled,
       // so we don't show a success message here
@@ -285,16 +330,12 @@ export default function TestimonyScreen() {
     try {
       const html = generateTestimonyHTML();
       
-      // On web, open in new window
+      // On web, open in new window (without print dialog)
       if (Platform.OS === "web") {
         const newWindow = window.open("", "_blank");
         if (newWindow) {
           newWindow.document.write(html);
           newWindow.document.close();
-          // Trigger print dialog after a short delay to ensure content is loaded
-          setTimeout(() => {
-            newWindow.print();
-          }, 250);
         } else {
           Alert.alert(
             "Popup Blocked",
@@ -302,15 +343,7 @@ export default function TestimonyScreen() {
           );
         }
       }
-      // On iOS, use printAsync to show native print preview
-      else if (Platform.OS === "ios") {
-        await Print.printAsync({ 
-          html,
-          width: 612, // 8.5 inches at 72 DPI
-          height: 792, // 11 inches at 72 DPI
-        });
-      } 
-      // On Android, generate PDF file and share it
+      // On iOS and Android, generate PDF file and share it
       else {
         const { uri } = await Print.printToFileAsync({ html });
         const isAvailable = await Sharing.isAvailableAsync();
@@ -486,7 +519,7 @@ export default function TestimonyScreen() {
                       selected && styles.segmentTextSelected,
                     ]}
                   >
-                    {choice.charAt(0).toUpperCase() + choice.slice(1)}
+                    {POSITION_LABELS[choice]}
                   </ThemedText>
                 </Pressable>
               );
