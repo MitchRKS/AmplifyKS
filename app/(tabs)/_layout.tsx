@@ -1,20 +1,30 @@
+import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { Tabs } from 'expo-router';
 import React from 'react';
+import { Pressable } from 'react-native';
 
 import { HapticTab } from '@/components/haptic-tab';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { Colors } from '@/constants/theme';
+import { useAuth } from '@/contexts/auth-context';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 
 export default function TabLayout() {
   const colorScheme = useColorScheme();
+  const { logout } = useAuth();
+  const tint = Colors[colorScheme ?? 'light'].tint;
 
   return (
     <Tabs
       screenOptions={{
-        tabBarActiveTintColor: Colors[colorScheme ?? 'light'].tint,
-        headerShown: false,
+        tabBarActiveTintColor: tint,
+        headerShown: true,
         tabBarButton: HapticTab,
+        headerRight: () => (
+          <Pressable onPress={logout} style={{ marginRight: 16 }}>
+            <MaterialIcons name="logout" size={22} color={tint} />
+          </Pressable>
+        ),
       }}>
       <Tabs.Screen
         name="bills"
