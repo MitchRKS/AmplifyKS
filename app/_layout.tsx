@@ -20,7 +20,7 @@ function RootNavigator() {
     if (!user && !inAuthGroup) {
       router.replace('/(auth)/login');
     } else if (user && inAuthGroup) {
-      router.replace('/(tabs)/bills');
+      router.replace('/(tabs)/dashboard');
     }
   }, [user, isLoading, segments]);
 

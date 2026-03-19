@@ -1,14 +1,15 @@
-import * as Location from 'expo-location';
+import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { Image } from 'expo-image';
+import * as Location from 'expo-location';
 import { useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
-  FlatList,
   KeyboardAvoidingView,
   Linking,
   Platform,
   Pressable,
+  ScrollView,
   StyleSheet,
   TextInput,
   View,
@@ -16,14 +17,17 @@ import {
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
+import { useSavedOfficials } from '@/hooks/use-saved-officials';
 import { useThemeColor } from '@/hooks/use-theme-color';
 import { getOfficialsByLocation, type Official } from '@/services/openstates';
 
 export default function OfficialsScreen() {
   const [address, setAddress] = useState('');
-  const [officials, setOfficials] = useState<Official[]>([]);
+  const [searchResults, setSearchResults] = useState<Official[]>([]);
   const [loading, setLoading] = useState(false);
   const [hasSearched, setHasSearched] = useState(false);
+
+  const { savedOfficials, saveOfficial, removeOfficial, isSaved } = useSavedOfficials();
 
   const inputBackground = useThemeColor({ light: '#F2F2F7', dark: '#1C1C1E' }, 'background');
   const inputBorder = useThemeColor({ light: '#D1D1D6', dark: '#2C2C2E' }, 'background');
@@ -39,14 +43,14 @@ export default function OfficialsScreen() {
     setHasSearched(true);
     try {
       const results = await getOfficialsByLocation(lat, lng);
-      setOfficials(results);
+      setSearchResults(results);
       if (results.length === 0) {
         Alert.alert('No Results', 'No elected officials found for this location.');
       }
     } catch (error) {
       console.error('Error fetching officials:', error);
       Alert.alert('Error', 'Unable to look up officials. Please try again.');
-      setOfficials([]);
+      setSearchResults([]);
     } finally {
       setLoading(false);
     }
@@ -149,53 +153,101 @@ export default function OfficialsScreen() {
     );
   };
 
-  const renderOfficial = ({ item }: { item: Official }) => (
-    <Pressable
-      style={({ pressed }) => [
-        styles.card,
-        { backgroundColor: cardBackground, borderColor: separator },
-        pressed && styles.cardPressed,
-      ]}
-      onPress={() => handleContact(item)}
-    >
-      <View style={styles.cardRow}>
-        {item.image ? (
-          <Image source={{ uri: item.image }} style={styles.photo} contentFit="cover" />
-        ) : (
-          <View style={[styles.photo, styles.photoPlaceholder, { backgroundColor: inputBackground }]}>
-            <ThemedText style={[styles.photoInitials, { color: mutedText }]}>
-              {item.givenName.charAt(0)}
-              {item.familyName.charAt(0)}
-            </ThemedText>
-          </View>
-        )}
+  const toggleSave = (official: Official) => {
+    if (isSaved(official.id)) {
+      removeOfficial(official.id);
+    } else {
+      saveOfficial(official);
+    }
+  };
 
-        <View style={styles.cardContent}>
-          <ThemedText type="defaultSemiBold" style={styles.officialName}>
-            {item.name}
-          </ThemedText>
+  const renderOfficialCard = (item: Official, showSaveButton: boolean) => {
+    const saved = isSaved(item.id);
 
-          <View style={styles.tagRow}>
-            <View style={[styles.partyBadge, { backgroundColor: getPartyColor(item.party) + '18' }]}>
-              <ThemedText style={[styles.partyText, { color: getPartyColor(item.party) }]}>
-                {item.party}
+    return (
+      <Pressable
+        key={item.id}
+        style={({ pressed }) => [
+          styles.card,
+          { backgroundColor: cardBackground, borderColor: separator },
+          pressed && styles.cardPressed,
+        ]}
+        onPress={() => handleContact(item)}
+      >
+        <View style={styles.cardRow}>
+          {item.image ? (
+            <Image source={{ uri: item.image }} style={styles.photo} contentFit="cover" />
+          ) : (
+            <View style={[styles.photo, styles.photoPlaceholder, { backgroundColor: inputBackground }]}>
+              <ThemedText style={[styles.photoInitials, { color: mutedText }]}>
+                {item.givenName.charAt(0)}
+                {item.familyName.charAt(0)}
               </ThemedText>
             </View>
-          </View>
+          )}
 
-          <ThemedText style={[styles.detailText, { color: mutedText }]}>
-            {item.chamber}{item.district ? ` — District ${item.district}` : ''}
-          </ThemedText>
+          <View style={styles.cardContent}>
+            <View style={styles.nameRow}>
+              <ThemedText type="defaultSemiBold" style={styles.officialName} numberOfLines={1}>
+                {item.name}
+              </ThemedText>
+              {showSaveButton && (
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel={saved ? 'Remove from saved' : 'Save official'}
+                  onPress={(e) => {
+                    e.stopPropagation();
+                    toggleSave(item);
+                  }}
+                  hitSlop={8}
+                  style={styles.saveButton}
+                >
+                  <MaterialIcons
+                    name={saved ? 'bookmark' : 'bookmark-border'}
+                    size={22}
+                    color={saved ? tint : mutedText}
+                  />
+                </Pressable>
+              )}
+            </View>
 
-          {item.email ? (
-            <ThemedText style={[styles.contactText, { color: tint }]} numberOfLines={1}>
-              {item.email}
+            <View style={styles.tagRow}>
+              <View style={[styles.partyBadge, { backgroundColor: getPartyColor(item.party) + '18' }]}>
+                <ThemedText style={[styles.partyText, { color: getPartyColor(item.party) }]}>
+                  {item.party}
+                </ThemedText>
+              </View>
+            </View>
+
+            <ThemedText style={[styles.detailText, { color: mutedText }]}>
+              {item.chamber}{item.district ? ` — District ${item.district}` : ''}
             </ThemedText>
-          ) : null}
+
+            {item.email ? (
+              <ThemedText style={[styles.contactText, { color: tint }]} numberOfLines={1}>
+                {item.email}
+              </ThemedText>
+            ) : null}
+          </View>
         </View>
-      </View>
-    </Pressable>
-  );
+
+        {saved && !showSaveButton && (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Remove from saved"
+            onPress={(e) => {
+              e.stopPropagation();
+              removeOfficial(item.id);
+            }}
+            style={[styles.removeButton, { borderColor: separator }]}
+          >
+            <MaterialIcons name="close" size={14} color={mutedText} />
+            <ThemedText style={[styles.removeText, { color: mutedText }]}>Remove</ThemedText>
+          </Pressable>
+        )}
+      </Pressable>
+    );
+  };
 
   return (
     <KeyboardAvoidingView
@@ -203,74 +255,93 @@ export default function OfficialsScreen() {
       behavior={Platform.select({ ios: 'padding', android: undefined })}
     >
       <ThemedView style={styles.container}>
-        <View style={styles.header}>
-          <ThemedText type="title">My Officials</ThemedText>
-          <ThemedText style={[styles.subtitle, { color: mutedText }]}>
-            Find your Kansas state legislators
-          </ThemedText>
-        </View>
-
-        <View style={styles.searchSection}>
-          <Pressable
-            accessibilityRole="button"
-            style={[styles.locationButton, { backgroundColor: tint }]}
-            onPress={handleUseLocation}
-            disabled={loading}
-          >
-            <ThemedText style={styles.locationButtonText}>
-              Use My Current Location
-            </ThemedText>
-          </Pressable>
-
-          <ThemedText style={[styles.orText, { color: mutedText }]}>or enter an address</ThemedText>
-
-          <View style={styles.addressRow}>
-            <TextInput
-              style={[styles.addressInput, { backgroundColor: inputBackground, borderColor: inputBorder, color: inputText }]}
-              placeholder="123 Main St, Topeka, KS"
-              placeholderTextColor={placeholder}
-              value={address}
-              onChangeText={setAddress}
-              autoCapitalize="words"
-              returnKeyType="search"
-              onSubmitEditing={handleSearchAddress}
-            />
-            <Pressable
-              accessibilityRole="button"
-              style={[styles.searchButton, { backgroundColor: address.trim() && !loading ? tint : inputBorder }]}
-              onPress={handleSearchAddress}
-              disabled={!address.trim() || loading}
-            >
-              <ThemedText style={styles.searchButtonText}>Search</ThemedText>
-            </Pressable>
-          </View>
-        </View>
-
-        {loading ? (
-          <View style={styles.centerContainer}>
-            <ActivityIndicator size="large" color={tint} />
-            <ThemedText style={[styles.loadingText, { color: mutedText }]}>
-              Looking up officials...
+        <ScrollView
+          contentContainerStyle={styles.scrollContent}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+        >
+          <View style={styles.header}>
+            <ThemedText type="title">My Officials</ThemedText>
+            <ThemedText style={[styles.subtitle, { color: mutedText }]}>
+              Find and save your Kansas state legislators
             </ThemedText>
           </View>
-        ) : (
-          <FlatList
-            data={officials}
-            renderItem={renderOfficial}
-            keyExtractor={(item) => item.id}
-            contentContainerStyle={styles.listContent}
-            showsVerticalScrollIndicator={false}
-            ListEmptyComponent={
-              hasSearched ? (
+
+          {savedOfficials.length > 0 && (
+            <View style={styles.section}>
+              <ThemedText type="subtitle" style={styles.sectionTitle}>
+                Saved Officials
+              </ThemedText>
+              {savedOfficials.map((official) => renderOfficialCard(official, false))}
+            </View>
+          )}
+
+          <View style={styles.section}>
+            <ThemedText type="subtitle" style={styles.sectionTitle}>
+              Look Up Officials
+            </ThemedText>
+
+            <View style={styles.searchSection}>
+              <Pressable
+                accessibilityRole="button"
+                style={[styles.locationButton, { backgroundColor: tint }]}
+                onPress={handleUseLocation}
+                disabled={loading}
+              >
+                <ThemedText style={styles.locationButtonText}>
+                  Use My Current Location
+                </ThemedText>
+              </Pressable>
+
+              <ThemedText style={[styles.orText, { color: mutedText }]}>or enter an address</ThemedText>
+
+              <View style={styles.addressRow}>
+                <TextInput
+                  style={[styles.addressInput, { backgroundColor: inputBackground, borderColor: inputBorder, color: inputText }]}
+                  placeholder="123 Main St, Topeka, KS"
+                  placeholderTextColor={placeholder}
+                  value={address}
+                  onChangeText={setAddress}
+                  autoCapitalize="words"
+                  returnKeyType="search"
+                  onSubmitEditing={handleSearchAddress}
+                />
+                <Pressable
+                  accessibilityRole="button"
+                  style={[styles.searchButton, { backgroundColor: address.trim() && !loading ? tint : inputBorder }]}
+                  onPress={handleSearchAddress}
+                  disabled={!address.trim() || loading}
+                >
+                  <ThemedText style={styles.searchButtonText}>Search</ThemedText>
+                </Pressable>
+              </View>
+            </View>
+          </View>
+
+          {loading ? (
+            <View style={styles.centerContainer}>
+              <ActivityIndicator size="large" color={tint} />
+              <ThemedText style={[styles.loadingText, { color: mutedText }]}>
+                Looking up officials...
+              </ThemedText>
+            </View>
+          ) : (
+            <>
+              {searchResults.map((official) => (
+                <View key={official.id} style={styles.resultCard}>
+                  {renderOfficialCard(official, true)}
+                </View>
+              ))}
+              {hasSearched && searchResults.length === 0 && (
                 <View style={styles.centerContainer}>
                   <ThemedText style={[styles.emptyText, { color: mutedText }]}>
                     No officials found for this location.
                   </ThemedText>
                 </View>
-              ) : null
-            }
-          />
-        )}
+              )}
+            </>
+          )}
+        </ScrollView>
       </ThemedView>
     </KeyboardAvoidingView>
   );
@@ -283,6 +354,9 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
+  scrollContent: {
+    paddingBottom: 40,
+  },
   header: {
     paddingHorizontal: 20,
     paddingTop: 12,
@@ -292,9 +366,14 @@ const styles = StyleSheet.create({
     fontSize: 15,
     marginTop: 4,
   },
-  searchSection: {
+  section: {
     paddingHorizontal: 20,
-    paddingBottom: 16,
+    paddingTop: 16,
+  },
+  sectionTitle: {
+    marginBottom: 12,
+  },
+  searchSection: {
     gap: 12,
   },
   locationButton: {
@@ -334,9 +413,8 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     fontSize: 15,
   },
-  listContent: {
+  resultCard: {
     paddingHorizontal: 20,
-    paddingBottom: 20,
   },
   card: {
     borderWidth: 1,
@@ -374,8 +452,18 @@ const styles = StyleSheet.create({
     flex: 1,
     gap: 4,
   },
+  nameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 8,
+  },
   officialName: {
     fontSize: 17,
+    flex: 1,
+  },
+  saveButton: {
+    padding: 2,
   },
   tagRow: {
     flexDirection: 'row',
@@ -397,8 +485,21 @@ const styles = StyleSheet.create({
   contactText: {
     fontSize: 13,
   },
+  removeButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'flex-end',
+    gap: 4,
+    marginTop: 10,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderWidth: 1,
+    borderRadius: 8,
+  },
+  removeText: {
+    fontSize: 13,
+  },
   centerContainer: {
-    flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
     paddingVertical: 60,
