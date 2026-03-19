@@ -41,6 +41,13 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
+        name="officials"
+        options={{
+          title: 'My Officials',
+          tabBarIcon: ({ color }) => <MaterialIcons size={26} name="how-to-vote" color={color} />,
+        }}
+      />
+      <Tabs.Screen
         name="testimony"
         options={{
           title: 'Testimony',
