@@ -7,8 +7,6 @@ import 'react-native-reanimated';
 import { AuthProvider, useAuth } from '@/contexts/auth-context';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 
-const AUTH_LOAD_TIMEOUT_MS = 5000;
-
 function RootNavigator() {
   const { user, isLoading } = useAuth();
   const segments = useSegments();
@@ -19,28 +17,14 @@ function RootNavigator() {
 
     const inAuthGroup = segments[0] === '(auth)';
 
-    if (!user && !inAuthGroup) {
-      router.replace('/(auth)/login');
-    } else if (user && inAuthGroup) {
+    if (user && inAuthGroup) {
       router.replace('/(tabs)/dashboard');
     }
   }, [user, isLoading, segments]);
 
-  useEffect(() => {
-    if (!isLoading) return;
-
-    const timeout = setTimeout(() => {
-      const inAuthGroup = segments[0] === '(auth)';
-      if (!inAuthGroup) {
-        router.replace('/(auth)/login');
-      }
-    }, AUTH_LOAD_TIMEOUT_MS);
-
-    return () => clearTimeout(timeout);
-  }, [isLoading, segments, router]);
-
   return (
     <Stack>
+      <Stack.Screen name="index" options={{ headerShown: false }} />
       <Stack.Screen name="(auth)" options={{ headerShown: false }} />
       <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
       <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
