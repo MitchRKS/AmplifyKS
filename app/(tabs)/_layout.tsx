@@ -36,14 +36,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="bills"
         options={{
-          title: 'House Bills',
-          tabBarIcon: ({ color }) => <IconSymbol size={28} name="doc.text.magnifyingglass" color={color} />,
-        }}
-      />
-      <Tabs.Screen
-        name="senate-bills"
-        options={{
-          title: 'Senate Bills',
+          title: 'Bills',
           tabBarIcon: ({ color }) => <IconSymbol size={28} name="doc.text.magnifyingglass" color={color} />,
         }}
       />
@@ -59,6 +52,13 @@ export default function TabLayout() {
         options={{
           title: 'Testimony',
           tabBarIcon: ({ color }) => <IconSymbol size={28} name="doc.text.fill" color={color} />,
+        }}
+      />
+      <Tabs.Screen
+        name="profile"
+        options={{
+          title: 'Profile',
+          tabBarIcon: ({ color }) => <MaterialIcons size={26} name="person" color={color} />,
         }}
       />
     </Tabs>

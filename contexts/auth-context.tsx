@@ -16,7 +16,7 @@ import {
   type ReactNode,
 } from 'react';
 
-import { auth } from '@/services/firebase';
+import { getAuth } from '@/services/firebase';
 
 interface AuthUser {
   uid: string;
@@ -82,11 +82,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
-      setUser(firebaseUser ? toAuthUser(firebaseUser) : null);
+    try {
+      const auth = getAuth();
+      const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
+        setUser(firebaseUser ? toAuthUser(firebaseUser) : null);
+        setIsLoading(false);
+      });
+      return unsubscribe;
+    } catch {
       setIsLoading(false);
-    });
-    return unsubscribe;
+      return () => {};
+    }
   }, []);
 
   const register = useCallback(
@@ -99,7 +105,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const { email, firstName, lastName, password } = params;
       try {
         const credential = await createUserWithEmailAndPassword(
-          auth,
+          getAuth(),
           email.trim(),
           password,
         );
@@ -118,7 +124,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const login = useCallback(
     async (params: { email: string; password: string }) => {
       try {
-        await signInWithEmailAndPassword(auth, params.email.trim(), params.password);
+        await signInWithEmailAndPassword(getAuth(), params.email.trim(), params.password);
         return { success: true };
       } catch (error: any) {
         console.error('Firebase login error:', error.code, error.message);
@@ -132,7 +138,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   );
 
   const logout = useCallback(async () => {
-    await signOut(auth);
+    await signOut(getAuth());
   }, []);
 
   const value = useMemo(

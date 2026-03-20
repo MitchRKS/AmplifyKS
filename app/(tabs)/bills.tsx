@@ -1,11 +1,13 @@
+import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { useRouter } from 'expo-router';
-import { useEffect, useState } from 'react';
+import { useMemo, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
-  Alert,
   FlatList,
+  Modal,
   Pressable,
   RefreshControl,
+  ScrollView,
   StyleSheet,
   TextInput,
   View,
@@ -15,6 +17,9 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { useThemeColor } from '@/hooks/use-theme-color';
 import * as LegiscanAPI from '@/services/legiscan';
+
+type ChamberFilter = 'All' | 'House' | 'Senate';
+type SortOption = 'dateDesc' | 'dateAsc' | 'numberAsc' | 'numberDesc' | 'titleAsc' | 'statusAsc';
 
 interface Bill {
   id: number;
@@ -28,9 +33,73 @@ interface Bill {
   url: string;
 }
 
+const SORT_OPTIONS: { value: SortOption; label: string }[] = [
+  { value: 'dateDesc', label: 'Last action (newest)' },
+  { value: 'dateAsc', label: 'Last action (oldest)' },
+  { value: 'numberAsc', label: 'Bill number (A–Z)' },
+  { value: 'numberDesc', label: 'Bill number (Z–A)' },
+  { value: 'titleAsc', label: 'Title (A–Z)' },
+  { value: 'statusAsc', label: 'Status (A–Z)' },
+];
+
+const STATUS_OPTIONS = [
+  'All',
+  'Introduced',
+  'Engrossed',
+  'Enrolled',
+  'Passed',
+  'Vetoed',
+  'Failed',
+  'Override',
+  'Chaptered',
+  'In Progress',
+];
+
+function parseBillNumber(billNumber: string): { prefix: string; num: number } {
+  const match = billNumber.trim().match(/^([A-Za-z]+)\s*(\d+)$/);
+  if (match) {
+    return { prefix: match[1].toUpperCase(), num: parseInt(match[2], 10) };
+  }
+  return { prefix: billNumber, num: 0 };
+}
+
+function compareBillNumbers(a: string, b: string): number {
+  const pa = parseBillNumber(a);
+  const pb = parseBillNumber(b);
+  if (pa.prefix !== pb.prefix) return pa.prefix.localeCompare(pb.prefix);
+  return pa.num - pb.num;
+}
+
+function sortBills(bills: Bill[], sortBy: SortOption): Bill[] {
+  const sorted = [...bills];
+  switch (sortBy) {
+    case 'dateDesc':
+      return sorted.sort(
+        (a, b) => new Date(b.lastActionDate).getTime() - new Date(a.lastActionDate).getTime()
+      );
+    case 'dateAsc':
+      return sorted.sort(
+        (a, b) => new Date(a.lastActionDate).getTime() - new Date(b.lastActionDate).getTime()
+      );
+    case 'numberAsc':
+      return sorted.sort((a, b) => compareBillNumbers(a.billNumber, b.billNumber));
+    case 'numberDesc':
+      return sorted.sort((a, b) => compareBillNumbers(b.billNumber, a.billNumber));
+    case 'titleAsc':
+      return sorted.sort((a, b) => a.title.localeCompare(b.title));
+    case 'statusAsc':
+      return sorted.sort((a, b) => a.status.localeCompare(b.status));
+    default:
+      return sorted;
+  }
+}
+
 export default function BillsScreen() {
   const router = useRouter();
   const [searchQuery, setSearchQuery] = useState('');
+  const [chamberFilter, setChamberFilter] = useState<ChamberFilter>('All');
+  const [statusFilter, setStatusFilter] = useState<string>('All');
+  const [sortBy, setSortBy] = useState<SortOption>('dateDesc');
   const [refreshing, setRefreshing] = useState(false);
   const [loading, setLoading] = useState(true);
   const [bills, setBills] = useState<Bill[]>([]);
@@ -45,49 +114,32 @@ export default function BillsScreen() {
   const mutedText = useThemeColor({ light: '#6C6C70', dark: '#A1A1A6' }, 'text');
   const separator = useThemeColor({ light: '#E5E5EA', dark: '#38383A' }, 'background');
 
-  // Fetch bills from LegiScan API
   const fetchBills = async () => {
     try {
       setLoading(true);
       setError(null);
-      console.log('=== Starting to fetch bills ===');
-      
-      // Get current session info first
-      console.log('Step 1: Fetching session list...');
+
       const sessions = await LegiscanAPI.getSessionList('KS');
-      console.log('Sessions received:', sessions?.length || 0);
-      
       if (!sessions || sessions.length === 0) {
         throw new Error('No sessions available for Kansas');
       }
-      
+
       const currentSession = sessions[0];
-      console.log('Current session:', currentSession.session_name, 'ID:', currentSession.session_id);
       setSessionName(currentSession.session_name);
 
-      // Get bills for current Kansas session
-      console.log('Step 2: Fetching bills for session', currentSession.session_id);
       const billData = await LegiscanAPI.getKansasBills();
-      console.log('Bill data received:', billData?.length || 0);
-      
       if (!billData || billData.length === 0) {
-        console.warn('No bills returned from API');
         setError('No bills available for the current session');
         setBills([]);
         return;
       }
-      
-      // Transform API data to our Bill interface
-      console.log('Step 3: Transforming', billData.length, 'bills');
+
       const transformedBills: Bill[] = billData
         .map((bill, index) => {
           try {
-            // Validate required fields
             if (!bill.bill_id || !bill.number) {
-              console.warn(`Skipping bill at index ${index}: missing required fields`, bill);
               return null;
             }
-            
             return {
               id: bill.bill_id,
               billNumber: bill.number,
@@ -99,26 +151,16 @@ export default function BillsScreen() {
               lastActionDate: bill.last_action_date || bill.status_date || new Date().toISOString(),
               url: bill.url || '',
             };
-          } catch (err) {
-            console.error(`Error transforming bill at index ${index}:`, err, bill);
+          } catch {
             return null;
           }
         })
         .filter((bill): bill is Bill => bill !== null);
 
-      console.log('Step 4: Setting bills state with', transformedBills.length, 'bills');
-      console.log('First 3 bills:', transformedBills.slice(0, 3).map(b => b.billNumber));
       setBills(transformedBills);
-      console.log('=== Fetch complete ===');
-    } catch (error) {
-      console.error('=== Error fetching bills ===');
-      console.error('Error type:', error?.constructor?.name);
-      console.error('Error message:', error instanceof Error ? error.message : String(error));
-      console.error('Full error:', error);
-      
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Unknown error';
       setError(errorMessage);
-      
       Alert.alert(
         'Error Loading Bills',
         `Unable to load bills from the Kansas Legislature.\n\nError: ${errorMessage}\n\nPlease check your internet connection and try again.`,
@@ -134,20 +176,36 @@ export default function BillsScreen() {
     fetchBills();
   }, []);
 
-  const filteredBills = bills
-    .filter((bill) => bill.chamber === 'House')
-    .filter(
-      (bill) =>
-        bill.billNumber.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        bill.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        bill.description.toLowerCase().includes(searchQuery.toLowerCase())
-    );
+  const filteredAndSortedBills = useMemo(() => {
+    const searchLower = searchQuery.toLowerCase();
+    let result = bills.filter((bill) => {
+      const matchesSearch =
+        !searchQuery ||
+        bill.billNumber.toLowerCase().includes(searchLower) ||
+        bill.title.toLowerCase().includes(searchLower) ||
+        bill.description.toLowerCase().includes(searchLower);
+
+      const matchesChamber =
+        chamberFilter === 'All' || bill.chamber === chamberFilter;
+
+      const matchesStatus =
+        statusFilter === 'All' || bill.status === statusFilter;
+
+      return matchesSearch && matchesChamber && matchesStatus;
+    });
+    return sortBills(result, sortBy);
+  }, [bills, searchQuery, chamberFilter, statusFilter, sortBy]);
 
   const onRefresh = async () => {
     setRefreshing(true);
     await fetchBills();
     setRefreshing(false);
   };
+
+  const [filterModalVisible, setFilterModalVisible] = useState(false);
+
+  const activeFilterCount =
+    (chamberFilter !== 'All' ? 1 : 0) + (statusFilter !== 'All' ? 1 : 0);
 
   const handleBillPress = (bill: Bill) => {
     router.push({
@@ -181,7 +239,8 @@ export default function BillsScreen() {
         { backgroundColor: cardBackground, borderColor: separator },
         pressed && styles.billCardPressed,
       ]}
-      onPress={() => handleBillPress(item)}>
+      onPress={() => handleBillPress(item)}
+    >
       <View style={styles.billHeader}>
         <View style={styles.billNumberContainer}>
           <ThemedText type="defaultSemiBold" style={[styles.billNumber, { color: tint }]}>
@@ -209,9 +268,13 @@ export default function BillsScreen() {
       )}
 
       <View style={[styles.separator, { backgroundColor: separator }]} />
-      
+
       <ThemedText style={[styles.lastAction, { color: mutedText }]} numberOfLines={2}>
-        {item.lastAction} • {new Date(item.lastActionDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+        {item.lastAction} •{' '}
+        {new Date(item.lastActionDate).toLocaleDateString('en-US', {
+          month: 'short',
+          day: 'numeric',
+        })}
       </ThemedText>
     </Pressable>
   );
@@ -219,18 +282,18 @@ export default function BillsScreen() {
   if (loading && bills.length === 0) {
     return (
       <ThemedView style={styles.container}>
-      <View style={styles.header}>
-        <ThemedText type="title">House Bills</ThemedText>
-        <ThemedText style={[styles.subtitle, { color: mutedText }]}>
-          {sessionName}
-        </ThemedText>
-      </View>
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color={tint} />
-        <ThemedText style={[styles.loadingText, { color: mutedText }]}>
-          Loading bills...
-        </ThemedText>
-      </View>
+        <View style={styles.header}>
+          <ThemedText type="title">Bills</ThemedText>
+          <ThemedText style={[styles.subtitle, { color: mutedText }]}>
+            {sessionName}
+          </ThemedText>
+        </View>
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={tint} />
+          <ThemedText style={[styles.loadingText, { color: mutedText }]}>
+            Loading bills...
+          </ThemedText>
+        </View>
       </ThemedView>
     );
   }
@@ -238,15 +301,18 @@ export default function BillsScreen() {
   return (
     <ThemedView style={styles.container}>
       <View style={styles.header}>
-        <ThemedText type="title">House Bills</ThemedText>
+        <ThemedText type="title">Bills</ThemedText>
         <ThemedText style={[styles.subtitle, { color: mutedText }]}>
           {sessionName}
         </ThemedText>
       </View>
 
-      <View style={styles.searchContainer}>
+      <View style={styles.searchRow}>
         <TextInput
-          style={[styles.searchInput, { backgroundColor: inputBackground, borderColor: inputBorder }]}
+          style={[
+            styles.searchInput,
+            { backgroundColor: inputBackground, borderColor: inputBorder },
+          ]}
           placeholder="Search bills..."
           placeholderTextColor={placeholder}
           value={searchQuery}
@@ -255,10 +321,147 @@ export default function BillsScreen() {
           autoCorrect={false}
           clearButtonMode="while-editing"
         />
+        <Pressable
+          style={({ pressed }) => [
+            styles.filterButton,
+            { backgroundColor: inputBackground, borderColor: inputBorder },
+            pressed && styles.filterButtonPressed,
+          ]}
+          onPress={() => setFilterModalVisible(true)}
+        >
+          <MaterialIcons name="tune" size={22} color={tint} />
+          {activeFilterCount > 0 && (
+            <View style={[styles.filterBadge, { backgroundColor: tint }]}>
+              <ThemedText style={styles.filterBadgeText}>{activeFilterCount}</ThemedText>
+            </View>
+          )}
+        </Pressable>
       </View>
 
+      <Modal
+        visible={filterModalVisible}
+        animationType="slide"
+        presentationStyle="pageSheet"
+        onRequestClose={() => setFilterModalVisible(false)}
+      >
+        <ThemedView style={styles.modalContainer}>
+          <View style={[styles.modalHeader, { borderBottomColor: separator }]}>
+            <ThemedText type="subtitle">Filter & Sort</ThemedText>
+            <Pressable
+              onPress={() => setFilterModalVisible(false)}
+              style={({ pressed }) => [styles.modalClose, pressed && styles.filterButtonPressed]}
+            >
+              <ThemedText style={{ color: tint, fontWeight: '600' }}>Done</ThemedText>
+            </Pressable>
+          </View>
+          <ScrollView
+            style={styles.modalContent}
+            contentContainerStyle={styles.modalContentInner}
+            showsVerticalScrollIndicator={false}
+          >
+            <View style={styles.modalSection}>
+              <ThemedText style={[styles.modalLabel, { color: mutedText }]}>Chamber</ThemedText>
+              <View style={styles.modalOptions}>
+                {(['All', 'House', 'Senate'] as ChamberFilter[]).map((chamber) => (
+                  <Pressable
+                    key={chamber}
+                    style={({ pressed }) => [
+                      styles.modalOption,
+                      { borderColor: separator },
+                      chamberFilter === chamber && { backgroundColor: tint + '15', borderColor: tint },
+                      pressed && styles.filterButtonPressed,
+                    ]}
+                    onPress={() => setChamberFilter(chamber)}
+                  >
+                    <ThemedText
+                      style={[
+                        styles.modalOptionText,
+                        chamberFilter === chamber && { color: tint, fontWeight: '600' },
+                      ]}
+                    >
+                      {chamber}
+                    </ThemedText>
+                  </Pressable>
+                ))}
+              </View>
+            </View>
+
+            <View style={[styles.modalSection, { borderTopWidth: 1, borderTopColor: separator }]}>
+              <ThemedText style={[styles.modalLabel, { color: mutedText }]}>Status</ThemedText>
+              <View style={styles.modalOptionsWrap}>
+                {STATUS_OPTIONS.map((status) => (
+                  <Pressable
+                    key={status}
+                    style={({ pressed }) => [
+                      styles.modalOption,
+                      { borderColor: separator },
+                      statusFilter === status && { backgroundColor: tint + '15', borderColor: tint },
+                      pressed && styles.filterButtonPressed,
+                    ]}
+                    onPress={() => setStatusFilter(status)}
+                  >
+                    <ThemedText
+                      style={[
+                        styles.modalOptionText,
+                        statusFilter === status && { color: tint, fontWeight: '600' },
+                      ]}
+                    >
+                      {status}
+                    </ThemedText>
+                  </Pressable>
+                ))}
+              </View>
+            </View>
+
+            <View style={[styles.modalSection, { borderTopWidth: 1, borderTopColor: separator }]}>
+              <ThemedText style={[styles.modalLabel, { color: mutedText }]}>Sort by</ThemedText>
+              <View style={styles.modalSortOptions}>
+                {SORT_OPTIONS.map((opt) => (
+                  <Pressable
+                    key={opt.value}
+                    style={({ pressed }) => [
+                      styles.modalOptionFull,
+                      { borderColor: separator },
+                      sortBy === opt.value && { backgroundColor: tint + '15', borderColor: tint },
+                      pressed && styles.filterButtonPressed,
+                    ]}
+                    onPress={() => setSortBy(opt.value)}
+                  >
+                    <ThemedText
+                      style={[
+                        styles.modalOptionText,
+                        sortBy === opt.value && { color: tint, fontWeight: '600' },
+                      ]}
+                    >
+                      {opt.label}
+                    </ThemedText>
+                    {sortBy === opt.value && (
+                      <MaterialIcons name="check" size={20} color={tint} />
+                    )}
+                  </Pressable>
+                ))}
+              </View>
+            </View>
+
+            <Pressable
+              style={({ pressed }) => [
+                styles.clearButton,
+                { borderColor: separator },
+                pressed && styles.filterButtonPressed,
+              ]}
+              onPress={() => {
+                setChamberFilter('All');
+                setStatusFilter('All');
+              }}
+            >
+              <ThemedText style={{ color: mutedText }}>Clear filters</ThemedText>
+            </Pressable>
+          </ScrollView>
+        </ThemedView>
+      </Modal>
+
       <FlatList
-        data={filteredBills}
+        data={filteredAndSortedBills}
         renderItem={renderBillItem}
         keyExtractor={(item) => String(item.id)}
         contentContainerStyle={styles.listContent}
@@ -269,12 +472,17 @@ export default function BillsScreen() {
         ListEmptyComponent={
           <View style={styles.emptyContainer}>
             <ThemedText style={[styles.emptyText, { color: mutedText }]}>
-              {error ? `Error: ${error}` : searchQuery ? 'No bills match your search' : 'No bills available'}
+              {error
+                ? `Error: ${error}`
+                : searchQuery || chamberFilter !== 'All' || statusFilter !== 'All'
+                  ? 'No bills match your filters'
+                  : 'No bills available'}
             </ThemedText>
             {error && (
               <Pressable
                 style={[styles.retryButton, { backgroundColor: tint }]}
-                onPress={fetchBills}>
+                onPress={fetchBills}
+              >
                 <ThemedText style={styles.retryButtonText}>Retry</ThemedText>
               </Pressable>
             )}
@@ -298,16 +506,116 @@ const styles = StyleSheet.create({
     fontSize: 15,
     marginTop: 4,
   },
-  searchContainer: {
+  searchRow: {
+    flexDirection: 'row',
     paddingHorizontal: 20,
     paddingBottom: 12,
+    gap: 10,
   },
   searchInput: {
+    flex: 1,
     borderWidth: 1,
     borderRadius: 12,
     paddingHorizontal: 14,
     paddingVertical: 10,
     fontSize: 16,
+  },
+  filterButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  filterButtonPressed: {
+    opacity: 0.7,
+  },
+  filterBadge: {
+    position: 'absolute',
+    top: 6,
+    right: 6,
+    minWidth: 16,
+    height: 16,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 4,
+  },
+  filterBadgeText: {
+    color: '#fff',
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  modalContainer: {
+    flex: 1,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    borderBottomWidth: 1,
+  },
+  modalClose: {
+    paddingVertical: 4,
+    paddingHorizontal: 4,
+  },
+  modalContent: {
+    flex: 1,
+  },
+  modalContentInner: {
+    padding: 20,
+    paddingBottom: 40,
+  },
+  modalSection: {
+    marginBottom: 24,
+  },
+  modalLabel: {
+    fontSize: 13,
+    fontWeight: '600',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    marginBottom: 12,
+  },
+  modalOptions: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+  },
+  modalOptionsWrap: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+  },
+  modalOption: {
+    borderWidth: 1,
+    borderRadius: 10,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+  },
+  modalSortOptions: {
+    gap: 8,
+  },
+  modalOptionFull: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    borderWidth: 1,
+    borderRadius: 10,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+  },
+  modalOptionText: {
+    fontSize: 15,
+  },
+  clearButton: {
+    alignSelf: 'flex-start',
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: 10,
+    borderWidth: 1,
   },
   listContent: {
     paddingHorizontal: 20,
@@ -363,20 +671,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     lineHeight: 20,
     marginBottom: 12,
-  },
-  billFooter: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  sponsor: {
-    fontSize: 13,
-    flex: 1,
-  },
-  committee: {
-    fontSize: 13,
-    fontWeight: '500',
   },
   separator: {
     height: 1,

@@ -69,6 +69,23 @@ components/
 └── ui/                  # UI components
 ```
 
+## Deployment (Netlify)
+
+The app deploys to Netlify via `netlify.toml`. Set these environment variables in **Site settings → Build & deploy → Environment variables**:
+
+| Variable | Description |
+|----------|-------------|
+| `EXPO_PUBLIC_FIREBASE_API_KEY` | Firebase project API key |
+| `EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN` | e.g. `your-project.firebaseapp.com` |
+| `EXPO_PUBLIC_FIREBASE_PROJECT_ID` | Firebase project ID |
+| `EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET` | Firebase storage bucket |
+| `EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID` | Firebase messaging sender ID |
+| `EXPO_PUBLIC_FIREBASE_APP_ID` | Firebase app ID |
+| `EXPO_PUBLIC_OPENSTATES_API_KEY` | OpenStates API key for officials lookup |
+| `LEGISCAN_API_KEY` | LegiScan API key for bills data |
+
+Without these, the build may succeed but auth and some features will fail at runtime.
+
 ## Technology Stack
 
 - **Framework**: [Expo](https://expo.dev) / React Native

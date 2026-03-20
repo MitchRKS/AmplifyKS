@@ -2,9 +2,11 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { initializeApp, getApps, getApp } from 'firebase/app';
 import {
   initializeAuth,
-  getAuth,
+  getAuth as getFirebaseAuth,
   getReactNativePersistence,
+  type Auth,
 } from 'firebase/auth';
+import { getFirestore, type Firestore } from 'firebase/firestore';
 import { Platform } from 'react-native';
 
 const firebaseConfig = {
@@ -16,13 +18,36 @@ const firebaseConfig = {
   appId: process.env.EXPO_PUBLIC_FIREBASE_APP_ID,
 };
 
-const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
+let authInstance: Auth | null = null;
+let firestoreInstance: Firestore | null = null;
 
-const auth =
-  Platform.OS === 'web'
-    ? getAuth(app)
-    : initializeAuth(app, {
-        persistence: getReactNativePersistence(AsyncStorage),
-      });
+function getAuth(): Auth {
+  if (authInstance) return authInstance;
 
-export { app, auth };
+  if (typeof window === 'undefined') {
+    throw new Error(
+      'Firebase Auth can only be used in the browser. Ensure EXPO_PUBLIC_FIREBASE_* env vars are set in your deploy environment (e.g. Netlify).',
+    );
+  }
+
+  const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
+
+  authInstance =
+    Platform.OS === 'web'
+      ? getFirebaseAuth(app)
+      : initializeAuth(app, {
+          persistence: getReactNativePersistence(AsyncStorage),
+        });
+
+  return authInstance;
+}
+
+function getFirestoreDb(): Firestore {
+  if (!firestoreInstance) {
+    const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
+    firestoreInstance = getFirestore(app);
+  }
+  return firestoreInstance;
+}
+
+export { getAuth, getFirestoreDb };
