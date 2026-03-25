@@ -15,8 +15,10 @@ import {
   View,
 } from 'react-native';
 
+import { ContentContainer } from '@/components/content-container';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
+import { Radius, Shadows, Spacing } from '@/constants/theme';
 import { useSavedOfficials } from '@/hooks/use-saved-officials';
 import { useThemeColor } from '@/hooks/use-theme-color';
 import { getOfficialsByLocation, type Official } from '@/services/openstates';
@@ -29,14 +31,16 @@ export default function OfficialsScreen() {
 
   const { savedOfficials, saveOfficial, removeOfficial, isSaved } = useSavedOfficials();
 
-  const inputBackground = useThemeColor({ light: '#F2F2F7', dark: '#1C1C1E' }, 'background');
-  const inputBorder = useThemeColor({ light: '#D1D1D6', dark: '#2C2C2E' }, 'background');
-  const inputText = useThemeColor({ light: '#000000', dark: '#FFFFFF' }, 'text');
-  const placeholder = useThemeColor({ light: '#8E8E93', dark: '#8E8E93' }, 'text');
-  const cardBackground = useThemeColor({ light: '#FFFFFF', dark: '#1C1C1E' }, 'background');
-  const tint = useThemeColor({ light: '#0a7ea4', dark: '#0a7ea4' }, 'tint');
-  const mutedText = useThemeColor({ light: '#6C6C70', dark: '#A1A1A6' }, 'text');
-  const separator = useThemeColor({ light: '#E5E5EA', dark: '#38383A' }, 'background');
+  const surface = useThemeColor({ light: '#FFFFFF', dark: '#1C1F26' }, 'background');
+  const inputBackground = useThemeColor({ light: '#F0F2F5', dark: '#1C1F26' }, 'background');
+  const inputBorder = useThemeColor({ light: '#d5d5d5', dark: '#2D3139' }, 'background');
+  const inputText = useThemeColor({ light: '#1A1D21', dark: '#F0F2F5' }, 'text');
+  const placeholder = useThemeColor({ light: '#9CA3AF', dark: '#6B7280' }, 'text');
+  const tint = useThemeColor({ light: '#0097b2', dark: '#33C4DB' }, 'tint');
+  const mutedText = useThemeColor({ light: '#5E6368', dark: '#9CA3AF' }, 'text');
+  const border = useThemeColor({ light: '#d5d5d5', dark: '#2D3139' }, 'background');
+  const democrat = useThemeColor({ light: '#1c355e', dark: '#6B8DC2' }, 'tint');
+  const republican = useThemeColor({ light: '#fa3332', dark: '#FF6B6A' }, 'tint');
 
   const fetchByCoords = async (lat: number, lng: number) => {
     setLoading(true);
@@ -111,8 +115,8 @@ export default function OfficialsScreen() {
 
   const getPartyColor = (party: string) => {
     const lower = party.toLowerCase();
-    if (lower.includes('democrat')) return '#3B82F6';
-    if (lower.includes('republican')) return '#EF4444';
+    if (lower.includes('democrat')) return democrat;
+    if (lower.includes('republican')) return republican;
     return mutedText;
   };
 
@@ -169,8 +173,9 @@ export default function OfficialsScreen() {
         key={item.id}
         style={({ pressed }) => [
           styles.card,
-          { backgroundColor: cardBackground, borderColor: separator },
-          pressed && styles.cardPressed,
+          { backgroundColor: surface, borderColor: border },
+          Shadows.sm,
+          pressed && styles.pressed,
         ]}
         onPress={() => handleContact(item)}
       >
@@ -212,19 +217,19 @@ export default function OfficialsScreen() {
             </View>
 
             <View style={styles.tagRow}>
-              <View style={[styles.partyBadge, { backgroundColor: getPartyColor(item.party) + '18' }]}>
+              <View style={[styles.partyBadge, { backgroundColor: getPartyColor(item.party) + '14' }]}>
                 <ThemedText style={[styles.partyText, { color: getPartyColor(item.party) }]}>
                   {item.party}
                 </ThemedText>
               </View>
             </View>
 
-            <ThemedText style={[styles.detailText, { color: mutedText }]}>
+            <ThemedText type="caption" style={{ color: mutedText }}>
               {item.chamber}{item.district ? ` — District ${item.district}` : ''}
             </ThemedText>
 
             {item.email ? (
-              <ThemedText style={[styles.contactText, { color: tint }]} numberOfLines={1}>
+              <ThemedText type="caption" style={{ color: tint }} numberOfLines={1}>
                 {item.email}
               </ThemedText>
             ) : null}
@@ -239,10 +244,10 @@ export default function OfficialsScreen() {
               e.stopPropagation();
               removeOfficial(item.id);
             }}
-            style={[styles.removeButton, { borderColor: separator }]}
+            style={[styles.removeButton, { borderColor: border }]}
           >
             <MaterialIcons name="close" size={14} color={mutedText} />
-            <ThemedText style={[styles.removeText, { color: mutedText }]}>Remove</ThemedText>
+            <ThemedText type="caption" style={{ color: mutedText }}>Remove</ThemedText>
           </Pressable>
         )}
       </Pressable>
@@ -260,87 +265,115 @@ export default function OfficialsScreen() {
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
-          <View style={styles.header}>
-            <ThemedText type="title">My Officials</ThemedText>
-            <ThemedText style={[styles.subtitle, { color: mutedText }]}>
-              Find and save your Kansas state legislators
-            </ThemedText>
-          </View>
+          <ContentContainer>
+            <View style={styles.header}>
+              <ThemedText type="title">My Officials</ThemedText>
+              <ThemedText style={[styles.subtitle, { color: mutedText }]}>
+                Find and save your Kansas state legislators
+              </ThemedText>
+            </View>
 
-          {savedOfficials.length > 0 && (
+            {savedOfficials.length > 0 && (
+              <View style={styles.section}>
+                <View style={styles.sectionHeaderRow}>
+                  <ThemedText type="subtitle">Saved Officials</ThemedText>
+                  <View style={[styles.countBadge, { backgroundColor: tint + '15' }]}>
+                    <ThemedText style={[styles.countText, { color: tint }]}>
+                      {savedOfficials.length}
+                    </ThemedText>
+                  </View>
+                </View>
+                {savedOfficials.map((official) => renderOfficialCard(official, false))}
+              </View>
+            )}
+
             <View style={styles.section}>
               <ThemedText type="subtitle" style={styles.sectionTitle}>
-                Saved Officials
+                Look Up Officials
               </ThemedText>
-              {savedOfficials.map((official) => renderOfficialCard(official, false))}
-            </View>
-          )}
 
-          <View style={styles.section}>
-            <ThemedText type="subtitle" style={styles.sectionTitle}>
-              Look Up Officials
-            </ThemedText>
-
-            <View style={styles.searchSection}>
-              <Pressable
-                accessibilityRole="button"
-                style={[styles.locationButton, { backgroundColor: tint }]}
-                onPress={handleUseLocation}
-                disabled={loading}
-              >
-                <ThemedText style={styles.locationButtonText}>
-                  Use My Current Location
-                </ThemedText>
-              </Pressable>
-
-              <ThemedText style={[styles.orText, { color: mutedText }]}>or enter an address</ThemedText>
-
-              <View style={styles.addressRow}>
-                <TextInput
-                  style={[styles.addressInput, { backgroundColor: inputBackground, borderColor: inputBorder, color: inputText }]}
-                  placeholder="123 Main St, Topeka, KS"
-                  placeholderTextColor={placeholder}
-                  value={address}
-                  onChangeText={setAddress}
-                  autoCapitalize="words"
-                  returnKeyType="search"
-                  onSubmitEditing={handleSearchAddress}
-                />
+              <View style={[styles.searchCard, { backgroundColor: surface, borderColor: border }, Shadows.sm]}>
                 <Pressable
                   accessibilityRole="button"
-                  style={[styles.searchButton, { backgroundColor: address.trim() && !loading ? tint : inputBorder }]}
-                  onPress={handleSearchAddress}
-                  disabled={!address.trim() || loading}
+                  style={({ pressed }) => [
+                    styles.locationButton,
+                    { backgroundColor: tint },
+                    pressed && styles.pressed,
+                  ]}
+                  onPress={handleUseLocation}
+                  disabled={loading}
                 >
-                  <ThemedText style={styles.searchButtonText}>Search</ThemedText>
+                  <MaterialIcons name="my-location" size={18} color="#fff" />
+                  <ThemedText style={styles.locationButtonText}>
+                    Use My Current Location
+                  </ThemedText>
                 </Pressable>
+
+                <View style={styles.dividerRow}>
+                  <View style={[styles.dividerLine, { backgroundColor: border }]} />
+                  <ThemedText type="caption" style={{ color: mutedText }}>or enter an address</ThemedText>
+                  <View style={[styles.dividerLine, { backgroundColor: border }]} />
+                </View>
+
+                <View style={styles.addressRow}>
+                  <TextInput
+                    style={[styles.addressInput, { backgroundColor: inputBackground, borderColor: inputBorder, color: inputText }]}
+                    placeholder="123 Main St, Topeka, KS"
+                    placeholderTextColor={placeholder}
+                    value={address}
+                    onChangeText={setAddress}
+                    autoCapitalize="words"
+                    returnKeyType="search"
+                    onSubmitEditing={handleSearchAddress}
+                  />
+                  <Pressable
+                    accessibilityRole="button"
+                    style={({ pressed }) => [
+                      styles.searchButton,
+                      { backgroundColor: address.trim() && !loading ? tint : inputBorder },
+                      pressed && address.trim() && styles.pressed,
+                    ]}
+                    onPress={handleSearchAddress}
+                    disabled={!address.trim() || loading}
+                  >
+                    <ThemedText style={styles.searchButtonText}>Search</ThemedText>
+                  </Pressable>
+                </View>
               </View>
             </View>
-          </View>
 
-          {loading ? (
-            <View style={styles.centerContainer}>
-              <ActivityIndicator size="large" color={tint} />
-              <ThemedText style={[styles.loadingText, { color: mutedText }]}>
-                Looking up officials...
-              </ThemedText>
-            </View>
-          ) : (
-            <>
-              {searchResults.map((official) => (
-                <View key={official.id} style={styles.resultCard}>
-                  {renderOfficialCard(official, true)}
-                </View>
-              ))}
-              {hasSearched && searchResults.length === 0 && (
-                <View style={styles.centerContainer}>
-                  <ThemedText style={[styles.emptyText, { color: mutedText }]}>
-                    No officials found for this location.
-                  </ThemedText>
-                </View>
-              )}
-            </>
-          )}
+            {loading ? (
+              <View style={styles.centerContainer}>
+                <ActivityIndicator size="large" color={tint} />
+                <ThemedText style={{ color: mutedText, fontSize: 16 }}>
+                  Looking up officials...
+                </ThemedText>
+              </View>
+            ) : (
+              <>
+                {searchResults.length > 0 && (
+                  <View style={styles.section}>
+                    <View style={styles.sectionHeaderRow}>
+                      <ThemedText type="subtitle">Results</ThemedText>
+                      <View style={[styles.countBadge, { backgroundColor: tint + '15' }]}>
+                        <ThemedText style={[styles.countText, { color: tint }]}>
+                          {searchResults.length}
+                        </ThemedText>
+                      </View>
+                    </View>
+                    {searchResults.map((official) => renderOfficialCard(official, true))}
+                  </View>
+                )}
+                {hasSearched && searchResults.length === 0 && (
+                  <View style={styles.centerContainer}>
+                    <ThemedText style={{ color: mutedText, fontSize: 16 }}>
+                      No officials found for this location.
+                    </ThemedText>
+                  </View>
+                )}
+              </>
+            )}
+          </ContentContainer>
         </ScrollView>
       </ThemedView>
     </KeyboardAvoidingView>
@@ -355,97 +388,115 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scrollContent: {
-    paddingBottom: 40,
+    paddingBottom: Spacing['4xl'],
   },
   header: {
-    paddingHorizontal: 20,
-    paddingTop: 12,
-    paddingBottom: 8,
+    paddingHorizontal: Spacing.xl,
+    paddingTop: Spacing.md,
+    paddingBottom: Spacing.sm,
   },
   subtitle: {
     fontSize: 15,
-    marginTop: 4,
+    marginTop: Spacing.xs,
   },
   section: {
-    paddingHorizontal: 20,
-    paddingTop: 16,
+    paddingHorizontal: Spacing.xl,
+    paddingTop: Spacing.xl,
   },
   sectionTitle: {
-    marginBottom: 12,
+    marginBottom: Spacing.md,
   },
-  searchSection: {
-    gap: 12,
+  sectionHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.sm,
+    marginBottom: Spacing.md,
+  },
+  countBadge: {
+    paddingHorizontal: Spacing.sm,
+    paddingVertical: 2,
+    borderRadius: Radius.sm,
+  },
+  countText: {
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  searchCard: {
+    borderWidth: 1,
+    borderRadius: Radius.lg,
+    padding: Spacing.xl,
+    gap: Spacing.lg,
   },
   locationButton: {
-    borderRadius: 14,
-    paddingVertical: 14,
+    flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
+    gap: Spacing.sm,
+    borderRadius: Radius.md,
+    paddingVertical: 14,
   },
   locationButtonText: {
     color: '#fff',
-    fontWeight: '600',
+    fontWeight: '700',
     fontSize: 16,
   },
-  orText: {
-    textAlign: 'center',
-    fontSize: 14,
+  dividerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.md,
+  },
+  dividerLine: {
+    flex: 1,
+    height: 1,
   },
   addressRow: {
     flexDirection: 'row',
-    gap: 10,
+    gap: Spacing.sm,
   },
   addressInput: {
     flex: 1,
     borderWidth: 1,
-    borderRadius: 12,
+    borderRadius: Radius.md,
     paddingHorizontal: 14,
-    paddingVertical: 10,
+    paddingVertical: 11,
     fontSize: 16,
   },
   searchButton: {
-    borderRadius: 12,
+    borderRadius: Radius.md,
     paddingHorizontal: 18,
     justifyContent: 'center',
     alignItems: 'center',
   },
   searchButtonText: {
     color: '#fff',
-    fontWeight: '600',
+    fontWeight: '700',
     fontSize: 15,
   },
-  resultCard: {
-    paddingHorizontal: 20,
+  pressed: {
+    opacity: 0.75,
+    transform: [{ scale: 0.98 }],
   },
   card: {
     borderWidth: 1,
-    borderRadius: 16,
-    padding: 16,
-    marginBottom: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
-    elevation: 1,
-  },
-  cardPressed: {
-    opacity: 0.7,
-    transform: [{ scale: 0.98 }],
+    borderRadius: Radius.lg,
+    padding: Spacing.lg,
+    marginBottom: Spacing.md,
   },
   cardRow: {
     flexDirection: 'row',
     gap: 14,
   },
   photo: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
+    width: 60,
+    height: 60,
+    borderRadius: 30,
   },
   photoPlaceholder: {
     justifyContent: 'center',
     alignItems: 'center',
   },
   photoInitials: {
-    fontSize: 22,
+    fontSize: 20,
     fontWeight: '600',
   },
   cardContent: {
@@ -456,7 +507,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    gap: 8,
+    gap: Spacing.sm,
   },
   officialName: {
     fontSize: 17,
@@ -467,48 +518,33 @@ const styles = StyleSheet.create({
   },
   tagRow: {
     flexDirection: 'row',
-    gap: 8,
+    gap: Spacing.sm,
     flexWrap: 'wrap',
   },
   partyBadge: {
-    paddingHorizontal: 10,
+    paddingHorizontal: Spacing.sm,
     paddingVertical: 3,
-    borderRadius: 12,
+    borderRadius: Radius.sm,
   },
   partyText: {
     fontSize: 12,
-    fontWeight: '600',
-  },
-  detailText: {
-    fontSize: 14,
-  },
-  contactText: {
-    fontSize: 13,
+    fontWeight: '700',
   },
   removeButton: {
     flexDirection: 'row',
     alignItems: 'center',
     alignSelf: 'flex-end',
-    gap: 4,
-    marginTop: 10,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
+    gap: Spacing.xs,
+    marginTop: Spacing.md,
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.xs,
     borderWidth: 1,
-    borderRadius: 8,
-  },
-  removeText: {
-    fontSize: 13,
+    borderRadius: Radius.sm,
   },
   centerContainer: {
     justifyContent: 'center',
     alignItems: 'center',
     paddingVertical: 60,
-    gap: 12,
-  },
-  loadingText: {
-    fontSize: 16,
-  },
-  emptyText: {
-    fontSize: 16,
+    gap: Spacing.md,
   },
 });

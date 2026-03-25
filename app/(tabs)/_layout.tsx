@@ -1,28 +1,62 @@
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
-import { Tabs } from 'expo-router';
+import { Slot, Tabs } from 'expo-router';
 import React from 'react';
-import { Pressable } from 'react-native';
+import { Platform, Pressable, StyleSheet, View } from 'react-native';
 
 import { HapticTab } from '@/components/haptic-tab';
 import { IconSymbol } from '@/components/ui/icon-symbol';
+import { WebSidebar } from '@/components/web-sidebar';
 import { Colors } from '@/constants/theme';
 import { useAuth } from '@/contexts/auth-context';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 
-export default function TabLayout() {
+function WebLayout() {
+  const colorScheme = useColorScheme();
+  const bg = Colors[colorScheme ?? 'light'].background;
+
+  return (
+    <View style={styles.webContainer}>
+      <WebSidebar />
+      <View style={[styles.webContent, { backgroundColor: bg }]}>
+        <Slot />
+      </View>
+    </View>
+  );
+}
+
+function MobileLayout() {
   const colorScheme = useColorScheme();
   const { logout } = useAuth();
-  const tint = Colors[colorScheme ?? 'light'].tint;
+  const palette = Colors[colorScheme ?? 'light'];
 
   return (
     <Tabs
       screenOptions={{
-        tabBarActiveTintColor: tint,
+        tabBarActiveTintColor: palette.tint,
+        tabBarInactiveTintColor: palette.tabIconDefault,
         headerShown: true,
         tabBarButton: HapticTab,
+        headerStyle: {
+          backgroundColor: palette.headerBackground,
+        },
+        headerTitleStyle: {
+          fontWeight: '700',
+          fontSize: 17,
+          color: palette.text,
+        },
+        headerShadowVisible: false,
+        tabBarStyle: {
+          backgroundColor: palette.tabBarBackground,
+          borderTopColor: palette.border,
+        },
+        tabBarLabelStyle: {
+          fontSize: 11,
+          fontWeight: '600',
+          letterSpacing: 0.2,
+        },
         headerRight: () => (
-          <Pressable onPress={logout} style={{ marginRight: 16 }}>
-            <MaterialIcons name="logout" size={22} color={tint} />
+          <Pressable onPress={logout} style={{ marginRight: 16, padding: 4 }}>
+            <MaterialIcons name="logout" size={22} color={palette.tint} />
           </Pressable>
         ),
       }}>
@@ -30,37 +64,54 @@ export default function TabLayout() {
         name="dashboard"
         options={{
           title: 'Dashboard',
-          tabBarIcon: ({ color }) => <MaterialIcons size={26} name="dashboard" color={color} />,
+          tabBarIcon: ({ color }) => <MaterialIcons size={24} name="dashboard" color={color} />,
         }}
       />
       <Tabs.Screen
         name="bills"
         options={{
           title: 'Bills',
-          tabBarIcon: ({ color }) => <IconSymbol size={28} name="doc.text.magnifyingglass" color={color} />,
+          tabBarIcon: ({ color }) => <IconSymbol size={24} name="doc.text.magnifyingglass" color={color} />,
         }}
       />
       <Tabs.Screen
         name="officials"
         options={{
-          title: 'My Officials',
-          tabBarIcon: ({ color }) => <MaterialIcons size={26} name="how-to-vote" color={color} />,
+          title: 'Officials',
+          tabBarIcon: ({ color }) => <MaterialIcons size={24} name="how-to-vote" color={color} />,
         }}
       />
       <Tabs.Screen
         name="testimony"
         options={{
           title: 'Testimony',
-          tabBarIcon: ({ color }) => <IconSymbol size={28} name="doc.text.fill" color={color} />,
+          tabBarIcon: ({ color }) => <IconSymbol size={24} name="doc.text.fill" color={color} />,
         }}
       />
       <Tabs.Screen
         name="profile"
         options={{
           title: 'Profile',
-          tabBarIcon: ({ color }) => <MaterialIcons size={26} name="person" color={color} />,
+          tabBarIcon: ({ color }) => <MaterialIcons size={24} name="person" color={color} />,
         }}
       />
     </Tabs>
   );
 }
+
+export default function TabLayout() {
+  if (Platform.OS === 'web') {
+    return <WebLayout />;
+  }
+  return <MobileLayout />;
+}
+
+const styles = StyleSheet.create({
+  webContainer: {
+    flex: 1,
+    flexDirection: 'row',
+  },
+  webContent: {
+    flex: 1,
+  },
+});

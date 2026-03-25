@@ -16,8 +16,9 @@ function RootNavigator() {
     if (isLoading) return;
 
     const inAuthGroup = segments[0] === '(auth)';
+    const onLookup = segments[0] === 'lookup';
 
-    if (user && inAuthGroup) {
+    if (user && (inAuthGroup || onLookup)) {
       router.replace('/(tabs)/dashboard');
     }
   }, [user, isLoading, segments]);
@@ -25,6 +26,7 @@ function RootNavigator() {
   return (
     <Stack>
       <Stack.Screen name="index" options={{ headerShown: false }} />
+      <Stack.Screen name="lookup" options={{ headerShown: false }} />
       <Stack.Screen name="(auth)" options={{ headerShown: false }} />
       <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
       <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />

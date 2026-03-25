@@ -10,8 +10,10 @@ import {
   View,
 } from 'react-native';
 
+import { ContentContainer } from '@/components/content-container';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
+import { Radius, Shadows, Spacing } from '@/constants/theme';
 import { useAuth } from '@/contexts/auth-context';
 import { useSavedOfficials } from '@/hooks/use-saved-officials';
 import { useThemeColor } from '@/hooks/use-theme-color';
@@ -22,16 +24,18 @@ export default function DashboardScreen() {
   const { user } = useAuth();
   const { savedOfficials, removeOfficial } = useSavedOfficials();
 
-  const cardBackground = useThemeColor({ light: '#FFFFFF', dark: '#1C1C1E' }, 'background');
-  const inputBackground = useThemeColor({ light: '#F2F2F7', dark: '#1C1C1E' }, 'background');
-  const tint = useThemeColor({ light: '#0a7ea4', dark: '#0a7ea4' }, 'tint');
-  const mutedText = useThemeColor({ light: '#6C6C70', dark: '#A1A1A6' }, 'text');
-  const separator = useThemeColor({ light: '#E5E5EA', dark: '#38383A' }, 'background');
+  const surface = useThemeColor({ light: '#FFFFFF', dark: '#1C1F26' }, 'background');
+  const inputBackground = useThemeColor({ light: '#F0F2F5', dark: '#252830' }, 'background');
+  const tint = useThemeColor({ light: '#0097b2', dark: '#33C4DB' }, 'tint');
+  const mutedText = useThemeColor({ light: '#5E6368', dark: '#9CA3AF' }, 'text');
+  const border = useThemeColor({ light: '#d5d5d5', dark: '#2D3139' }, 'background');
+  const democrat = useThemeColor({ light: '#1c355e', dark: '#6B8DC2' }, 'tint');
+  const republican = useThemeColor({ light: '#fa3332', dark: '#FF6B6A' }, 'tint');
 
   const getPartyColor = (party: string) => {
     const lower = party.toLowerCase();
-    if (lower.includes('democrat')) return '#3B82F6';
-    if (lower.includes('republican')) return '#EF4444';
+    if (lower.includes('democrat')) return democrat;
+    if (lower.includes('republican')) return republican;
     return mutedText;
   };
 
@@ -78,100 +82,149 @@ export default function DashboardScreen() {
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        <View style={styles.header}>
-          <ThemedText type="title">
-            {user?.firstName ? `Hi, ${user.firstName}` : 'Dashboard'}
-          </ThemedText>
-          <ThemedText style={[styles.subtitle, { color: mutedText }]}>
-            Your AmplifyKS overview
-          </ThemedText>
-        </View>
-
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <ThemedText type="subtitle">My Lawmakers</ThemedText>
-            {savedOfficials.length > 0 && (
-              <ThemedText style={[styles.badge, { color: mutedText }]}>
-                {savedOfficials.length}
-              </ThemedText>
-            )}
+        <ContentContainer>
+          <View style={styles.header}>
+            <ThemedText type="title">
+              {user?.firstName ? `Hi, ${user.firstName}` : 'Dashboard'}
+            </ThemedText>
+            <ThemedText style={[styles.subtitle, { color: mutedText }]}>
+              Your AmplifyKS overview
+            </ThemedText>
           </View>
 
-          {savedOfficials.length > 0 ? (
-            savedOfficials.map((official) => (
-              <Pressable
-                key={official.id}
-                style={({ pressed }) => [
-                  styles.card,
-                  { backgroundColor: cardBackground, borderColor: separator },
-                  pressed && styles.cardPressed,
-                ]}
-                onPress={() => handleContact(official)}
-              >
-                <View style={styles.cardRow}>
-                  {official.image ? (
-                    <Image source={{ uri: official.image }} style={styles.photo} contentFit="cover" />
-                  ) : (
-                    <View style={[styles.photo, styles.photoPlaceholder, { backgroundColor: inputBackground }]}>
-                      <ThemedText style={[styles.photoInitials, { color: mutedText }]}>
-                        {official.givenName.charAt(0)}
-                        {official.familyName.charAt(0)}
-                      </ThemedText>
-                    </View>
-                  )}
+          <View style={styles.quickActions}>
+            <Pressable
+              style={({ pressed }) => [
+                styles.quickAction,
+                { backgroundColor: surface, borderColor: border },
+                Shadows.sm,
+                pressed && styles.pressed,
+              ]}
+              onPress={() => router.navigate('/(tabs)/bills')}
+            >
+              <View style={[styles.quickActionIcon, { backgroundColor: tint + '12' }]}>
+                <MaterialIcons name="description" size={22} color={tint} />
+              </View>
+              <ThemedText type="defaultSemiBold" style={styles.quickActionLabel}>Browse Bills</ThemedText>
+              <ThemedText type="caption" style={{ color: mutedText }}>
+                Current session
+              </ThemedText>
+            </Pressable>
 
-                  <View style={styles.cardContent}>
-                    <ThemedText type="defaultSemiBold" style={styles.officialName} numberOfLines={1}>
-                      {official.name}
-                    </ThemedText>
+            <Pressable
+              style={({ pressed }) => [
+                styles.quickAction,
+                { backgroundColor: surface, borderColor: border },
+                Shadows.sm,
+                pressed && styles.pressed,
+              ]}
+              onPress={() => router.navigate('/(tabs)/testimony')}
+            >
+              <View style={[styles.quickActionIcon, { backgroundColor: tint + '12' }]}>
+                <MaterialIcons name="edit-note" size={22} color={tint} />
+              </View>
+              <ThemedText type="defaultSemiBold" style={styles.quickActionLabel}>Draft Testimony</ThemedText>
+              <ThemedText type="caption" style={{ color: mutedText }}>
+                Submit your voice
+              </ThemedText>
+            </Pressable>
+          </View>
 
-                    <View style={styles.tagRow}>
-                      <View style={[styles.partyBadge, { backgroundColor: getPartyColor(official.party) + '18' }]}>
-                        <ThemedText style={[styles.partyText, { color: getPartyColor(official.party) }]}>
-                          {official.party}
+          <View style={styles.section}>
+            <View style={styles.sectionHeader}>
+              <ThemedText type="subtitle">My Lawmakers</ThemedText>
+              {savedOfficials.length > 0 && (
+                <View style={[styles.countBadge, { backgroundColor: tint + '15' }]}>
+                  <ThemedText style={[styles.countText, { color: tint }]}>
+                    {savedOfficials.length}
+                  </ThemedText>
+                </View>
+              )}
+            </View>
+
+            {savedOfficials.length > 0 ? (
+              savedOfficials.map((official) => (
+                <Pressable
+                  key={official.id}
+                  style={({ pressed }) => [
+                    styles.card,
+                    { backgroundColor: surface, borderColor: border },
+                    Shadows.sm,
+                    pressed && styles.pressed,
+                  ]}
+                  onPress={() => handleContact(official)}
+                >
+                  <View style={styles.cardRow}>
+                    {official.image ? (
+                      <Image source={{ uri: official.image }} style={styles.photo} contentFit="cover" />
+                    ) : (
+                      <View style={[styles.photo, styles.photoPlaceholder, { backgroundColor: inputBackground }]}>
+                        <ThemedText style={[styles.photoInitials, { color: mutedText }]}>
+                          {official.givenName.charAt(0)}
+                          {official.familyName.charAt(0)}
                         </ThemedText>
                       </View>
+                    )}
+
+                    <View style={styles.cardContent}>
+                      <ThemedText type="defaultSemiBold" style={styles.officialName} numberOfLines={1}>
+                        {official.name}
+                      </ThemedText>
+
+                      <View style={styles.tagRow}>
+                        <View style={[styles.partyBadge, { backgroundColor: getPartyColor(official.party) + '14' }]}>
+                          <ThemedText style={[styles.partyText, { color: getPartyColor(official.party) }]}>
+                            {official.party}
+                          </ThemedText>
+                        </View>
+                      </View>
+
+                      <ThemedText type="caption" style={{ color: mutedText }}>
+                        {official.chamber}{official.district ? ` — District ${official.district}` : ''}
+                      </ThemedText>
                     </View>
 
-                    <ThemedText style={[styles.detailText, { color: mutedText }]}>
-                      {official.chamber}{official.district ? ` — District ${official.district}` : ''}
-                    </ThemedText>
+                    <Pressable
+                      accessibilityRole="button"
+                      accessibilityLabel="Remove official"
+                      onPress={(e) => {
+                        e.stopPropagation();
+                        removeOfficial(official.id);
+                      }}
+                      hitSlop={8}
+                      style={styles.removeButton}
+                    >
+                      <MaterialIcons name="close" size={18} color={mutedText} />
+                    </Pressable>
                   </View>
-
-                  <Pressable
-                    accessibilityRole="button"
-                    accessibilityLabel="Remove official"
-                    onPress={(e) => {
-                      e.stopPropagation();
-                      removeOfficial(official.id);
-                    }}
-                    hitSlop={8}
-                    style={styles.removeButton}
-                  >
-                    <MaterialIcons name="close" size={18} color={mutedText} />
-                  </Pressable>
+                </Pressable>
+              ))
+            ) : (
+              <View style={[styles.emptyCard, { backgroundColor: surface, borderColor: border }, Shadows.sm]}>
+                <View style={[styles.emptyIcon, { backgroundColor: inputBackground }]}>
+                  <MaterialIcons name="how-to-vote" size={32} color={mutedText} />
                 </View>
-              </Pressable>
-            ))
-          ) : (
-            <View style={[styles.emptyCard, { backgroundColor: cardBackground, borderColor: separator }]}>
-              <MaterialIcons name="how-to-vote" size={36} color={separator} />
-              <ThemedText style={[styles.emptyTitle, { color: mutedText }]}>
-                No saved lawmakers yet
-              </ThemedText>
-              <ThemedText style={[styles.emptyBody, { color: mutedText }]}>
-                Look up your elected officials and save them for quick access.
-              </ThemedText>
-              <Pressable
-                accessibilityRole="button"
-                style={[styles.emptyButton, { backgroundColor: tint }]}
-                onPress={() => router.navigate('/(tabs)/officials')}
-              >
-                <ThemedText style={styles.emptyButtonText}>Find My Officials</ThemedText>
-              </Pressable>
-            </View>
-          )}
-        </View>
+                <ThemedText type="defaultSemiBold" style={[styles.emptyTitle, { color: mutedText }]}>
+                  No saved lawmakers yet
+                </ThemedText>
+                <ThemedText type="caption" style={[styles.emptyBody, { color: mutedText }]}>
+                  Look up your elected officials and save them for quick access.
+                </ThemedText>
+                <Pressable
+                  accessibilityRole="button"
+                  style={({ pressed }) => [
+                    styles.emptyButton,
+                    { backgroundColor: tint },
+                    pressed && styles.pressed,
+                  ]}
+                  onPress={() => router.navigate('/(tabs)/officials')}
+                >
+                  <ThemedText style={styles.emptyButtonText}>Find My Officials</ThemedText>
+                </Pressable>
+              </View>
+            )}
+          </View>
+        </ContentContainer>
       </ScrollView>
     </ThemedView>
   );
@@ -182,44 +235,69 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scrollContent: {
-    paddingBottom: 40,
+    paddingBottom: Spacing['4xl'],
   },
   header: {
-    paddingHorizontal: 20,
-    paddingTop: 12,
-    paddingBottom: 8,
+    paddingHorizontal: Spacing.xl,
+    paddingTop: Spacing.lg,
+    paddingBottom: Spacing.sm,
   },
   subtitle: {
     fontSize: 15,
-    marginTop: 4,
+    marginTop: Spacing.xs,
+  },
+  quickActions: {
+    flexDirection: 'row',
+    gap: Spacing.md,
+    paddingHorizontal: Spacing.xl,
+    paddingTop: Spacing.xl,
+  },
+  quickAction: {
+    flex: 1,
+    borderWidth: 1,
+    borderRadius: Radius.lg,
+    padding: Spacing.lg,
+    gap: Spacing.xs,
+  },
+  quickActionIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: Radius.sm,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: Spacing.xs,
+  },
+  quickActionLabel: {
+    fontSize: 15,
+  },
+  pressed: {
+    opacity: 0.75,
+    transform: [{ scale: 0.98 }],
   },
   section: {
-    paddingHorizontal: 20,
-    paddingTop: 20,
+    paddingHorizontal: Spacing.xl,
+    paddingTop: Spacing['2xl'],
   },
   sectionHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-    marginBottom: 12,
+    gap: Spacing.sm,
+    marginBottom: Spacing.md,
   },
-  badge: {
-    fontSize: 15,
+  countBadge: {
+    paddingHorizontal: Spacing.sm,
+    paddingVertical: 2,
+    borderRadius: Radius.sm,
+  },
+  countText: {
+    fontSize: 13,
+    fontWeight: '700',
   },
   card: {
     borderWidth: 1,
-    borderRadius: 16,
-    padding: 16,
-    marginBottom: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
-    elevation: 1,
-  },
-  cardPressed: {
-    opacity: 0.7,
-    transform: [{ scale: 0.98 }],
+    borderRadius: Radius.lg,
+    padding: Spacing.lg,
+    marginBottom: Spacing.md,
   },
   cardRow: {
     flexDirection: 'row',
@@ -248,35 +326,38 @@ const styles = StyleSheet.create({
   },
   tagRow: {
     flexDirection: 'row',
-    gap: 8,
+    gap: Spacing.sm,
     flexWrap: 'wrap',
   },
   partyBadge: {
-    paddingHorizontal: 8,
+    paddingHorizontal: Spacing.sm,
     paddingVertical: 2,
-    borderRadius: 10,
+    borderRadius: Radius.sm,
   },
   partyText: {
     fontSize: 11,
-    fontWeight: '600',
-  },
-  detailText: {
-    fontSize: 13,
+    fontWeight: '700',
   },
   removeButton: {
-    padding: 4,
+    padding: Spacing.xs,
   },
   emptyCard: {
     borderWidth: 1,
-    borderRadius: 16,
-    padding: 28,
+    borderRadius: Radius.lg,
+    padding: Spacing['3xl'],
     alignItems: 'center',
-    gap: 8,
+    gap: Spacing.sm,
+  },
+  emptyIcon: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: Spacing.sm,
   },
   emptyTitle: {
     fontSize: 16,
-    fontWeight: '600',
-    marginTop: 4,
   },
   emptyBody: {
     fontSize: 14,
@@ -284,14 +365,14 @@ const styles = StyleSheet.create({
     lineHeight: 20,
   },
   emptyButton: {
-    borderRadius: 12,
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    marginTop: 8,
+    borderRadius: Radius.md,
+    paddingHorizontal: Spacing.xl,
+    paddingVertical: Spacing.md,
+    marginTop: Spacing.md,
   },
   emptyButtonText: {
     color: '#fff',
-    fontWeight: '600',
+    fontWeight: '700',
     fontSize: 15,
   },
 });

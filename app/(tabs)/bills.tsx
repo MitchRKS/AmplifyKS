@@ -3,6 +3,7 @@ import { useRouter } from 'expo-router';
 import { useMemo, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
+  Alert,
   FlatList,
   Modal,
   Pressable,
@@ -13,8 +14,10 @@ import {
   View,
 } from 'react-native';
 
+import { ContentContainer } from '@/components/content-container';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
+import { Radius, Shadows, Spacing } from '@/constants/theme';
 import { useThemeColor } from '@/hooks/use-theme-color';
 import * as LegiscanAPI from '@/services/legiscan';
 
@@ -106,13 +109,14 @@ export default function BillsScreen() {
   const [sessionName, setSessionName] = useState('Loading...');
   const [error, setError] = useState<string | null>(null);
 
-  const inputBackground = useThemeColor({ light: '#F2F2F7', dark: '#1C1C1E' }, 'background');
-  const inputBorder = useThemeColor({ light: '#D1D1D6', dark: '#2C2C2E' }, 'background');
-  const placeholder = useThemeColor({ light: '#8E8E93', dark: '#8E8E93' }, 'text');
-  const cardBackground = useThemeColor({ light: '#FFFFFF', dark: '#1C1C1E' }, 'background');
-  const tint = useThemeColor({ light: '#0a7ea4', dark: '#0a7ea4' }, 'tint');
-  const mutedText = useThemeColor({ light: '#6C6C70', dark: '#A1A1A6' }, 'text');
-  const separator = useThemeColor({ light: '#E5E5EA', dark: '#38383A' }, 'background');
+  const inputBackground = useThemeColor({ light: '#F0F2F5', dark: '#1C1F26' }, 'background');
+  const inputBorder = useThemeColor({ light: '#d5d5d5', dark: '#2D3139' }, 'background');
+  const inputText = useThemeColor({ light: '#1A1D21', dark: '#F0F2F5' }, 'text');
+  const placeholder = useThemeColor({ light: '#9CA3AF', dark: '#6B7280' }, 'text');
+  const surface = useThemeColor({ light: '#FFFFFF', dark: '#1C1F26' }, 'background');
+  const tint = useThemeColor({ light: '#0097b2', dark: '#33C4DB' }, 'tint');
+  const mutedText = useThemeColor({ light: '#5E6368', dark: '#9CA3AF' }, 'text');
+  const border = useThemeColor({ light: '#d5d5d5', dark: '#2D3139' }, 'background');
 
   const fetchBills = async () => {
     try {
@@ -135,7 +139,7 @@ export default function BillsScreen() {
       }
 
       const transformedBills: Bill[] = billData
-        .map((bill, index) => {
+        .map((bill) => {
           try {
             if (!bill.bill_id || !bill.number) {
               return null;
@@ -218,76 +222,86 @@ export default function BillsScreen() {
     switch (status) {
       case 'Passed':
       case 'Chaptered':
-        return '#34C759';
+        return '#adc323';
       case 'Introduced':
       case 'Engrossed':
-        return '#FF9500';
+        return '#a9cd34';
       case 'Enrolled':
-        return '#007AFF';
+        return '#0097b2';
       case 'Vetoed':
       case 'Failed':
-        return '#FF3B30';
+        return '#fa3332';
       default:
         return mutedText;
     }
   };
 
   const renderBillItem = ({ item }: { item: Bill }) => (
-    <Pressable
-      style={({ pressed }) => [
-        styles.billCard,
-        { backgroundColor: cardBackground, borderColor: separator },
-        pressed && styles.billCardPressed,
-      ]}
-      onPress={() => handleBillPress(item)}
-    >
-      <View style={styles.billHeader}>
-        <View style={styles.billNumberContainer}>
-          <ThemedText type="defaultSemiBold" style={[styles.billNumber, { color: tint }]}>
-            {item.billNumber}
-          </ThemedText>
-          <ThemedText style={[styles.chamber, { color: mutedText }]}>
-            {item.chamber}
-          </ThemedText>
+    <ContentContainer style={styles.listItemContainer}>
+      <Pressable
+        style={({ pressed }) => [
+          styles.billCard,
+          { backgroundColor: surface, borderColor: border },
+          Shadows.sm,
+          pressed && styles.pressed,
+        ]}
+        onPress={() => handleBillPress(item)}
+      >
+        <View style={styles.billHeader}>
+          <View style={styles.billNumberContainer}>
+            <ThemedText type="defaultSemiBold" style={[styles.billNumber, { color: tint }]}>
+              {item.billNumber}
+            </ThemedText>
+            <View style={[styles.chamberChip, { backgroundColor: border }]}>
+              <ThemedText type="caption" style={{ color: mutedText }}>
+                {item.chamber}
+              </ThemedText>
+            </View>
+          </View>
+          <View style={[styles.statusBadge, { backgroundColor: getStatusColor(item.status) + '14' }]}>
+            <ThemedText style={[styles.statusText, { color: getStatusColor(item.status) }]}>
+              {item.status}
+            </ThemedText>
+          </View>
         </View>
-        <View style={[styles.statusBadge, { backgroundColor: getStatusColor(item.status) + '20' }]}>
-          <ThemedText style={[styles.statusText, { color: getStatusColor(item.status) }]}>
-            {item.status}
-          </ThemedText>
-        </View>
-      </View>
 
-      <ThemedText type="defaultSemiBold" style={styles.billTitle} numberOfLines={2}>
-        {item.title}
-      </ThemedText>
-
-      {item.description && (
-        <ThemedText style={[styles.billDescription, { color: mutedText }]} numberOfLines={2}>
-          {item.description}
+        <ThemedText type="defaultSemiBold" style={styles.billTitle} numberOfLines={2}>
+          {item.title}
         </ThemedText>
-      )}
 
-      <View style={[styles.separator, { backgroundColor: separator }]} />
+        {item.description ? (
+          <ThemedText style={[styles.billDescription, { color: mutedText }]} numberOfLines={2}>
+            {item.description}
+          </ThemedText>
+        ) : null}
 
-      <ThemedText style={[styles.lastAction, { color: mutedText }]} numberOfLines={2}>
-        {item.lastAction} •{' '}
-        {new Date(item.lastActionDate).toLocaleDateString('en-US', {
-          month: 'short',
-          day: 'numeric',
-        })}
-      </ThemedText>
-    </Pressable>
+        <View style={[styles.cardDivider, { backgroundColor: border }]} />
+
+        <View style={styles.lastActionRow}>
+          <MaterialIcons name="history" size={14} color={mutedText} />
+          <ThemedText type="caption" style={{ color: mutedText, flex: 1 }} numberOfLines={2}>
+            {item.lastAction} •{' '}
+            {new Date(item.lastActionDate).toLocaleDateString('en-US', {
+              month: 'short',
+              day: 'numeric',
+            })}
+          </ThemedText>
+        </View>
+      </Pressable>
+    </ContentContainer>
   );
 
   if (loading && bills.length === 0) {
     return (
       <ThemedView style={styles.container}>
-        <View style={styles.header}>
-          <ThemedText type="title">Bills</ThemedText>
-          <ThemedText style={[styles.subtitle, { color: mutedText }]}>
-            {sessionName}
-          </ThemedText>
-        </View>
+        <ContentContainer>
+          <View style={styles.header}>
+            <ThemedText type="title">Bills</ThemedText>
+            <ThemedText style={[styles.subtitle, { color: mutedText }]}>
+              {sessionName}
+            </ThemedText>
+          </View>
+        </ContentContainer>
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={tint} />
           <ThemedText style={[styles.loadingText, { color: mutedText }]}>
@@ -300,43 +314,46 @@ export default function BillsScreen() {
 
   return (
     <ThemedView style={styles.container}>
-      <View style={styles.header}>
-        <ThemedText type="title">Bills</ThemedText>
-        <ThemedText style={[styles.subtitle, { color: mutedText }]}>
-          {sessionName}
-        </ThemedText>
-      </View>
+      <ContentContainer>
+        <View style={styles.header}>
+          <ThemedText type="title">Bills</ThemedText>
+          <ThemedText style={[styles.subtitle, { color: mutedText }]}>
+            {sessionName}
+          </ThemedText>
+        </View>
 
-      <View style={styles.searchRow}>
-        <TextInput
-          style={[
-            styles.searchInput,
-            { backgroundColor: inputBackground, borderColor: inputBorder },
-          ]}
-          placeholder="Search bills..."
-          placeholderTextColor={placeholder}
-          value={searchQuery}
-          onChangeText={setSearchQuery}
-          autoCapitalize="none"
-          autoCorrect={false}
-          clearButtonMode="while-editing"
-        />
-        <Pressable
-          style={({ pressed }) => [
-            styles.filterButton,
-            { backgroundColor: inputBackground, borderColor: inputBorder },
-            pressed && styles.filterButtonPressed,
-          ]}
-          onPress={() => setFilterModalVisible(true)}
-        >
-          <MaterialIcons name="tune" size={22} color={tint} />
-          {activeFilterCount > 0 && (
-            <View style={[styles.filterBadge, { backgroundColor: tint }]}>
-              <ThemedText style={styles.filterBadgeText}>{activeFilterCount}</ThemedText>
-            </View>
-          )}
-        </Pressable>
-      </View>
+        <View style={styles.searchRow}>
+          <View style={[styles.searchInputWrapper, { backgroundColor: inputBackground, borderColor: inputBorder }]}>
+            <MaterialIcons name="search" size={20} color={placeholder} />
+            <TextInput
+              style={[styles.searchInput, { color: inputText }]}
+              placeholder="Search bills..."
+              placeholderTextColor={placeholder}
+              value={searchQuery}
+              onChangeText={setSearchQuery}
+              autoCapitalize="none"
+              autoCorrect={false}
+              clearButtonMode="while-editing"
+            />
+          </View>
+          <Pressable
+            style={({ pressed }) => [
+              styles.filterButton,
+              { backgroundColor: surface, borderColor: inputBorder },
+              Shadows.sm,
+              pressed && styles.pressed,
+            ]}
+            onPress={() => setFilterModalVisible(true)}
+          >
+            <MaterialIcons name="tune" size={20} color={tint} />
+            {activeFilterCount > 0 && (
+              <View style={[styles.filterBadge, { backgroundColor: tint }]}>
+                <ThemedText style={styles.filterBadgeText}>{activeFilterCount}</ThemedText>
+              </View>
+            )}
+          </Pressable>
+        </View>
+      </ContentContainer>
 
       <Modal
         visible={filterModalVisible}
@@ -345,13 +362,13 @@ export default function BillsScreen() {
         onRequestClose={() => setFilterModalVisible(false)}
       >
         <ThemedView style={styles.modalContainer}>
-          <View style={[styles.modalHeader, { borderBottomColor: separator }]}>
+          <View style={[styles.modalHeader, { borderBottomColor: border }]}>
             <ThemedText type="subtitle">Filter & Sort</ThemedText>
             <Pressable
               onPress={() => setFilterModalVisible(false)}
-              style={({ pressed }) => [styles.modalClose, pressed && styles.filterButtonPressed]}
+              style={({ pressed }) => [styles.modalClose, pressed && styles.pressed]}
             >
-              <ThemedText style={{ color: tint, fontWeight: '600' }}>Done</ThemedText>
+              <ThemedText style={{ color: tint, fontWeight: '700', fontSize: 16 }}>Done</ThemedText>
             </Pressable>
           </View>
           <ScrollView
@@ -360,23 +377,25 @@ export default function BillsScreen() {
             showsVerticalScrollIndicator={false}
           >
             <View style={styles.modalSection}>
-              <ThemedText style={[styles.modalLabel, { color: mutedText }]}>Chamber</ThemedText>
+              <ThemedText type="sectionHeader" style={{ color: mutedText, marginBottom: Spacing.md }}>
+                Chamber
+              </ThemedText>
               <View style={styles.modalOptions}>
                 {(['All', 'House', 'Senate'] as ChamberFilter[]).map((chamber) => (
                   <Pressable
                     key={chamber}
                     style={({ pressed }) => [
                       styles.modalOption,
-                      { borderColor: separator },
-                      chamberFilter === chamber && { backgroundColor: tint + '15', borderColor: tint },
-                      pressed && styles.filterButtonPressed,
+                      { borderColor: border },
+                      chamberFilter === chamber && { backgroundColor: tint + '12', borderColor: tint },
+                      pressed && styles.pressed,
                     ]}
                     onPress={() => setChamberFilter(chamber)}
                   >
                     <ThemedText
                       style={[
                         styles.modalOptionText,
-                        chamberFilter === chamber && { color: tint, fontWeight: '600' },
+                        chamberFilter === chamber && { color: tint, fontWeight: '700' },
                       ]}
                     >
                       {chamber}
@@ -386,24 +405,26 @@ export default function BillsScreen() {
               </View>
             </View>
 
-            <View style={[styles.modalSection, { borderTopWidth: 1, borderTopColor: separator }]}>
-              <ThemedText style={[styles.modalLabel, { color: mutedText }]}>Status</ThemedText>
+            <View style={[styles.modalSection, { borderTopWidth: 1, borderTopColor: border, paddingTop: Spacing['2xl'] }]}>
+              <ThemedText type="sectionHeader" style={{ color: mutedText, marginBottom: Spacing.md }}>
+                Status
+              </ThemedText>
               <View style={styles.modalOptionsWrap}>
                 {STATUS_OPTIONS.map((status) => (
                   <Pressable
                     key={status}
                     style={({ pressed }) => [
                       styles.modalOption,
-                      { borderColor: separator },
-                      statusFilter === status && { backgroundColor: tint + '15', borderColor: tint },
-                      pressed && styles.filterButtonPressed,
+                      { borderColor: border },
+                      statusFilter === status && { backgroundColor: tint + '12', borderColor: tint },
+                      pressed && styles.pressed,
                     ]}
                     onPress={() => setStatusFilter(status)}
                   >
                     <ThemedText
                       style={[
                         styles.modalOptionText,
-                        statusFilter === status && { color: tint, fontWeight: '600' },
+                        statusFilter === status && { color: tint, fontWeight: '700' },
                       ]}
                     >
                       {status}
@@ -413,24 +434,26 @@ export default function BillsScreen() {
               </View>
             </View>
 
-            <View style={[styles.modalSection, { borderTopWidth: 1, borderTopColor: separator }]}>
-              <ThemedText style={[styles.modalLabel, { color: mutedText }]}>Sort by</ThemedText>
+            <View style={[styles.modalSection, { borderTopWidth: 1, borderTopColor: border, paddingTop: Spacing['2xl'] }]}>
+              <ThemedText type="sectionHeader" style={{ color: mutedText, marginBottom: Spacing.md }}>
+                Sort by
+              </ThemedText>
               <View style={styles.modalSortOptions}>
                 {SORT_OPTIONS.map((opt) => (
                   <Pressable
                     key={opt.value}
                     style={({ pressed }) => [
                       styles.modalOptionFull,
-                      { borderColor: separator },
-                      sortBy === opt.value && { backgroundColor: tint + '15', borderColor: tint },
-                      pressed && styles.filterButtonPressed,
+                      { borderColor: border },
+                      sortBy === opt.value && { backgroundColor: tint + '12', borderColor: tint },
+                      pressed && styles.pressed,
                     ]}
                     onPress={() => setSortBy(opt.value)}
                   >
                     <ThemedText
                       style={[
                         styles.modalOptionText,
-                        sortBy === opt.value && { color: tint, fontWeight: '600' },
+                        sortBy === opt.value && { color: tint, fontWeight: '700' },
                       ]}
                     >
                       {opt.label}
@@ -446,15 +469,15 @@ export default function BillsScreen() {
             <Pressable
               style={({ pressed }) => [
                 styles.clearButton,
-                { borderColor: separator },
-                pressed && styles.filterButtonPressed,
+                { borderColor: border },
+                pressed && styles.pressed,
               ]}
               onPress={() => {
                 setChamberFilter('All');
                 setStatusFilter('All');
               }}
             >
-              <ThemedText style={{ color: mutedText }}>Clear filters</ThemedText>
+              <ThemedText style={{ color: mutedText, fontWeight: '600' }}>Clear filters</ThemedText>
             </Pressable>
           </ScrollView>
         </ThemedView>
@@ -498,43 +521,50 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   header: {
-    paddingHorizontal: 20,
-    paddingTop: 12,
-    paddingBottom: 12,
+    paddingHorizontal: Spacing.xl,
+    paddingTop: Spacing.md,
+    paddingBottom: Spacing.md,
   },
   subtitle: {
     fontSize: 15,
-    marginTop: 4,
+    marginTop: Spacing.xs,
   },
   searchRow: {
     flexDirection: 'row',
-    paddingHorizontal: 20,
-    paddingBottom: 12,
-    gap: 10,
+    paddingHorizontal: Spacing.xl,
+    paddingBottom: Spacing.md,
+    gap: Spacing.sm,
+  },
+  searchInputWrapper: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderRadius: Radius.md,
+    paddingHorizontal: Spacing.md,
+    gap: Spacing.sm,
   },
   searchInput: {
     flex: 1,
-    borderWidth: 1,
-    borderRadius: 12,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
+    paddingVertical: 11,
     fontSize: 16,
   },
   filterButton: {
     width: 44,
     height: 44,
-    borderRadius: 12,
+    borderRadius: Radius.md,
     borderWidth: 1,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  filterButtonPressed: {
-    opacity: 0.7,
+  pressed: {
+    opacity: 0.75,
+    transform: [{ scale: 0.98 }],
   },
   filterBadge: {
     position: 'absolute',
-    top: 6,
-    right: 6,
+    top: 5,
+    right: 5,
     minWidth: 16,
     height: 16,
     borderRadius: 8,
@@ -544,8 +574,8 @@ const styles = StyleSheet.create({
   },
   filterBadgeText: {
     color: '#fff',
-    fontSize: 11,
-    fontWeight: '700',
+    fontSize: 10,
+    fontWeight: '800',
   },
   modalContainer: {
     flex: 1,
@@ -554,130 +584,120 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingVertical: 16,
+    paddingHorizontal: Spacing.xl,
+    paddingVertical: Spacing.lg,
     borderBottomWidth: 1,
   },
   modalClose: {
-    paddingVertical: 4,
-    paddingHorizontal: 4,
+    paddingVertical: Spacing.xs,
+    paddingHorizontal: Spacing.xs,
   },
   modalContent: {
     flex: 1,
   },
   modalContentInner: {
-    padding: 20,
-    paddingBottom: 40,
+    padding: Spacing.xl,
+    paddingBottom: Spacing['4xl'],
   },
   modalSection: {
-    marginBottom: 24,
-  },
-  modalLabel: {
-    fontSize: 13,
-    fontWeight: '600',
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-    marginBottom: 12,
+    marginBottom: Spacing['2xl'],
   },
   modalOptions: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 10,
+    gap: Spacing.sm,
   },
   modalOptionsWrap: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 10,
+    gap: Spacing.sm,
   },
   modalOption: {
     borderWidth: 1,
-    borderRadius: 10,
-    paddingHorizontal: 16,
-    paddingVertical: 10,
+    borderRadius: Radius.sm,
+    paddingHorizontal: Spacing.lg,
+    paddingVertical: Spacing.md,
   },
   modalSortOptions: {
-    gap: 8,
+    gap: Spacing.sm,
   },
   modalOptionFull: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     borderWidth: 1,
-    borderRadius: 10,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
+    borderRadius: Radius.sm,
+    paddingHorizontal: Spacing.lg,
+    paddingVertical: Spacing.md,
   },
   modalOptionText: {
     fontSize: 15,
   },
   clearButton: {
     alignSelf: 'flex-start',
-    paddingVertical: 10,
-    paddingHorizontal: 16,
-    borderRadius: 10,
+    paddingVertical: Spacing.md,
+    paddingHorizontal: Spacing.lg,
+    borderRadius: Radius.sm,
     borderWidth: 1,
   },
   listContent: {
-    paddingHorizontal: 20,
-    paddingBottom: 20,
+    paddingBottom: Spacing.xl,
+  },
+  listItemContainer: {
+    paddingHorizontal: Spacing.xl,
   },
   billCard: {
     borderWidth: 1,
-    borderRadius: 16,
-    padding: 16,
-    marginBottom: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
-    elevation: 1,
-  },
-  billCardPressed: {
-    opacity: 0.7,
-    transform: [{ scale: 0.98 }],
+    borderRadius: Radius.lg,
+    padding: Spacing.lg,
+    marginBottom: Spacing.md,
   },
   billHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
-    marginBottom: 8,
+    marginBottom: Spacing.sm,
   },
   billNumberContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: Spacing.sm,
   },
   billNumber: {
     fontSize: 17,
   },
-  chamber: {
-    fontSize: 13,
+  chamberChip: {
+    paddingHorizontal: Spacing.sm,
+    paddingVertical: 2,
+    borderRadius: Radius.sm,
   },
   statusBadge: {
     paddingHorizontal: 10,
     paddingVertical: 4,
-    borderRadius: 12,
+    borderRadius: Radius.sm,
   },
   statusText: {
     fontSize: 12,
-    fontWeight: '600',
+    fontWeight: '700',
   },
   billTitle: {
-    fontSize: 17,
-    marginBottom: 6,
+    fontSize: 16,
+    marginBottom: Spacing.xs,
     lineHeight: 22,
   },
   billDescription: {
     fontSize: 14,
     lineHeight: 20,
-    marginBottom: 12,
+    marginBottom: Spacing.md,
   },
-  separator: {
+  cardDivider: {
     height: 1,
-    marginBottom: 8,
+    marginBottom: Spacing.sm,
   },
-  lastAction: {
-    fontSize: 13,
+  lastActionRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: Spacing.sm,
   },
   emptyContainer: {
     paddingVertical: 60,
@@ -690,20 +710,20 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    gap: 16,
+    gap: Spacing.lg,
   },
   loadingText: {
     fontSize: 16,
   },
   retryButton: {
-    marginTop: 16,
-    paddingHorizontal: 24,
-    paddingVertical: 12,
-    borderRadius: 12,
+    marginTop: Spacing.lg,
+    paddingHorizontal: Spacing['2xl'],
+    paddingVertical: Spacing.md,
+    borderRadius: Radius.md,
   },
   retryButtonText: {
     color: '#fff',
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: '700',
   },
 });

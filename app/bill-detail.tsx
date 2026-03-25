@@ -1,11 +1,14 @@
+import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import * as WebBrowser from 'expo-web-browser';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
+import { ContentContainer } from '@/components/content-container';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { IconSymbol } from '@/components/ui/icon-symbol';
+import { Radius, Shadows, Spacing } from '@/constants/theme';
 import { useThemeColor } from '@/hooks/use-theme-color';
 import * as LegiscanAPI from '@/services/legiscan';
 
@@ -53,7 +56,6 @@ export default function BillDetailScreen() {
 
         const billData = await LegiscanAPI.getBillDetail(billId);
         
-        // Transform API data to our BillDetail interface
         const transformedBill: BillDetail = {
           billNumber: billData.bill_number,
           title: billData.title,
@@ -74,7 +76,7 @@ export default function BillDetailScreen() {
             date: h.date,
             action: h.action,
             chamber: h.chamber,
-          })).reverse(), // Reverse to show most recent first
+          })).reverse(),
           texts: billData.texts.map(t => ({
             date: t.date,
             type: t.type,
@@ -100,24 +102,24 @@ export default function BillDetailScreen() {
     fetchBillDetail();
   }, [params.id]);
 
-  const tint = useThemeColor({ light: '#0a7ea4', dark: '#0a7ea4' }, 'tint');
-  const mutedText = useThemeColor({ light: '#6C6C70', dark: '#A1A1A6' }, 'text');
-  const cardBackground = useThemeColor({ light: '#FFFFFF', dark: '#1C1C1E' }, 'background');
-  const separator = useThemeColor({ light: '#E5E5EA', dark: '#38383A' }, 'background');
+  const tint = useThemeColor({ light: '#0097b2', dark: '#33C4DB' }, 'tint');
+  const mutedText = useThemeColor({ light: '#5E6368', dark: '#9CA3AF' }, 'text');
+  const surface = useThemeColor({ light: '#FFFFFF', dark: '#1C1F26' }, 'background');
+  const border = useThemeColor({ light: '#d5d5d5', dark: '#2D3139' }, 'background');
 
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'Passed':
       case 'Chaptered':
-        return '#34C759';
+        return '#adc323';
       case 'Introduced':
       case 'Engrossed':
-        return '#FF9500';
+        return '#a9cd34';
       case 'Enrolled':
-        return '#007AFF';
+        return '#0097b2';
       case 'Vetoed':
       case 'Failed':
-        return '#FF3B30';
+        return '#fa3332';
       default:
         return mutedText;
     }
@@ -126,18 +128,20 @@ export default function BillDetailScreen() {
   if (loading || !bill) {
     return (
       <ThemedView style={styles.container}>
-        <View style={styles.header}>
-          <Pressable onPress={() => router.back()} style={styles.backButton}>
-            <IconSymbol name="chevron.left" size={24} color={tint} />
-          </Pressable>
-          <ThemedText type="defaultSemiBold" style={styles.headerTitle}>
-            Bill Details
-          </ThemedText>
-          <View style={styles.headerSpacer} />
-        </View>
+        <ContentContainer>
+          <View style={styles.header}>
+            <Pressable onPress={() => router.back()} style={styles.backButton}>
+              <IconSymbol name="chevron.left" size={24} color={tint} />
+            </Pressable>
+            <ThemedText type="defaultSemiBold" style={styles.headerTitle}>
+              Bill Details
+            </ThemedText>
+            <View style={styles.headerSpacer} />
+          </View>
+        </ContentContainer>
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={tint} />
-          <ThemedText style={[styles.loadingText, { color: mutedText }]}>
+          <ThemedText style={{ color: mutedText, fontSize: 16 }}>
             Loading bill details...
           </ThemedText>
         </View>
@@ -150,183 +154,194 @@ export default function BillDetailScreen() {
 
   return (
     <ThemedView style={styles.container}>
-      <View style={styles.header}>
-        <Pressable onPress={() => router.back()} style={styles.backButton}>
-          <IconSymbol name="chevron.left" size={24} color={tint} />
-        </Pressable>
-        <ThemedText type="defaultSemiBold" style={styles.headerTitle}>
-          Bill Details
-        </ThemedText>
-        <View style={styles.headerSpacer} />
-      </View>
+      <ContentContainer>
+        <View style={styles.header}>
+          <Pressable onPress={() => router.back()} style={styles.backButton}>
+            <IconSymbol name="chevron.left" size={24} color={tint} />
+          </Pressable>
+          <ThemedText type="defaultSemiBold" style={styles.headerTitle}>
+            Bill Details
+          </ThemedText>
+          <View style={styles.headerSpacer} />
+        </View>
+      </ContentContainer>
 
       <ScrollView
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}>
-        
-        <View style={[styles.card, { backgroundColor: cardBackground, borderColor: separator }]}>
-          <View style={styles.billHeader}>
-            <ThemedText type="title" style={{ color: tint }}>
-              {bill.billNumber}
+        <ContentContainer style={styles.contentPadding}>
+          <View style={[styles.card, { backgroundColor: surface, borderColor: border }, Shadows.sm]}>
+            <View style={styles.billHeader}>
+              <ThemedText type="title" style={{ color: tint }}>
+                {bill.billNumber}
+              </ThemedText>
+              <View style={[styles.statusBadge, { backgroundColor: getStatusColor(bill.status) + '14' }]}>
+                <ThemedText style={[styles.statusText, { color: getStatusColor(bill.status) }]}>
+                  {bill.status}
+                </ThemedText>
+              </View>
+            </View>
+
+            <ThemedText type="subtitle" style={styles.billTitle}>
+              {bill.title}
             </ThemedText>
-            <View style={[styles.statusBadge, { backgroundColor: getStatusColor(bill.status) + '20' }]}>
-              <ThemedText style={[styles.statusText, { color: getStatusColor(bill.status) }]}>
-                {bill.status}
-              </ThemedText>
-            </View>
+
+            <ThemedText style={[styles.description, { color: mutedText }]}>
+              {bill.description}
+            </ThemedText>
           </View>
 
-          <ThemedText type="subtitle" style={styles.billTitle}>
-            {bill.title}
-          </ThemedText>
+          <View style={[styles.card, { backgroundColor: surface, borderColor: border }, Shadows.sm]}>
+            <ThemedText type="defaultSemiBold" style={styles.sectionTitle}>
+              Information
+            </ThemedText>
 
-          <ThemedText style={[styles.description, { color: mutedText }]}>
-            {bill.description}
-          </ThemedText>
-        </View>
+            <View style={styles.infoRow}>
+              <ThemedText type="caption" style={[styles.infoLabel, { color: mutedText }]}>Chamber</ThemedText>
+              <ThemedText style={styles.infoValue}>{bill.chamber}</ThemedText>
+            </View>
 
-        <View style={[styles.card, { backgroundColor: cardBackground, borderColor: separator }]}>
-          <ThemedText type="defaultSemiBold" style={styles.sectionTitle}>
-            Information
-          </ThemedText>
+            <View style={styles.infoRow}>
+              <ThemedText type="caption" style={[styles.infoLabel, { color: mutedText }]}>Session</ThemedText>
+              <ThemedText style={styles.infoValue}>{bill.sessionName}</ThemedText>
+            </View>
 
-          <View style={styles.infoRow}>
-            <ThemedText style={[styles.infoLabel, { color: mutedText }]}>Chamber</ThemedText>
-            <ThemedText style={styles.infoValue}>{bill.chamber}</ThemedText>
+            {primarySponsor && (
+              <View style={styles.infoRow}>
+                <ThemedText type="caption" style={[styles.infoLabel, { color: mutedText }]}>Sponsor</ThemedText>
+                <ThemedText style={styles.infoValue}>{primarySponsor.name}</ThemedText>
+              </View>
+            )}
+
+            {coSponsors.length > 0 && (
+              <View style={styles.infoRow}>
+                <ThemedText type="caption" style={[styles.infoLabel, { color: mutedText }]}>Co-Sponsors</ThemedText>
+                <ThemedText style={[styles.infoValue, styles.infoValueMultiline]}>
+                  {coSponsors.map(s => s.name).join(', ')}
+                </ThemedText>
+              </View>
+            )}
+
+            {bill.committee && (
+              <View style={styles.infoRow}>
+                <ThemedText type="caption" style={[styles.infoLabel, { color: mutedText }]}>Committee</ThemedText>
+                <ThemedText style={styles.infoValue}>{bill.committee}</ThemedText>
+              </View>
+            )}
           </View>
 
-          <View style={styles.infoRow}>
-            <ThemedText style={[styles.infoLabel, { color: mutedText }]}>Session</ThemedText>
-            <ThemedText style={styles.infoValue}>{bill.sessionName}</ThemedText>
-          </View>
-
-          {primarySponsor && (
-            <View style={styles.infoRow}>
-              <ThemedText style={[styles.infoLabel, { color: mutedText }]}>Sponsor</ThemedText>
-              <ThemedText style={styles.infoValue}>{primarySponsor.name}</ThemedText>
-            </View>
-          )}
-
-          {coSponsors.length > 0 && (
-            <View style={styles.infoRow}>
-              <ThemedText style={[styles.infoLabel, { color: mutedText }]}>Co-Sponsors</ThemedText>
-              <ThemedText style={[styles.infoValue, styles.infoValueMultiline]}>
-                {coSponsors.map(s => s.name).join(', ')}
-              </ThemedText>
-            </View>
-          )}
-
-          {bill.committee && (
-            <View style={styles.infoRow}>
-              <ThemedText style={[styles.infoLabel, { color: mutedText }]}>Committee</ThemedText>
-              <ThemedText style={styles.infoValue}>{bill.committee}</ThemedText>
-            </View>
-          )}
-        </View>
-
-        <View style={[styles.card, { backgroundColor: cardBackground, borderColor: separator }]}>
-          <ThemedText type="defaultSemiBold" style={styles.sectionTitle}>
-            Legislative History
-          </ThemedText>
-          {bill.history.length > 0 ? (
-            bill.history.map((item, index) => (
-              <View key={index} style={styles.historyItem}>
-                <View style={styles.historyDot}>
-                  <View style={[styles.dot, { backgroundColor: tint }]} />
-                  {index < bill.history.length - 1 && (
-                    <View style={[styles.line, { backgroundColor: separator }]} />
-                  )}
+          <View style={[styles.card, { backgroundColor: surface, borderColor: border }, Shadows.sm]}>
+            <ThemedText type="defaultSemiBold" style={styles.sectionTitle}>
+              Legislative History
+            </ThemedText>
+            {bill.history.length > 0 ? (
+              bill.history.map((item, index) => (
+                <View key={index} style={styles.historyItem}>
+                  <View style={styles.historyDot}>
+                    <View style={[styles.dot, { backgroundColor: tint }]} />
+                    {index < bill.history.length - 1 && (
+                      <View style={[styles.line, { backgroundColor: border }]} />
+                    )}
+                  </View>
+                  <View style={styles.historyContent}>
+                    <View style={styles.historyHeader}>
+                      <ThemedText type="caption" style={{ color: mutedText }}>
+                        {new Date(item.date).toLocaleDateString('en-US', {
+                          month: 'short',
+                          day: 'numeric',
+                          year: 'numeric',
+                        })}
+                      </ThemedText>
+                      {item.chamber && (
+                        <ThemedText type="caption" style={{ color: mutedText, fontWeight: '600' }}>
+                          {item.chamber}
+                        </ThemedText>
+                      )}
+                    </View>
+                    <ThemedText style={styles.historyAction}>{item.action}</ThemedText>
+                  </View>
                 </View>
-                <View style={styles.historyContent}>
-                  <View style={styles.historyHeader}>
-                    <ThemedText style={[styles.historyDate, { color: mutedText }]}>
-                      {new Date(item.date).toLocaleDateString('en-US', {
+              ))
+            ) : (
+              <ThemedText style={{ color: mutedText }}>No history available</ThemedText>
+            )}
+          </View>
+
+          {bill.texts.length > 0 && (
+            <View style={[styles.card, { backgroundColor: surface, borderColor: border }, Shadows.sm]}>
+              <ThemedText type="defaultSemiBold" style={styles.sectionTitle}>
+                Bill Documents
+              </ThemedText>
+              {bill.texts.map((text, index) => (
+                <Pressable
+                  key={index}
+                  style={({ pressed }) => [
+                    styles.documentRow,
+                    { borderBottomColor: index < bill.texts.length - 1 ? border : 'transparent' },
+                    pressed && styles.pressed,
+                  ]}
+                  onPress={() => WebBrowser.openBrowserAsync(text.url)}>
+                  <View style={styles.documentInfo}>
+                    <ThemedText type="defaultSemiBold" style={{ fontSize: 15 }}>{text.type}</ThemedText>
+                    <ThemedText type="caption" style={{ color: mutedText }}>
+                      {new Date(text.date).toLocaleDateString('en-US', {
                         month: 'short',
                         day: 'numeric',
                         year: 'numeric',
                       })}
                     </ThemedText>
-                    {item.chamber && (
-                      <ThemedText style={[styles.historyChamber, { color: mutedText }]}>
-                        {item.chamber}
-                      </ThemedText>
-                    )}
                   </View>
-                  <ThemedText style={styles.historyAction}>{item.action}</ThemedText>
-                </View>
-              </View>
-            ))
-          ) : (
-            <ThemedText style={{ color: mutedText }}>No history available</ThemedText>
+                  <IconSymbol name="arrow.up.right" size={16} color={tint} />
+                </Pressable>
+              ))}
+            </View>
           )}
-        </View>
 
-        {bill.texts.length > 0 && (
-          <View style={[styles.card, { backgroundColor: cardBackground, borderColor: separator }]}>
+          <View style={[styles.card, { backgroundColor: surface, borderColor: border }, Shadows.sm]}>
             <ThemedText type="defaultSemiBold" style={styles.sectionTitle}>
-              Bill Documents
+              Official Links
             </ThemedText>
-            {bill.texts.map((text, index) => (
-              <Pressable
-                key={index}
-                style={styles.documentRow}
-                onPress={() => WebBrowser.openBrowserAsync(text.url)}>
-                <View style={styles.documentInfo}>
-                  <ThemedText style={styles.documentType}>{text.type}</ThemedText>
-                  <ThemedText style={[styles.documentDate, { color: mutedText }]}>
-                    {new Date(text.date).toLocaleDateString('en-US', {
-                      month: 'short',
-                      day: 'numeric',
-                      year: 'numeric',
-                    })}
-                  </ThemedText>
-                </View>
-                <IconSymbol name="arrow.up.right" size={16} color={tint} />
-              </Pressable>
-            ))}
+            <Pressable
+              style={({ pressed }) => [styles.linkRow, pressed && styles.pressed]}
+              onPress={() => WebBrowser.openBrowserAsync(bill.stateLink)}>
+              <ThemedText style={[styles.linkText, { color: tint }]}>
+                View on Kansas Legislature Website
+              </ThemedText>
+              <IconSymbol name="arrow.up.right" size={16} color={tint} />
+            </Pressable>
+            <View style={[styles.linkDivider, { backgroundColor: border }]} />
+            <Pressable
+              style={({ pressed }) => [styles.linkRow, pressed && styles.pressed]}
+              onPress={() => WebBrowser.openBrowserAsync(bill.url)}>
+              <ThemedText style={[styles.linkText, { color: tint }]}>
+                View on LegiScan
+              </ThemedText>
+              <IconSymbol name="arrow.up.right" size={16} color={tint} />
+            </Pressable>
           </View>
-        )}
 
-        <View style={[styles.card, { backgroundColor: cardBackground, borderColor: separator }]}>
-          <ThemedText type="defaultSemiBold" style={styles.sectionTitle}>
-            Official Links
-          </ThemedText>
           <Pressable
-            style={styles.linkRow}
-            onPress={() => WebBrowser.openBrowserAsync(bill.stateLink)}>
-            <ThemedText style={[styles.linkText, { color: tint }]}>
-              View on Kansas Legislature Website
+            style={({ pressed }) => [
+              styles.testimonyButton,
+              { backgroundColor: tint },
+              pressed && styles.pressed,
+            ]}
+            onPress={() => {
+              router.push({
+                pathname: '/(tabs)/testimony',
+                params: {
+                  billNumber: bill.billNumber,
+                  billTitle: bill.title,
+                  committee: bill.committee || '',
+                },
+              });
+            }}>
+            <MaterialIcons name="edit-note" size={22} color="#fff" />
+            <ThemedText style={styles.testimonyButtonText}>
+              Draft Testimony for {bill.billNumber}
             </ThemedText>
-            <IconSymbol name="arrow.up.right" size={16} color={tint} />
           </Pressable>
-          <Pressable
-            style={styles.linkRow}
-            onPress={() => WebBrowser.openBrowserAsync(bill.url)}>
-            <ThemedText style={[styles.linkText, { color: tint }]}>
-              View on LegiScan
-            </ThemedText>
-            <IconSymbol name="arrow.up.right" size={16} color={tint} />
-          </Pressable>
-        </View>
-
-        <Pressable
-          style={[styles.testimonyButton, { backgroundColor: tint }]}
-          onPress={() => {
-            router.push({
-              pathname: '/(tabs)/testimony',
-              params: {
-                billNumber: bill.billNumber,
-                billTitle: bill.title,
-                committee: bill.committee || '',
-              },
-            });
-          }}>
-          <IconSymbol name="doc.text.fill" size={20} color="#fff" />
-          <ThemedText style={styles.testimonyButtonText}>
-            Draft Testimony for {bill.billNumber}
-          </ThemedText>
-        </Pressable>
-
+        </ContentContainer>
       </ScrollView>
     </ThemedView>
   );
@@ -340,12 +355,12 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 20,
+    paddingHorizontal: Spacing.xl,
     paddingTop: 60,
-    paddingBottom: 12,
+    paddingBottom: Spacing.md,
   },
   backButton: {
-    padding: 4,
+    padding: Spacing.xs,
   },
   headerTitle: {
     fontSize: 17,
@@ -354,38 +369,36 @@ const styles = StyleSheet.create({
     width: 32,
   },
   content: {
-    paddingHorizontal: 20,
-    paddingBottom: 40,
-    gap: 16,
+    paddingBottom: Spacing['4xl'],
+    gap: Spacing.lg,
+  },
+  contentPadding: {
+    paddingHorizontal: Spacing.xl,
+    gap: Spacing.lg,
   },
   card: {
     borderWidth: 1,
-    borderRadius: 16,
-    padding: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
-    elevation: 1,
+    borderRadius: Radius.lg,
+    padding: Spacing.lg,
   },
   billHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 12,
+    marginBottom: Spacing.md,
   },
   statusBadge: {
     paddingHorizontal: 10,
     paddingVertical: 4,
-    borderRadius: 12,
+    borderRadius: Radius.sm,
   },
   statusText: {
     fontSize: 12,
-    fontWeight: '600',
+    fontWeight: '700',
   },
   billTitle: {
-    marginBottom: 8,
-    lineHeight: 24,
+    marginBottom: Spacing.sm,
+    lineHeight: 26,
   },
   description: {
     fontSize: 15,
@@ -393,31 +406,32 @@ const styles = StyleSheet.create({
   },
   sectionTitle: {
     fontSize: 17,
-    marginBottom: 12,
+    marginBottom: Spacing.md,
   },
   infoRow: {
     flexDirection: 'row',
-    marginBottom: 10,
+    marginBottom: Spacing.md,
   },
   infoLabel: {
-    fontSize: 15,
-    width: 110,
+    width: 100,
     flexShrink: 0,
+    fontWeight: '600',
+    paddingTop: 2,
   },
   infoValue: {
     fontSize: 15,
     flex: 1,
   },
   infoValueMultiline: {
-    lineHeight: 20,
+    lineHeight: 22,
   },
   historyItem: {
     flexDirection: 'row',
-    marginBottom: 12,
+    marginBottom: Spacing.md,
   },
   historyDot: {
     alignItems: 'center',
-    marginRight: 12,
+    marginRight: Spacing.md,
     width: 20,
   },
   dot: {
@@ -429,7 +443,7 @@ const styles = StyleSheet.create({
   line: {
     width: 2,
     flex: 1,
-    marginTop: 4,
+    marginTop: Spacing.xs,
   },
   historyContent: {
     flex: 1,
@@ -440,13 +454,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 2,
   },
-  historyDate: {
-    fontSize: 13,
-  },
-  historyChamber: {
-    fontSize: 12,
-    fontWeight: '500',
-  },
   historyAction: {
     fontSize: 15,
     lineHeight: 20,
@@ -455,50 +462,49 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingVertical: 8,
+    paddingVertical: Spacing.md,
+    borderBottomWidth: 1,
   },
   documentInfo: {
     flex: 1,
-  },
-  documentType: {
-    fontSize: 15,
-    marginBottom: 2,
-  },
-  documentDate: {
-    fontSize: 13,
+    gap: 2,
   },
   linkRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingVertical: 12,
+    paddingVertical: Spacing.md,
+  },
+  linkDivider: {
+    height: 1,
   },
   linkText: {
     fontSize: 15,
     flex: 1,
+    fontWeight: '600',
+  },
+  pressed: {
+    opacity: 0.75,
   },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    gap: 16,
-  },
-  loadingText: {
-    fontSize: 16,
+    gap: Spacing.lg,
   },
   testimonyButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 14,
-    paddingHorizontal: 20,
-    borderRadius: 14,
-    gap: 8,
-    marginTop: 8,
+    paddingVertical: 15,
+    paddingHorizontal: Spacing.xl,
+    borderRadius: Radius.md,
+    gap: Spacing.sm,
+    marginTop: Spacing.sm,
   },
   testimonyButtonText: {
     color: '#fff',
     fontSize: 17,
-    fontWeight: '600',
+    fontWeight: '700',
   },
 });

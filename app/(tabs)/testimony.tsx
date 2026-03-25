@@ -14,21 +14,21 @@ import {
   View,
 } from "react-native";
 
+import { ContentContainer } from "@/components/content-container";
 import { ThemedText } from "@/components/themed-text";
 import { ThemedView } from "@/components/themed-view";
 import { getCommitteeEmail, hasCommitteeEmail } from "@/constants/committee-emails";
+import { Radius, Shadows, Spacing } from "@/constants/theme";
 import { useThemeColor } from "@/hooks/use-theme-color";
 
 type Position = "support" | "neutral" | "oppose";
 
-// Map position values to display labels
 const POSITION_LABELS: Record<Position, string> = {
   support: "Proponent",
   neutral: "Neutral",
   oppose: "Opponent",
 };
 
-// Stock opening and closing text for all testimonies
 const STOCK_OPENING = `Chair and members of the committee:`;
 
 const STOCK_CLOSING = `Thank you for the opportunity to testify and for your consideration of my testimony.`;
@@ -52,7 +52,6 @@ export default function TestimonyScreen() {
   const [summary, setSummary] = useState("");
   const [testimony, setTestimony] = useState("");
 
-  // Pre-fill bill number and committee if coming from bill detail page
   useEffect(() => {
     if (params.billNumber && typeof params.billNumber === "string") {
       setBillNumber(params.billNumber);
@@ -76,35 +75,14 @@ export default function TestimonyScreen() {
   const summaryRef = useRef<TextInput>(null);
   const testimonyRef = useRef<TextInput>(null);
 
-  const inputBackground = useThemeColor(
-    { light: "#F2F2F7", dark: "#1C1C1E" },
-    "background",
-  );
-  const inputBorder = useThemeColor(
-    { light: "#D1D1D6", dark: "#2C2C2E" },
-    "background",
-  );
-  const inputText = useThemeColor(
-    { light: "#000000", dark: "#FFFFFF" },
-    "text",
-  );
-  const placeholder = useThemeColor(
-    { light: "#8E8E93", dark: "#8E8E93" },
-    "text",
-  );
-  const tint = useThemeColor({ light: "#0a7ea4", dark: "#0a7ea4" }, "tint");
-  const mutedText = useThemeColor(
-    { light: "#6C6C70", dark: "#A1A1A6" },
-    "text",
-  );
-  const cardBackground = useThemeColor(
-    { light: "#FFFFFF", dark: "#1C1C1E" },
-    "background",
-  );
-  const separator = useThemeColor(
-    { light: "#E5E5EA", dark: "#38383A" },
-    "background",
-  );
+  const surface = useThemeColor({ light: "#FFFFFF", dark: "#1C1F26" }, "background");
+  const inputBackground = useThemeColor({ light: "#F0F2F5", dark: "#1C1F26" }, "background");
+  const inputBorder = useThemeColor({ light: "#d5d5d5", dark: "#2D3139" }, "background");
+  const inputText = useThemeColor({ light: "#1A1D21", dark: "#F0F2F5" }, "text");
+  const placeholder = useThemeColor({ light: "#9CA3AF", dark: "#6B7280" }, "text");
+  const tint = useThemeColor({ light: "#0097b2", dark: "#33C4DB" }, "tint");
+  const mutedText = useThemeColor({ light: "#5E6368", dark: "#9CA3AF" }, "text");
+  const border = useThemeColor({ light: "#d5d5d5", dark: "#2D3139" }, "background");
 
   const canSubmit = Boolean(
     firstName.trim() &&
@@ -127,7 +105,6 @@ export default function TestimonyScreen() {
     const positionText = POSITION_LABELS[position];
     const fullName = `${firstName} ${lastName}`.trim();
     
-    // Format current date
     const date = new Date();
     const formattedDate = date.toLocaleDateString('en-US', { 
       year: 'numeric', 
@@ -135,7 +112,6 @@ export default function TestimonyScreen() {
       day: 'numeric' 
     });
 
-    // Combine stock opening, main testimony, and stock closing with signature
     let fullTestimony = '';
     if (STOCK_OPENING.trim()) {
       fullTestimony += escapeHtml(STOCK_OPENING.trim()) + '\n\n';
@@ -146,7 +122,6 @@ export default function TestimonyScreen() {
     if (STOCK_CLOSING.trim()) {
       fullTestimony += '\n\n' + escapeHtml(STOCK_CLOSING.trim());
     }
-    // Add signature with name and city
     if (fullName) {
       fullTestimony += '\n\n' + escapeHtml(fullName);
     }
@@ -205,7 +180,6 @@ export default function TestimonyScreen() {
     const positionText = POSITION_LABELS[position];
     const fullName = `${firstName} ${lastName}`.trim();
 
-    // Build plain text version for email
     let fullTestimony = '';
     if (STOCK_OPENING.trim()) {
       fullTestimony += STOCK_OPENING.trim() + '\n\n';
@@ -243,7 +217,6 @@ export default function TestimonyScreen() {
       return;
     }
 
-    // Check if we have an email address for this committee
     const committeeEmail = getCommitteeEmail(committee.trim());
     
     if (!committeeEmail) {
@@ -255,7 +228,6 @@ export default function TestimonyScreen() {
     }
 
     try {
-      // Check if mail composer is available
       const isAvailable = await MailComposer.isAvailableAsync();
       
       if (!isAvailable) {
@@ -270,7 +242,6 @@ export default function TestimonyScreen() {
       const subject = `${positionText} Testimony on ${billNumber}`;
       const fullName = `${firstName} ${lastName}`.trim();
       
-      // Format current date
       const date = new Date();
       const formattedDate = date.toLocaleDateString('en-US', { 
         year: 'numeric', 
@@ -278,9 +249,7 @@ export default function TestimonyScreen() {
         day: 'numeric' 
       });
       
-      // On native platforms, attach PDF. On web, send formatted text.
       if (Platform.OS === 'web') {
-        // Web: Send formatted text email
         const body = `${positionText} Testimony on ${billNumber}\n${formattedDate}\n${committee}\n\n${generateTestimonyText()}`;
         
         await MailComposer.composeAsync({
@@ -289,14 +258,12 @@ export default function TestimonyScreen() {
           body: body,
         });
       } else {
-        // Native platforms: Generate PDF and attach it
         const html = generateTestimonyHTML();
         const { uri } = await Print.printToFileAsync({ 
           html,
           base64: false,
         });
         
-        // Simple email body with attachment reference
         const body = `Please find attached my ${positionText.toLowerCase()} testimony on ${billNumber}.\n\n${fullName}\n${city || ''}`;
 
         await MailComposer.composeAsync({
@@ -306,9 +273,6 @@ export default function TestimonyScreen() {
           attachments: [uri],
         });
       }
-
-      // Note: We can't detect if the user actually sent the email or cancelled,
-      // so we don't show a success message here
     } catch (error) {
       console.error("Error opening email composer:", error);
       Alert.alert(
@@ -330,7 +294,6 @@ export default function TestimonyScreen() {
     try {
       const html = generateTestimonyHTML();
       
-      // On web, open in new window (without print dialog)
       if (Platform.OS === "web") {
         const newWindow = window.open("", "_blank");
         if (newWindow) {
@@ -342,9 +305,7 @@ export default function TestimonyScreen() {
             "Please allow popups to preview your testimony.",
           );
         }
-      }
-      // On iOS and Android, generate PDF file and share it
-      else {
+      } else {
         const { uri } = await Print.printToFileAsync({ html });
         const isAvailable = await Sharing.isAvailableAsync();
         if (isAvailable) {
@@ -372,401 +333,374 @@ export default function TestimonyScreen() {
     >
       <ThemedView style={styles.container}>
         <ScrollView
-          contentContainerStyle={styles.content}
+          contentContainerStyle={styles.scrollContent}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
-          <View style={styles.headerContainer}>
-            <ThemedText type="title" style={styles.centeredTitle}>
-              Draft Testimony
-            </ThemedText>
-            <ThemedText style={[styles.subtitle, styles.centeredSubtitle]}>
-              Provide your testimony for the selected piece of legislation.
-              Required fields are marked.
-            </ThemedText>
-          </View>
-
-          {(params.billNumber || params.committee) && (
-            <View
-              style={[
-                styles.billInfoCard,
-                styles.billInfoCardCentered,
-                { backgroundColor: cardBackground, borderColor: separator },
-              ]}
-            >
-              {params.billNumber && (
-                <View style={styles.billInfoRow}>
-                  <ThemedText
-                    style={[styles.billInfoLabel, { color: mutedText }]}
-                  >
-                    Bill
-                  </ThemedText>
-                  <ThemedText
-                    type="defaultSemiBold"
-                    style={[styles.billInfoValue, { color: tint }]}
-                  >
-                    {params.billNumber}
-                  </ThemedText>
-                </View>
-              )}
-              {params.committee && (
-                <View style={styles.billInfoRow}>
-                  <ThemedText
-                    style={[styles.billInfoLabel, { color: mutedText }]}
-                  >
-                    Committee
-                  </ThemedText>
-                  <ThemedText style={styles.billInfoValue}>
-                    {params.committee}
-                  </ThemedText>
-                </View>
-              )}
-              {params.billTitle && (
-                <View style={[styles.billInfoRow, styles.billInfoRowFull]}>
-                  <ThemedText
-                    style={[styles.billInfoLabel, { color: mutedText }]}
-                  >
-                    Title
-                  </ThemedText>
-                  <ThemedText
-                    style={[
-                      styles.billInfoValue,
-                      styles.billInfoValueMultiline,
-                    ]}
-                  >
-                    {params.billTitle}
-                  </ThemedText>
-                </View>
-              )}
-            </View>
-          )}
-
-          <View style={styles.section}>
-            <ThemedText type="subtitle">Testimony</ThemedText>
-
-            <ThemedText style={[styles.label, { color: mutedText }]}>
-              Stock opening (automatically included)
-            </ThemedText>
-            <View
-              style={[
-                styles.stockTextContainer,
-                { backgroundColor: inputBackground, borderColor: separator },
-              ]}
-            >
-              <ThemedText style={[styles.stockText, { color: mutedText }]}>
-                {STOCK_OPENING}
+          <ContentContainer style={styles.content}>
+            <View style={styles.headerContainer}>
+              <ThemedText type="title" style={styles.centeredTitle}>
+                Draft Testimony
+              </ThemedText>
+              <ThemedText type="caption" style={[styles.centeredSubtitle, { color: mutedText }]}>
+                Provide your testimony for the selected piece of legislation.
+                Required fields are marked with *.
               </ThemedText>
             </View>
 
-            <ThemedText style={styles.label}>Your testimony *</ThemedText>
-            <TextInput
-              ref={testimonyRef}
-              style={[
-                styles.input,
-                styles.multiline,
-                { backgroundColor: inputBackground, borderColor: inputBorder, color: inputText },
-              ]}
-              placeholder="Add detailed testimony..."
-              placeholderTextColor={placeholder}
-              value={testimony}
-              onChangeText={setTestimony}
-              multiline
-              textAlignVertical="top"
-            />
-
-            <ThemedText style={[styles.label, { color: mutedText }]}>
-              Stock closing (automatically included)
-            </ThemedText>
-            <View
-              style={[
-                styles.stockTextContainer,
-                { backgroundColor: inputBackground, borderColor: separator },
-              ]}
-            >
-              <ThemedText style={[styles.stockText, { color: mutedText }]}>
-                {STOCK_CLOSING}
-              </ThemedText>
-              <ThemedText style={[styles.stockText, { color: mutedText, marginTop: 12 }]}>
-                {firstName && lastName ? `${firstName} ${lastName}` : '[Your Name]'}
-              </ThemedText>
-              <ThemedText style={[styles.stockText, { color: mutedText }]}>
-                {city || '[Your City]'}
-              </ThemedText>
-            </View>
-          </View>
-
-          <ThemedText style={styles.label}>Position *</ThemedText>
-          <View style={styles.segment}>
-            {(["support", "neutral", "oppose"] as Position[]).map((choice) => {
-              const selected = position === choice;
-              return (
-                <Pressable
-                  key={choice}
-                  accessibilityRole="button"
-                  accessibilityState={{ selected }}
-                  style={[
-                    styles.segmentButton,
-                    {
-                      borderColor: selected ? tint : inputBorder,
-                      backgroundColor: selected ? tint : inputBackground,
-                    },
-                  ]}
-                  onPress={() => setPosition(choice)}
-                >
-                  <ThemedText
-                    style={[
-                      styles.segmentText,
-                      selected && styles.segmentTextSelected,
-                    ]}
-                  >
-                    {POSITION_LABELS[choice]}
-                  </ThemedText>
-                </Pressable>
-              );
-            })}
-          </View>
-
-          <View style={styles.section}>
-            <ThemedText type="subtitle">Your Information</ThemedText>
-
-            <ThemedText style={styles.label}>First name *</ThemedText>
-            <TextInput
-              style={[
-                styles.input,
-                { backgroundColor: inputBackground, borderColor: inputBorder, color: inputText },
-              ]}
-              placeholder="Jane"
-              placeholderTextColor={placeholder}
-              value={firstName}
-              onChangeText={setFirstName}
-              textContentType="givenName"
-              autoComplete="name-given"
-              returnKeyType="next"
-              onSubmitEditing={() => lastNameRef.current?.focus()}
-            />
-
-            <ThemedText style={styles.label}>Last name *</ThemedText>
-            <TextInput
-              ref={lastNameRef}
-              style={[
-                styles.input,
-                { backgroundColor: inputBackground, borderColor: inputBorder, color: inputText },
-              ]}
-              placeholder="Doe"
-              placeholderTextColor={placeholder}
-              value={lastName}
-              onChangeText={setLastName}
-              textContentType="familyName"
-              autoComplete="name-family"
-              returnKeyType="next"
-              onSubmitEditing={() => emailRef.current?.focus()}
-            />
-
-            <ThemedText style={styles.label}>Email *</ThemedText>
-            <TextInput
-              ref={emailRef}
-              style={[
-                styles.input,
-                { backgroundColor: inputBackground, borderColor: inputBorder, color: inputText },
-              ]}
-              placeholder="jane@example.org"
-              placeholderTextColor={placeholder}
-              value={email}
-              onChangeText={setEmail}
-              textContentType="emailAddress"
-              autoComplete="email"
-              keyboardType="email-address"
-              inputMode="email"
-              autoCapitalize="none"
-              returnKeyType="next"
-              onSubmitEditing={() => streetAddressRef.current?.focus()}
-            />
-
-            <ThemedText style={styles.label}>Street Address</ThemedText>
-            <TextInput
-              ref={streetAddressRef}
-              style={[
-                styles.input,
-                { backgroundColor: inputBackground, borderColor: inputBorder, color: inputText },
-              ]}
-              placeholder="123 Main Street"
-              placeholderTextColor={placeholder}
-              value={streetAddress}
-              onChangeText={setStreetAddress}
-              textContentType="streetAddressLine1"
-              autoComplete="street-address"
-              autoCapitalize="words"
-              returnKeyType="next"
-              onSubmitEditing={() => cityRef.current?.focus()}
-            />
-
-            <ThemedText style={styles.label}>City</ThemedText>
-            <TextInput
-              ref={cityRef}
-              style={[
-                styles.input,
-                { backgroundColor: inputBackground, borderColor: inputBorder, color: inputText },
-              ]}
-              placeholder="Topeka"
-              placeholderTextColor={placeholder}
-              value={city}
-              onChangeText={setCity}
-              textContentType="addressCity"
-              autoComplete="postal-address-locality"
-              autoCapitalize="words"
-              returnKeyType="next"
-              onSubmitEditing={() => stateRef.current?.focus()}
-            />
-
-            <ThemedText style={styles.label}>State</ThemedText>
-            <TextInput
-              ref={stateRef}
-              style={[
-                styles.input,
-                { backgroundColor: inputBackground, borderColor: inputBorder, color: inputText },
-              ]}
-              placeholder="KS"
-              placeholderTextColor={placeholder}
-              value={state}
-              onChangeText={setState}
-              textContentType="addressState"
-              autoComplete="postal-address-region"
-              autoCapitalize="characters"
-              returnKeyType="next"
-              onSubmitEditing={() => zipCodeRef.current?.focus()}
-            />
-
-            <ThemedText style={styles.label}>Zip Code</ThemedText>
-            <TextInput
-              ref={zipCodeRef}
-              style={[
-                styles.input,
-                { backgroundColor: inputBackground, borderColor: inputBorder, color: inputText },
-              ]}
-              placeholder="66612"
-              placeholderTextColor={placeholder}
-              value={zipCode}
-              onChangeText={setZipCode}
-              textContentType="postalCode"
-              autoComplete="postal-code"
-              keyboardType="number-pad"
-              inputMode="numeric"
-              returnKeyType="next"
-              onSubmitEditing={() => billNumberRef.current?.focus()}
-            />
-          </View>
-
-          <View style={styles.section}>
-            <ThemedText type="subtitle">Legislation</ThemedText>
-
-            <ThemedText style={styles.label}>Bill number *</ThemedText>
-            <TextInput
-              ref={billNumberRef}
-              style={[
-                styles.input,
-                { backgroundColor: inputBackground, borderColor: inputBorder, color: inputText },
-              ]}
-              placeholder="HB 2543"
-              placeholderTextColor={placeholder}
-              value={billNumber}
-              onChangeText={setBillNumber}
-              autoCapitalize="characters"
-              returnKeyType="next"
-              onSubmitEditing={() => committeeRef.current?.focus()}
-            />
-
-            <ThemedText style={styles.label}>Committee or hearing</ThemedText>
-            <TextInput
-              ref={committeeRef}
-              style={[
-                styles.input,
-                { backgroundColor: inputBackground, borderColor: inputBorder, color: inputText },
-              ]}
-              placeholder="Senate Judiciary"
-              placeholderTextColor={placeholder}
-              value={committee}
-              onChangeText={setCommittee}
-              autoCapitalize="words"
-              returnKeyType="next"
-              onSubmitEditing={() => testimonyRef.current?.focus()}
-            />
-          </View>
-
-          {committee.trim() && hasCommitteeEmail(committee.trim()) ? (
-            <>
-              <Pressable
-                accessibilityRole="button"
+            {(params.billNumber || params.committee) && (
+              <View
                 style={[
-                  styles.submitButton,
-                  styles.primaryButton,
-                  { backgroundColor: canSubmit ? tint : inputBorder },
+                  styles.billInfoCard,
+                  { backgroundColor: tint + '08', borderColor: tint + '25' },
                 ]}
-                onPress={handleSubmitEmail}
-                disabled={!canSubmit}
               >
-                <ThemedText style={styles.submitText}>Submit via Email</ThemedText>
-              </Pressable>
+                {params.billNumber && (
+                  <View style={styles.billInfoRow}>
+                    <ThemedText type="caption" style={[styles.billInfoLabel, { color: mutedText }]}>
+                      Bill
+                    </ThemedText>
+                    <ThemedText type="defaultSemiBold" style={{ color: tint }}>
+                      {params.billNumber}
+                    </ThemedText>
+                  </View>
+                )}
+                {params.committee && (
+                  <View style={styles.billInfoRow}>
+                    <ThemedText type="caption" style={[styles.billInfoLabel, { color: mutedText }]}>
+                      Committee
+                    </ThemedText>
+                    <ThemedText>{params.committee}</ThemedText>
+                  </View>
+                )}
+                {params.billTitle && (
+                  <View style={[styles.billInfoRow, styles.billInfoRowFull]}>
+                    <ThemedText type="caption" style={[styles.billInfoLabel, { color: mutedText }]}>
+                      Title
+                    </ThemedText>
+                    <ThemedText style={styles.billInfoValueMultiline}>
+                      {params.billTitle}
+                    </ThemedText>
+                  </View>
+                )}
+              </View>
+            )}
 
-              <Pressable
-                accessibilityRole="button"
-                style={[
-                  styles.submitButton,
-                  styles.secondaryButton,
-                  { 
-                    backgroundColor: 'transparent',
-                    borderColor: canSubmit ? tint : inputBorder,
-                    borderWidth: 1,
-                  },
-                ]}
-                onPress={handlePreview}
-                disabled={!canSubmit}
-              >
-                <ThemedText style={[styles.submitText, { color: canSubmit ? tint : inputBorder }]}>
-                  Preview Testimony
-                </ThemedText>
-              </Pressable>
+            <View style={[styles.formCard, { backgroundColor: surface, borderColor: border }, Shadows.sm]}>
+              <ThemedText type="subtitle" style={styles.cardTitle}>Testimony</ThemedText>
 
-              <ThemedText style={[styles.footerText, { color: mutedText }]}>
-                This will open your email app with the testimony pre-filled and addressed to {committee}.
+              <ThemedText type="caption" style={[styles.fieldHint, { color: mutedText }]}>
+                Stock opening (automatically included)
               </ThemedText>
-            </>
-          ) : committee.trim() ? (
-            <>
-              <View style={[styles.infoBox, { backgroundColor: inputBackground, borderColor: separator }]}>
-                <ThemedText style={[styles.infoBoxText, { color: mutedText }]}>
-                  No email address configured for "{committee}". Use Preview to save your testimony and submit it manually.
+              <View
+                style={[styles.stockTextContainer, { backgroundColor: inputBackground, borderColor: border }]}
+              >
+                <ThemedText style={[styles.stockText, { color: mutedText }]}>
+                  {STOCK_OPENING}
                 </ThemedText>
               </View>
 
+              <ThemedText style={styles.label}>Your testimony *</ThemedText>
+              <TextInput
+                ref={testimonyRef}
+                style={[
+                  styles.input,
+                  styles.multiline,
+                  { backgroundColor: inputBackground, borderColor: inputBorder, color: inputText },
+                ]}
+                placeholder="Add detailed testimony..."
+                placeholderTextColor={placeholder}
+                value={testimony}
+                onChangeText={setTestimony}
+                multiline
+                textAlignVertical="top"
+              />
+
+              <ThemedText type="caption" style={[styles.fieldHint, { color: mutedText }]}>
+                Stock closing (automatically included)
+              </ThemedText>
+              <View
+                style={[styles.stockTextContainer, { backgroundColor: inputBackground, borderColor: border }]}
+              >
+                <ThemedText style={[styles.stockText, { color: mutedText }]}>
+                  {STOCK_CLOSING}
+                </ThemedText>
+                <ThemedText style={[styles.stockText, { color: mutedText, marginTop: Spacing.md }]}>
+                  {firstName && lastName ? `${firstName} ${lastName}` : '[Your Name]'}
+                </ThemedText>
+                <ThemedText style={[styles.stockText, { color: mutedText }]}>
+                  {city || '[Your City]'}
+                </ThemedText>
+              </View>
+
+              <ThemedText style={styles.label}>Position *</ThemedText>
+              <View style={styles.segment}>
+                {(["support", "neutral", "oppose"] as Position[]).map((choice) => {
+                  const selected = position === choice;
+                  return (
+                    <Pressable
+                      key={choice}
+                      accessibilityRole="button"
+                      accessibilityState={{ selected }}
+                      style={[
+                        styles.segmentButton,
+                        {
+                          borderColor: selected ? tint : inputBorder,
+                          backgroundColor: selected ? tint : 'transparent',
+                        },
+                      ]}
+                      onPress={() => setPosition(choice)}
+                    >
+                      <ThemedText
+                        style={[
+                          styles.segmentText,
+                          selected && styles.segmentTextSelected,
+                        ]}
+                      >
+                        {POSITION_LABELS[choice]}
+                      </ThemedText>
+                    </Pressable>
+                  );
+                })}
+              </View>
+            </View>
+
+            <View style={[styles.formCard, { backgroundColor: surface, borderColor: border }, Shadows.sm]}>
+              <ThemedText type="subtitle" style={styles.cardTitle}>Your Information</ThemedText>
+
+              <View style={styles.row}>
+                <View style={[styles.field, { flex: 1 }]}>
+                  <ThemedText style={styles.label}>First name *</ThemedText>
+                  <TextInput
+                    style={[styles.input, { backgroundColor: inputBackground, borderColor: inputBorder, color: inputText }]}
+                    placeholder="Jane"
+                    placeholderTextColor={placeholder}
+                    value={firstName}
+                    onChangeText={setFirstName}
+                    textContentType="givenName"
+                    autoComplete="name-given"
+                    returnKeyType="next"
+                    onSubmitEditing={() => lastNameRef.current?.focus()}
+                  />
+                </View>
+                <View style={[styles.field, { flex: 1 }]}>
+                  <ThemedText style={styles.label}>Last name *</ThemedText>
+                  <TextInput
+                    ref={lastNameRef}
+                    style={[styles.input, { backgroundColor: inputBackground, borderColor: inputBorder, color: inputText }]}
+                    placeholder="Doe"
+                    placeholderTextColor={placeholder}
+                    value={lastName}
+                    onChangeText={setLastName}
+                    textContentType="familyName"
+                    autoComplete="name-family"
+                    returnKeyType="next"
+                    onSubmitEditing={() => emailRef.current?.focus()}
+                  />
+                </View>
+              </View>
+
+              <View style={styles.field}>
+                <ThemedText style={styles.label}>Email *</ThemedText>
+                <TextInput
+                  ref={emailRef}
+                  style={[styles.input, { backgroundColor: inputBackground, borderColor: inputBorder, color: inputText }]}
+                  placeholder="jane@example.org"
+                  placeholderTextColor={placeholder}
+                  value={email}
+                  onChangeText={setEmail}
+                  textContentType="emailAddress"
+                  autoComplete="email"
+                  keyboardType="email-address"
+                  inputMode="email"
+                  autoCapitalize="none"
+                  returnKeyType="next"
+                  onSubmitEditing={() => streetAddressRef.current?.focus()}
+                />
+              </View>
+
+              <View style={styles.field}>
+                <ThemedText style={styles.label}>Street Address</ThemedText>
+                <TextInput
+                  ref={streetAddressRef}
+                  style={[styles.input, { backgroundColor: inputBackground, borderColor: inputBorder, color: inputText }]}
+                  placeholder="123 Main Street"
+                  placeholderTextColor={placeholder}
+                  value={streetAddress}
+                  onChangeText={setStreetAddress}
+                  textContentType="streetAddressLine1"
+                  autoComplete="street-address"
+                  autoCapitalize="words"
+                  returnKeyType="next"
+                  onSubmitEditing={() => cityRef.current?.focus()}
+                />
+              </View>
+
+              <View style={styles.row}>
+                <View style={[styles.field, { flex: 2 }]}>
+                  <ThemedText style={styles.label}>City</ThemedText>
+                  <TextInput
+                    ref={cityRef}
+                    style={[styles.input, { backgroundColor: inputBackground, borderColor: inputBorder, color: inputText }]}
+                    placeholder="Topeka"
+                    placeholderTextColor={placeholder}
+                    value={city}
+                    onChangeText={setCity}
+                    textContentType="addressCity"
+                    autoComplete="postal-address-locality"
+                    autoCapitalize="words"
+                    returnKeyType="next"
+                    onSubmitEditing={() => stateRef.current?.focus()}
+                  />
+                </View>
+                <View style={[styles.field, { flex: 0.8 }]}>
+                  <ThemedText style={styles.label}>State</ThemedText>
+                  <TextInput
+                    ref={stateRef}
+                    style={[styles.input, { backgroundColor: inputBackground, borderColor: inputBorder, color: inputText }]}
+                    placeholder="KS"
+                    placeholderTextColor={placeholder}
+                    value={state}
+                    onChangeText={setState}
+                    textContentType="addressState"
+                    autoComplete="postal-address-region"
+                    autoCapitalize="characters"
+                    returnKeyType="next"
+                    onSubmitEditing={() => zipCodeRef.current?.focus()}
+                  />
+                </View>
+                <View style={[styles.field, { flex: 1 }]}>
+                  <ThemedText style={styles.label}>Zip</ThemedText>
+                  <TextInput
+                    ref={zipCodeRef}
+                    style={[styles.input, { backgroundColor: inputBackground, borderColor: inputBorder, color: inputText }]}
+                    placeholder="66612"
+                    placeholderTextColor={placeholder}
+                    value={zipCode}
+                    onChangeText={setZipCode}
+                    textContentType="postalCode"
+                    autoComplete="postal-code"
+                    keyboardType="number-pad"
+                    inputMode="numeric"
+                    returnKeyType="next"
+                    onSubmitEditing={() => billNumberRef.current?.focus()}
+                  />
+                </View>
+              </View>
+            </View>
+
+            <View style={[styles.formCard, { backgroundColor: surface, borderColor: border }, Shadows.sm]}>
+              <ThemedText type="subtitle" style={styles.cardTitle}>Legislation</ThemedText>
+
+              <View style={styles.field}>
+                <ThemedText style={styles.label}>Bill number *</ThemedText>
+                <TextInput
+                  ref={billNumberRef}
+                  style={[styles.input, { backgroundColor: inputBackground, borderColor: inputBorder, color: inputText }]}
+                  placeholder="HB 2543"
+                  placeholderTextColor={placeholder}
+                  value={billNumber}
+                  onChangeText={setBillNumber}
+                  autoCapitalize="characters"
+                  returnKeyType="next"
+                  onSubmitEditing={() => committeeRef.current?.focus()}
+                />
+              </View>
+
+              <View style={styles.field}>
+                <ThemedText style={styles.label}>Committee or hearing</ThemedText>
+                <TextInput
+                  ref={committeeRef}
+                  style={[styles.input, { backgroundColor: inputBackground, borderColor: inputBorder, color: inputText }]}
+                  placeholder="Senate Judiciary"
+                  placeholderTextColor={placeholder}
+                  value={committee}
+                  onChangeText={setCommittee}
+                  autoCapitalize="words"
+                  returnKeyType="next"
+                  onSubmitEditing={() => testimonyRef.current?.focus()}
+                />
+              </View>
+            </View>
+
+            {committee.trim() && hasCommitteeEmail(committee.trim()) ? (
+              <>
+                <Pressable
+                  accessibilityRole="button"
+                  style={({ pressed }) => [
+                    styles.submitButton,
+                    { backgroundColor: canSubmit ? tint : inputBorder },
+                    pressed && canSubmit && styles.pressed,
+                  ]}
+                  onPress={handleSubmitEmail}
+                  disabled={!canSubmit}
+                >
+                  <ThemedText style={styles.submitText}>Submit via Email</ThemedText>
+                </Pressable>
+
+                <Pressable
+                  accessibilityRole="button"
+                  style={({ pressed }) => [
+                    styles.submitButton,
+                    styles.secondaryButton,
+                    { 
+                      backgroundColor: 'transparent',
+                      borderColor: canSubmit ? tint : inputBorder,
+                    },
+                    pressed && canSubmit && styles.pressed,
+                  ]}
+                  onPress={handlePreview}
+                  disabled={!canSubmit}
+                >
+                  <ThemedText style={[styles.submitText, { color: canSubmit ? tint : inputBorder }]}>
+                    Preview Testimony
+                  </ThemedText>
+                </Pressable>
+
+                <ThemedText type="caption" style={[styles.footerText, { color: mutedText }]}>
+                  This will open your email app with the testimony pre-filled and addressed to {committee}.
+                </ThemedText>
+              </>
+            ) : committee.trim() ? (
+              <>
+                <View style={[styles.infoBox, { backgroundColor: inputBackground, borderColor: border }]}>
+                  <ThemedText type="caption" style={[styles.infoBoxText, { color: mutedText }]}>
+                    No email address configured for "{committee}". Use Preview to save your testimony and submit it manually.
+                  </ThemedText>
+                </View>
+
+                <Pressable
+                  accessibilityRole="button"
+                  style={({ pressed }) => [
+                    styles.submitButton,
+                    { backgroundColor: canSubmit ? tint : inputBorder },
+                    pressed && canSubmit && styles.pressed,
+                  ]}
+                  onPress={handlePreview}
+                  disabled={!canSubmit}
+                >
+                  <ThemedText style={styles.submitText}>Preview Testimony</ThemedText>
+                </Pressable>
+              </>
+            ) : (
               <Pressable
                 accessibilityRole="button"
-                style={[
+                style={({ pressed }) => [
                   styles.submitButton,
                   { backgroundColor: canSubmit ? tint : inputBorder },
+                  pressed && canSubmit && styles.pressed,
                 ]}
                 onPress={handlePreview}
                 disabled={!canSubmit}
               >
                 <ThemedText style={styles.submitText}>Preview Testimony</ThemedText>
               </Pressable>
-            </>
-          ) : (
-            <Pressable
-              accessibilityRole="button"
-              style={[
-                styles.submitButton,
-                { backgroundColor: canSubmit ? tint : inputBorder },
-              ]}
-              onPress={handlePreview}
-              disabled={!canSubmit}
-            >
-              <ThemedText style={styles.submitText}>Preview Testimony</ThemedText>
-            </Pressable>
-          )}
+            )}
 
-          <ThemedText style={[styles.footerText, { color: mutedText }]}>
-            Submitted testimony becomes part of the public record.
-          </ThemedText>
+            <ThemedText type="caption" style={[styles.footerText, { color: mutedText }]}>
+              Submitted testimony becomes part of the public record.
+            </ThemedText>
+          </ContentContainer>
         </ScrollView>
       </ThemedView>
     </KeyboardAvoidingView>
@@ -780,33 +714,69 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
+  scrollContent: {
+    paddingBottom: Spacing['4xl'],
+  },
   content: {
-    padding: 20,
-    paddingBottom: 40,
-    gap: 16,
+    paddingHorizontal: Spacing.xl,
+    paddingTop: Spacing.md,
+    gap: Spacing.lg,
   },
   headerContainer: {
     alignItems: "center",
+    paddingBottom: Spacing.sm,
   },
   centeredTitle: {
     textAlign: "center",
   },
-  subtitle: {
-    marginTop: 6,
-  },
   centeredSubtitle: {
     textAlign: "center",
+    marginTop: Spacing.sm,
+    lineHeight: 20,
   },
-  section: {
-    gap: 12,
+  billInfoCard: {
+    borderWidth: 1,
+    borderRadius: Radius.lg,
+    padding: Spacing.lg,
+    gap: Spacing.md,
+  },
+  billInfoRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: Spacing.md,
+  },
+  billInfoRowFull: {
+    flexDirection: "column",
+    alignItems: "flex-start",
+    gap: Spacing.xs,
+  },
+  billInfoLabel: {
+    fontWeight: "600",
+    minWidth: 80,
+  },
+  billInfoValueMultiline: {
+    lineHeight: 20,
+  },
+  formCard: {
+    borderWidth: 1,
+    borderRadius: Radius.lg,
+    padding: Spacing.xl,
+    gap: Spacing.md,
+  },
+  cardTitle: {
+    marginBottom: Spacing.xs,
+  },
+  fieldHint: {
+    marginTop: Spacing.xs,
   },
   label: {
     fontSize: 14,
     fontWeight: "600",
+    marginTop: Spacing.xs,
   },
   input: {
     borderWidth: 1,
-    borderRadius: 12,
+    borderRadius: Radius.md,
     paddingHorizontal: 14,
     paddingVertical: 12,
     fontSize: 16,
@@ -816,99 +786,68 @@ const styles = StyleSheet.create({
   },
   stockTextContainer: {
     borderWidth: 1,
-    borderRadius: 12,
+    borderRadius: Radius.md,
     paddingHorizontal: 14,
     paddingVertical: 12,
   },
   stockText: {
-    fontSize: 16,
-    lineHeight: 24,
+    fontSize: 15,
+    lineHeight: 22,
     fontStyle: "italic",
+  },
+  row: {
+    flexDirection: "row",
+    gap: Spacing.md,
+  },
+  field: {
+    gap: Spacing.sm,
   },
   segment: {
     flexDirection: "row",
-    gap: 8,
+    gap: Spacing.sm,
   },
   segmentButton: {
     flex: 1,
-    borderWidth: 1,
-    borderRadius: 999,
+    borderWidth: 1.5,
+    borderRadius: Radius.full,
     paddingVertical: 10,
     alignItems: "center",
   },
   segmentText: {
-    fontWeight: "600",
+    fontWeight: "700",
+    fontSize: 15,
   },
   segmentTextSelected: {
     color: "#fff",
   },
   submitButton: {
-    borderRadius: 14,
-    paddingVertical: 14,
+    borderRadius: Radius.md,
+    paddingVertical: 15,
     alignItems: "center",
-    marginTop: 8,
-  },
-  primaryButton: {
-    marginBottom: 8,
   },
   secondaryButton: {
-    marginBottom: 8,
+    borderWidth: 1.5,
+  },
+  pressed: {
+    opacity: 0.75,
+    transform: [{ scale: 0.98 }],
   },
   submitText: {
     color: "#fff",
-    fontWeight: "600",
+    fontWeight: "700",
+    fontSize: 16,
   },
   footerText: {
-    fontSize: 13,
     textAlign: "center",
+    lineHeight: 18,
   },
   infoBox: {
     borderWidth: 1,
-    borderRadius: 12,
-    padding: 12,
-    marginBottom: 8,
+    borderRadius: Radius.md,
+    padding: Spacing.md,
   },
   infoBoxText: {
-    fontSize: 14,
-    lineHeight: 20,
     textAlign: "center",
-  },
-  billInfoCard: {
-    borderWidth: 1,
-    borderRadius: 16,
-    padding: 16,
-    gap: 12,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
-    elevation: 1,
-  },
-  billInfoCardCentered: {
-    alignSelf: "center",
-    width: "100%",
-    maxWidth: 600,
-  },
-  billInfoRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
-  },
-  billInfoRowFull: {
-    flexDirection: "column",
-    alignItems: "flex-start",
-    gap: 4,
-  },
-  billInfoLabel: {
-    fontSize: 14,
-    fontWeight: "600",
-    minWidth: 80,
-  },
-  billInfoValue: {
-    fontSize: 15,
-    flex: 1,
-  },
-  billInfoValueMultiline: {
     lineHeight: 20,
   },
 });

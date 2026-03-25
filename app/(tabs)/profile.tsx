@@ -10,8 +10,10 @@ import {
   View,
 } from 'react-native';
 
+import { ContentContainer } from '@/components/content-container';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
+import { Radius, Shadows, Spacing } from '@/constants/theme';
 import { useAuth } from '@/contexts/auth-context';
 import { useUserProfile, type UserProfile } from '@/hooks/use-user-profile';
 import { useThemeColor } from '@/hooks/use-theme-color';
@@ -33,14 +35,14 @@ export default function ProfileScreen() {
     }
   }, [isLoaded, profile]);
 
-  const cardBackground = useThemeColor({ light: '#FFFFFF', dark: '#1C1C1E' }, 'background');
-  const inputBackground = useThemeColor({ light: '#F2F2F7', dark: '#1C1C1E' }, 'background');
-  const inputBorder = useThemeColor({ light: '#D1D1D6', dark: '#2C2C2E' }, 'background');
-  const inputText = useThemeColor({ light: '#000000', dark: '#FFFFFF' }, 'text');
-  const placeholder = useThemeColor({ light: '#8E8E93', dark: '#8E8E93' }, 'text');
-  const tint = useThemeColor({ light: '#0a7ea4', dark: '#0a7ea4' }, 'tint');
-  const mutedText = useThemeColor({ light: '#6C6C70', dark: '#A1A1A6' }, 'text');
-  const separator = useThemeColor({ light: '#E5E5EA', dark: '#38383A' }, 'background');
+  const surface = useThemeColor({ light: '#FFFFFF', dark: '#1C1F26' }, 'background');
+  const inputBackground = useThemeColor({ light: '#F0F2F5', dark: '#252830' }, 'background');
+  const inputBorder = useThemeColor({ light: '#d5d5d5', dark: '#2D3139' }, 'background');
+  const inputText = useThemeColor({ light: '#1A1D21', dark: '#F0F2F5' }, 'text');
+  const placeholder = useThemeColor({ light: '#9CA3AF', dark: '#6B7280' }, 'text');
+  const tint = useThemeColor({ light: '#0097b2', dark: '#33C4DB' }, 'tint');
+  const mutedText = useThemeColor({ light: '#5E6368', dark: '#9CA3AF' }, 'text');
+  const border = useThemeColor({ light: '#d5d5d5', dark: '#2D3139' }, 'background');
 
   const fullName = user ? `${user.firstName} ${user.lastName}`.trim() || 'No name set' : '';
   const initials = user
@@ -53,132 +55,122 @@ export default function ProfileScreen() {
       showsVerticalScrollIndicator={false}
       keyboardShouldPersistTaps="handled"
     >
-      <View style={styles.header}>
-        <ThemedText type="title">Profile</ThemedText>
-        <ThemedText style={[styles.subtitle, { color: mutedText }]}>
-          Your AmplifyKS account
-        </ThemedText>
-      </View>
-
-      <View style={[styles.card, { backgroundColor: cardBackground, borderColor: separator }]}>
-        <View style={[styles.avatar, { backgroundColor: inputBackground }]}>
-          <ThemedText style={[styles.avatarText, { color: tint }]}>{initials}</ThemedText>
-        </View>
-
-        <View style={styles.info}>
-          <ThemedText type="defaultSemiBold" style={styles.label}>
-            Name
-          </ThemedText>
-          <ThemedText style={[styles.value, { color: mutedText }]}>{fullName}</ThemedText>
-        </View>
-
-        <View style={[styles.divider, { backgroundColor: separator }]} />
-
-        <View style={styles.info}>
-          <ThemedText type="defaultSemiBold" style={styles.label}>
-            Email
-          </ThemedText>
-          <ThemedText style={[styles.value, { color: mutedText }]}>
-            {user?.email || 'Not set'}
+      <ContentContainer>
+        <View style={styles.header}>
+          <ThemedText type="title">Profile</ThemedText>
+          <ThemedText style={[styles.subtitle, { color: mutedText }]}>
+            Your AmplifyKS account
           </ThemedText>
         </View>
-      </View>
 
-      <View style={[styles.card, { backgroundColor: cardBackground, borderColor: separator }]}>
-        <View style={styles.sectionHeader}>
-          <ThemedText type="subtitle">Personal Info</ThemedText>
-        </View>
-        <ThemedText style={[styles.sectionHint, { color: mutedText }]}>
-          Used when submitting testimony and contacting lawmakers
-        </ThemedText>
-
-        <View style={styles.field}>
-          <ThemedText style={[styles.fieldLabel, { color: mutedText }]}>Phone</ThemedText>
-          <TextInput
-            style={[styles.input, { backgroundColor: inputBackground, borderColor: inputBorder, color: inputText }]}
-            placeholder="(913) 555-0123"
-            placeholderTextColor={placeholder}
-            value={form.phone}
-            onChangeText={(phone) => setForm((f) => ({ ...f, phone }))}
-            keyboardType="phone-pad"
-            textContentType="telephoneNumber"
-            autoComplete="tel"
-          />
-        </View>
-
-        <View style={styles.field}>
-          <ThemedText style={[styles.fieldLabel, { color: mutedText }]}>Street address</ThemedText>
-          <TextInput
-            style={[styles.input, { backgroundColor: inputBackground, borderColor: inputBorder, color: inputText }]}
-            placeholder="123 Main St"
-            placeholderTextColor={placeholder}
-            value={form.streetAddress}
-            onChangeText={(streetAddress) => setForm((f) => ({ ...f, streetAddress }))}
-            textContentType="streetAddressLine1"
-            autoComplete="street-address"
-          />
-        </View>
-
-        <View style={styles.addressRow}>
-          <View style={[styles.field, styles.fieldCity]}>
-            <ThemedText style={[styles.fieldLabel, { color: mutedText }]}>City</ThemedText>
-            <TextInput
-              style={[styles.input, { backgroundColor: inputBackground, borderColor: inputBorder, color: inputText }]}
-              placeholder="Topeka"
-              placeholderTextColor={placeholder}
-              value={form.city}
-              onChangeText={(city) => setForm((f) => ({ ...f, city }))}
-              textContentType="addressCity"
-              autoComplete="address-level2"
-            />
-          </View>
-          <View style={[styles.field, styles.fieldState]}>
-            <ThemedText style={[styles.fieldLabel, { color: mutedText }]}>State</ThemedText>
-            <TextInput
-              style={[styles.input, { backgroundColor: inputBackground, borderColor: inputBorder, color: inputText }]}
-              placeholder="KS"
-              placeholderTextColor={placeholder}
-              value={form.state}
-              onChangeText={(state) => setForm((f) => ({ ...f, state }))}
-              textContentType="addressState"
-              autoComplete="address-level1"
-              maxLength={2}
-              autoCapitalize="characters"
-            />
-          </View>
-          <View style={[styles.field, styles.fieldZip]}>
-            <ThemedText style={[styles.fieldLabel, { color: mutedText }]}>ZIP</ThemedText>
-            <TextInput
-              style={[styles.input, { backgroundColor: inputBackground, borderColor: inputBorder, color: inputText }]}
-              placeholder="66612"
-              placeholderTextColor={placeholder}
-              value={form.zip}
-              onChangeText={(zip) => setForm((f) => ({ ...f, zip }))}
-              keyboardType="number-pad"
-              textContentType="postalCode"
-              autoComplete="postal-code"
-              maxLength={10}
-            />
+        <View style={[styles.card, { backgroundColor: surface, borderColor: border }, Shadows.sm]}>
+          <View style={styles.avatarRow}>
+            <View style={[styles.avatar, { backgroundColor: tint + '15' }]}>
+              <ThemedText style={[styles.avatarText, { color: tint }]}>{initials}</ThemedText>
+            </View>
+            <View style={styles.avatarInfo}>
+              <ThemedText type="subtitle">{fullName}</ThemedText>
+              <ThemedText type="caption" style={{ color: mutedText }}>
+                {user?.email || 'Not set'}
+              </ThemedText>
+            </View>
           </View>
         </View>
 
-        <Pressable
-          style={({ pressed }) => [
-            styles.saveButton,
-            { backgroundColor: tint },
-            pressed && styles.saveButtonPressed,
-            isSaving && styles.saveButtonDisabled,
-          ]}
-          onPress={() => updateProfile(form)}
-          disabled={isSaving}
-        >
-          {isSaving ? (
-            <ActivityIndicator color="#fff" size="small" />
-          ) : (
-            <ThemedText style={styles.saveButtonText}>Save</ThemedText>
-          )}
-        </Pressable>
-      </View>
+        <View style={[styles.card, { backgroundColor: surface, borderColor: border }, Shadows.sm]}>
+          <ThemedText type="subtitle" style={styles.cardTitle}>Personal Info</ThemedText>
+          <ThemedText type="caption" style={[styles.cardHint, { color: mutedText }]}>
+            Used when submitting testimony and contacting lawmakers
+          </ThemedText>
+
+          <View style={styles.field}>
+            <ThemedText style={[styles.fieldLabel, { color: mutedText }]}>Phone</ThemedText>
+            <TextInput
+              style={[styles.input, { backgroundColor: inputBackground, borderColor: inputBorder, color: inputText }]}
+              placeholder="(913) 555-0123"
+              placeholderTextColor={placeholder}
+              value={form.phone}
+              onChangeText={(phone) => setForm((f) => ({ ...f, phone }))}
+              keyboardType="phone-pad"
+              textContentType="telephoneNumber"
+              autoComplete="tel"
+            />
+          </View>
+
+          <View style={styles.field}>
+            <ThemedText style={[styles.fieldLabel, { color: mutedText }]}>Street address</ThemedText>
+            <TextInput
+              style={[styles.input, { backgroundColor: inputBackground, borderColor: inputBorder, color: inputText }]}
+              placeholder="123 Main St"
+              placeholderTextColor={placeholder}
+              value={form.streetAddress}
+              onChangeText={(streetAddress) => setForm((f) => ({ ...f, streetAddress }))}
+              textContentType="streetAddressLine1"
+              autoComplete="street-address"
+            />
+          </View>
+
+          <View style={styles.addressRow}>
+            <View style={[styles.field, { flex: 2 }]}>
+              <ThemedText style={[styles.fieldLabel, { color: mutedText }]}>City</ThemedText>
+              <TextInput
+                style={[styles.input, { backgroundColor: inputBackground, borderColor: inputBorder, color: inputText }]}
+                placeholder="Topeka"
+                placeholderTextColor={placeholder}
+                value={form.city}
+                onChangeText={(city) => setForm((f) => ({ ...f, city }))}
+                textContentType="addressCity"
+                autoComplete="postal-address-locality"
+              />
+            </View>
+            <View style={[styles.field, { flex: 0.7 }]}>
+              <ThemedText style={[styles.fieldLabel, { color: mutedText }]}>State</ThemedText>
+              <TextInput
+                style={[styles.input, { backgroundColor: inputBackground, borderColor: inputBorder, color: inputText }]}
+                placeholder="KS"
+                placeholderTextColor={placeholder}
+                value={form.state}
+                onChangeText={(state) => setForm((f) => ({ ...f, state }))}
+                textContentType="addressState"
+                autoComplete="postal-address-region"
+                maxLength={2}
+                autoCapitalize="characters"
+              />
+            </View>
+            <View style={[styles.field, { flex: 1.2 }]}>
+              <ThemedText style={[styles.fieldLabel, { color: mutedText }]}>ZIP</ThemedText>
+              <TextInput
+                style={[styles.input, { backgroundColor: inputBackground, borderColor: inputBorder, color: inputText }]}
+                placeholder="66612"
+                placeholderTextColor={placeholder}
+                value={form.zip}
+                onChangeText={(zip) => setForm((f) => ({ ...f, zip }))}
+                keyboardType="number-pad"
+                textContentType="postalCode"
+                autoComplete="postal-code"
+                maxLength={10}
+              />
+            </View>
+          </View>
+
+          <Pressable
+            style={({ pressed }) => [
+              styles.saveButton,
+              { backgroundColor: tint },
+              pressed && styles.saveButtonPressed,
+              isSaving && styles.saveButtonDisabled,
+            ]}
+            onPress={() => updateProfile(form)}
+            disabled={isSaving}
+          >
+            {isSaving ? (
+              <ActivityIndicator color="#fff" size="small" />
+            ) : (
+              <ThemedText style={styles.saveButtonText}>Save Changes</ThemedText>
+            )}
+          </Pressable>
+        </View>
+      </ContentContainer>
     </ScrollView>
   );
 
@@ -213,73 +205,60 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scrollContent: {
-    paddingHorizontal: 20,
-    paddingTop: 12,
-    paddingBottom: 40,
+    paddingBottom: Spacing['4xl'],
   },
   header: {
-    paddingBottom: 20,
+    paddingHorizontal: Spacing.xl,
+    paddingTop: Spacing.md,
+    paddingBottom: Spacing.xl,
   },
   subtitle: {
     fontSize: 15,
-    marginTop: 4,
+    marginTop: Spacing.xs,
   },
   card: {
     borderWidth: 1,
-    borderRadius: 16,
-    padding: 24,
-    marginBottom: 20,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
-    elevation: 1,
+    borderRadius: Radius.lg,
+    padding: Spacing['2xl'],
+    marginHorizontal: Spacing.xl,
+    marginBottom: Spacing.xl,
   },
-  avatar: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 20,
-  },
-  avatarText: {
-    fontSize: 28,
-    fontWeight: '600',
-  },
-  info: {
-    width: '100%',
-    gap: 4,
-  },
-  label: {
-    fontSize: 12,
-  },
-  value: {
-    fontSize: 16,
-  },
-  divider: {
-    width: '100%',
-    height: 1,
-    marginVertical: 16,
-  },
-  sectionHeader: {
+  avatarRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 4,
+    gap: Spacing.lg,
   },
-  sectionHint: {
-    fontSize: 14,
-    marginBottom: 16,
+  avatar: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  avatarText: {
+    fontSize: 26,
+    fontWeight: '700',
+  },
+  avatarInfo: {
+    flex: 1,
+    gap: Spacing.xs,
+  },
+  cardTitle: {
+    marginBottom: Spacing.xs,
+  },
+  cardHint: {
+    marginBottom: Spacing.lg,
+    lineHeight: 18,
   },
   saveButton: {
-    borderRadius: 12,
+    borderRadius: Radius.md,
     paddingVertical: 14,
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: 8,
+    marginTop: Spacing.sm,
   },
   saveButtonPressed: {
-    opacity: 0.8,
+    opacity: 0.85,
   },
   saveButtonDisabled: {
     opacity: 0.7,
@@ -287,11 +266,11 @@ const styles = StyleSheet.create({
   saveButtonText: {
     color: '#fff',
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: '700',
   },
   field: {
-    gap: 6,
-    marginBottom: 14,
+    gap: Spacing.sm,
+    marginBottom: Spacing.md,
   },
   fieldLabel: {
     fontSize: 14,
@@ -299,26 +278,14 @@ const styles = StyleSheet.create({
   },
   input: {
     borderWidth: 1,
-    borderRadius: 12,
+    borderRadius: Radius.md,
     paddingHorizontal: 14,
     paddingVertical: 12,
     fontSize: 16,
   },
   addressRow: {
     flexDirection: 'row',
-    gap: 12,
-  },
-  fieldCity: {
-    flex: 2,
-    marginBottom: 14,
-  },
-  fieldState: {
-    flex: 0.6,
-    marginBottom: 14,
-  },
-  fieldZip: {
-    flex: 1.2,
-    marginBottom: 14,
+    gap: Spacing.md,
   },
   loadingContainer: {
     flex: 1,
