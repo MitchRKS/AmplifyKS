@@ -61,6 +61,13 @@ function MobileLayout() {
         ),
       }}>
       <Tabs.Screen
+        name="profile"
+        options={{
+          title: 'Profile',
+          tabBarIcon: ({ color }) => <MaterialIcons size={24} name="person" color={color} />,
+        }}
+      />
+      <Tabs.Screen
         name="dashboard"
         options={{
           title: 'Dashboard',
@@ -68,31 +75,24 @@ function MobileLayout() {
         }}
       />
       <Tabs.Screen
-        name="bills"
+        name="actions"
         options={{
-          title: 'Bills',
-          tabBarIcon: ({ color }) => <IconSymbol size={24} name="doc.text.magnifyingglass" color={color} />,
+          title: 'Actions',
+          tabBarIcon: ({ color }) => <MaterialIcons size={24} name="campaign" color={color} />,
         }}
       />
       <Tabs.Screen
         name="officials"
         options={{
-          title: 'Officials',
+          title: 'Electeds',
           tabBarIcon: ({ color }) => <MaterialIcons size={24} name="how-to-vote" color={color} />,
         }}
       />
       <Tabs.Screen
-        name="testimony"
+        name="bills"
         options={{
-          title: 'Testimony',
-          tabBarIcon: ({ color }) => <IconSymbol size={24} name="doc.text.fill" color={color} />,
-        }}
-      />
-      <Tabs.Screen
-        name="profile"
-        options={{
-          title: 'Profile',
-          tabBarIcon: ({ color }) => <MaterialIcons size={24} name="person" color={color} />,
+          title: 'Bills',
+          tabBarIcon: ({ color }) => <IconSymbol size={24} name="doc.text.magnifyingglass" color={color} />,
         }}
       />
     </Tabs>

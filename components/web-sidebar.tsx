@@ -15,11 +15,11 @@ interface NavItem {
 }
 
 const NAV_ITEMS: NavItem[] = [
-  { route: '/dashboard', label: 'Dashboard', icon: 'dashboard' },
-  { route: '/bills', label: 'Bills', icon: 'description' },
-  { route: '/officials', label: 'Officials', icon: 'how-to-vote' },
-  { route: '/testimony', label: 'Testimony', icon: 'edit-note' },
   { route: '/profile', label: 'Profile', icon: 'person' },
+  { route: '/dashboard', label: 'Dashboard', icon: 'dashboard' },
+  { route: '/actions', label: 'Actions', icon: 'campaign' },
+  { route: '/officials', label: 'Electeds', icon: 'how-to-vote' },
+  { route: '/bills', label: 'Bills', icon: 'description' },
 ];
 
 const ACTIVE_BG = 'rgba(0, 151, 178, 0.12)';

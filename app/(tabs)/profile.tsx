@@ -27,6 +27,7 @@ export default function ProfileScreen() {
     city: '',
     state: 'KS',
     zip: '',
+    role: 'user',
   });
 
   useEffect(() => {
@@ -69,7 +70,14 @@ export default function ProfileScreen() {
               <ThemedText style={[styles.avatarText, { color: tint }]}>{initials}</ThemedText>
             </View>
             <View style={styles.avatarInfo}>
-              <ThemedText type="subtitle">{fullName}</ThemedText>
+              <View style={styles.nameRow}>
+                <ThemedText type="subtitle">{fullName}</ThemedText>
+                {profile.role === 'admin' && (
+                  <View style={[styles.adminBadge, { backgroundColor: tint + '15' }]}>
+                    <ThemedText style={[styles.adminBadgeText, { color: tint }]}>Admin</ThemedText>
+                  </View>
+                )}
+              </View>
               <ThemedText type="caption" style={{ color: mutedText }}>
                 {user?.email || 'Not set'}
               </ThemedText>
@@ -242,6 +250,21 @@ const styles = StyleSheet.create({
   avatarInfo: {
     flex: 1,
     gap: Spacing.xs,
+  },
+  nameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.sm,
+  },
+  adminBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: Radius.sm,
+  },
+  adminBadgeText: {
+    fontSize: 11,
+    fontWeight: '700',
+    letterSpacing: 0.3,
   },
   cardTitle: {
     marginBottom: Spacing.xs,

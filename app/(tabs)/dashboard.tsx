@@ -100,14 +100,14 @@ export default function DashboardScreen() {
                 Shadows.sm,
                 pressed && styles.pressed,
               ]}
-              onPress={() => router.navigate('/(tabs)/bills')}
+              onPress={() => router.navigate('/(tabs)/officials')}
             >
               <View style={[styles.quickActionIcon, { backgroundColor: tint + '12' }]}>
-                <MaterialIcons name="description" size={22} color={tint} />
+                <MaterialIcons name="how-to-vote" size={22} color={tint} />
               </View>
-              <ThemedText type="defaultSemiBold" style={styles.quickActionLabel}>Browse Bills</ThemedText>
+              <ThemedText type="defaultSemiBold" style={styles.quickActionLabel}>Find Electeds</ThemedText>
               <ThemedText type="caption" style={{ color: mutedText }}>
-                Current session
+                Your representatives
               </ThemedText>
             </Pressable>
 
@@ -118,14 +118,14 @@ export default function DashboardScreen() {
                 Shadows.sm,
                 pressed && styles.pressed,
               ]}
-              onPress={() => router.navigate('/(tabs)/testimony')}
+              onPress={() => router.navigate('/(tabs)/bills')}
             >
               <View style={[styles.quickActionIcon, { backgroundColor: tint + '12' }]}>
-                <MaterialIcons name="edit-note" size={22} color={tint} />
+                <MaterialIcons name="description" size={22} color={tint} />
               </View>
-              <ThemedText type="defaultSemiBold" style={styles.quickActionLabel}>Draft Testimony</ThemedText>
+              <ThemedText type="defaultSemiBold" style={styles.quickActionLabel}>Browse Bills</ThemedText>
               <ThemedText type="caption" style={{ color: mutedText }}>
-                Submit your voice
+                Current session
               </ThemedText>
             </Pressable>
           </View>

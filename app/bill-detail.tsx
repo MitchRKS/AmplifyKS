@@ -2,14 +2,17 @@ import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import * as WebBrowser from 'expo-web-browser';
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Switch, View } from 'react-native';
 
 import { ContentContainer } from '@/components/content-container';
+import { TestimonyForm } from '@/components/testimony-form';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { Radius, Shadows, Spacing } from '@/constants/theme';
+import { useBillTestimonyStatus } from '@/hooks/use-bill-testimony-status';
 import { useThemeColor } from '@/hooks/use-theme-color';
+import { useUserProfile } from '@/hooks/use-user-profile';
 import * as LegiscanAPI from '@/services/legiscan';
 
 interface BillDetail {
@@ -43,6 +46,9 @@ export default function BillDetailScreen() {
   const params = useLocalSearchParams();
   const [bill, setBill] = useState<BillDetail | null>(null);
   const [loading, setLoading] = useState(true);
+  const [testimonyExpanded, setTestimonyExpanded] = useState(false);
+  const { profile } = useUserProfile();
+  const { isOpen: testimonyOpen, isLoading: testimonyStatusLoading, toggleOpen } = useBillTestimonyStatus(params.id as string);
 
   useEffect(() => {
     const fetchBillDetail = async () => {
@@ -106,6 +112,7 @@ export default function BillDetailScreen() {
   const mutedText = useThemeColor({ light: '#5E6368', dark: '#9CA3AF' }, 'text');
   const surface = useThemeColor({ light: '#FFFFFF', dark: '#1C1F26' }, 'background');
   const border = useThemeColor({ light: '#d5d5d5', dark: '#2D3139' }, 'background');
+  const inputBackground = useThemeColor({ light: '#F0F2F5', dark: '#1C1F26' }, 'background');
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -320,27 +327,81 @@ export default function BillDetailScreen() {
             </Pressable>
           </View>
 
-          <Pressable
-            style={({ pressed }) => [
-              styles.testimonyButton,
-              { backgroundColor: tint },
-              pressed && styles.pressed,
-            ]}
-            onPress={() => {
-              router.push({
-                pathname: '/(tabs)/testimony',
-                params: {
-                  billNumber: bill.billNumber,
-                  billTitle: bill.title,
-                  committee: bill.committee || '',
-                },
-              });
-            }}>
-            <MaterialIcons name="edit-note" size={22} color="#fff" />
-            <ThemedText style={styles.testimonyButtonText}>
-              Draft Testimony for {bill.billNumber}
-            </ThemedText>
-          </Pressable>
+          {profile.role === 'admin' && (
+            <View style={[styles.card, { backgroundColor: surface, borderColor: border }, Shadows.sm]}>
+              <View style={styles.adminRow}>
+                <View style={styles.adminLabelGroup}>
+                  <MaterialIcons name="admin-panel-settings" size={20} color={tint} />
+                  <ThemedText type="defaultSemiBold" style={{ fontSize: 15 }}>
+                    Testimony {testimonyOpen ? 'Open' : 'Closed'}
+                  </ThemedText>
+                </View>
+                <Switch
+                  value={testimonyOpen}
+                  onValueChange={toggleOpen}
+                  trackColor={{ false: border, true: tint + '66' }}
+                  thumbColor={testimonyOpen ? tint : '#ccc'}
+                  disabled={testimonyStatusLoading}
+                />
+              </View>
+              <ThemedText type="caption" style={{ color: mutedText, marginTop: Spacing.xs }}>
+                {testimonyOpen
+                  ? 'Users can draft and submit testimony for this bill.'
+                  : 'Toggle on to allow users to submit testimony.'}
+              </ThemedText>
+            </View>
+          )}
+
+          {!testimonyStatusLoading && testimonyOpen && (
+            <>
+              {testimonyExpanded ? (
+                <>
+                  <Pressable
+                    style={({ pressed }) => [
+                      styles.testimonyCollapseButton,
+                      { borderColor: border },
+                      pressed && styles.pressed,
+                    ]}
+                    onPress={() => setTestimonyExpanded(false)}
+                  >
+                    <MaterialIcons name="expand-less" size={20} color={mutedText} />
+                    <ThemedText style={[styles.testimonyCollapseText, { color: mutedText }]}>
+                      Collapse Testimony Form
+                    </ThemedText>
+                  </Pressable>
+
+                  <TestimonyForm
+                    billNumber={bill.billNumber}
+                    billTitle={bill.title}
+                    committee={bill.committee || ''}
+                  />
+                </>
+              ) : (
+                <Pressable
+                  style={({ pressed }) => [
+                    styles.testimonyButton,
+                    { backgroundColor: tint },
+                    pressed && styles.pressed,
+                  ]}
+                  onPress={() => setTestimonyExpanded(true)}
+                >
+                  <MaterialIcons name="edit-note" size={22} color="#fff" />
+                  <ThemedText style={styles.testimonyButtonText}>
+                    Draft Testimony for {bill.billNumber}
+                  </ThemedText>
+                </Pressable>
+              )}
+            </>
+          )}
+
+          {!testimonyStatusLoading && !testimonyOpen && profile.role !== 'admin' && (
+            <View style={[styles.closedBanner, { backgroundColor: inputBackground, borderColor: border }]}>
+              <MaterialIcons name="lock" size={20} color={mutedText} />
+              <ThemedText style={[styles.closedBannerText, { color: mutedText }]}>
+                Testimony is not currently open for this bill.
+              </ThemedText>
+            </View>
+          )}
         </ContentContainer>
       </ScrollView>
     </ThemedView>
@@ -492,6 +553,16 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: Spacing.lg,
   },
+  adminRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  adminLabelGroup: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.sm,
+  },
   testimonyButton: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -506,5 +577,32 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 17,
     fontWeight: '700',
+  },
+  testimonyCollapseButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 10,
+    borderWidth: 1,
+    borderRadius: Radius.md,
+    gap: Spacing.xs,
+  },
+  testimonyCollapseText: {
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  closedBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: Spacing.sm,
+    paddingVertical: Spacing.lg,
+    paddingHorizontal: Spacing.xl,
+    borderWidth: 1,
+    borderRadius: Radius.md,
+  },
+  closedBannerText: {
+    fontSize: 15,
+    fontWeight: '500',
   },
 });

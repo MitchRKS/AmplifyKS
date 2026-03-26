@@ -10,6 +10,7 @@ export interface UserProfile {
   city: string;
   state: string;
   zip: string;
+  role: string;
 }
 
 const defaultProfile: UserProfile = {
@@ -18,6 +19,7 @@ const defaultProfile: UserProfile = {
   city: '',
   state: 'KS',
   zip: '',
+  role: 'user',
 };
 
 const PROFILE_COLLECTION = 'users';
