@@ -1,10 +1,10 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useCallback, useEffect, useState } from 'react';
 
 import { useAuth } from '@/contexts/auth-context';
+import { getFirestoreDb } from '@/services/firebase';
 import type { Official } from '@/services/openstates';
 
-const storageKey = (uid: string) => `@amplifyks_saved_officials_${uid}`;
+import { collection, deleteDoc, doc, onSnapshot, setDoc } from 'firebase/firestore';
 
 export function useSavedOfficials() {
   const { user } = useAuth();
@@ -18,42 +18,39 @@ export function useSavedOfficials() {
       return;
     }
 
-    const load = async () => {
-      try {
-        const raw = await AsyncStorage.getItem(storageKey(user.uid));
-        setSavedOfficials(raw ? JSON.parse(raw) : []);
-      } catch {
-        setSavedOfficials([]);
-      } finally {
+    const col = collection(getFirestoreDb(), 'users', user.uid, 'savedOfficials');
+    const unsubscribe = onSnapshot(
+      col,
+      (snapshot) => {
+        const officials = snapshot.docs.map((d) => d.data() as Official);
+        setSavedOfficials(officials);
         setIsLoaded(true);
-      }
-    };
-    load();
+      },
+      () => {
+        setSavedOfficials([]);
+        setIsLoaded(true);
+      },
+    );
+
+    return unsubscribe;
   }, [user]);
 
-  const persist = useCallback(
-    async (next: Official[]) => {
+  const saveOfficial = useCallback(
+    async (official: Official) => {
       if (!user) return;
-      setSavedOfficials(next);
-      await AsyncStorage.setItem(storageKey(user.uid), JSON.stringify(next));
+      const docRef = doc(getFirestoreDb(), 'users', user.uid, 'savedOfficials', official.id);
+      await setDoc(docRef, official);
     },
     [user],
   );
 
-  const saveOfficial = useCallback(
-    async (official: Official) => {
-      const exists = savedOfficials.some((o) => o.id === official.id);
-      if (exists) return;
-      await persist([...savedOfficials, official]);
-    },
-    [savedOfficials, persist],
-  );
-
   const removeOfficial = useCallback(
     async (officialId: string) => {
-      await persist(savedOfficials.filter((o) => o.id !== officialId));
+      if (!user) return;
+      const docRef = doc(getFirestoreDb(), 'users', user.uid, 'savedOfficials', officialId);
+      await deleteDoc(docRef);
     },
-    [savedOfficials, persist],
+    [user],
   );
 
   const isSaved = useCallback(

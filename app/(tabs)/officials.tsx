@@ -1,12 +1,12 @@
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { Image } from 'expo-image';
 import * as Location from 'expo-location';
+import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
   KeyboardAvoidingView,
-  Linking,
   Platform,
   Pressable,
   ScrollView,
@@ -24,6 +24,7 @@ import { useThemeColor } from '@/hooks/use-theme-color';
 import { getOfficialsByLocation, type Official } from '@/services/openstates';
 
 export default function OfficialsScreen() {
+  const router = useRouter();
   const [address, setAddress] = useState('');
   const [searchResults, setSearchResults] = useState<Official[]>([]);
   const [loading, setLoading] = useState(false);
@@ -120,41 +121,8 @@ export default function OfficialsScreen() {
     return mutedText;
   };
 
-  const handleContact = (official: Official) => {
-    const options: { text: string; onPress: () => void }[] = [];
-
-    if (official.email) {
-      options.push({
-        text: 'Email',
-        onPress: () => Linking.openURL(`mailto:${official.email}`),
-      });
-    }
-
-    const phone = official.contactDetails.find((c) => c.voice)?.voice;
-    if (phone) {
-      options.push({
-        text: 'Call',
-        onPress: () => Linking.openURL(`tel:${phone}`),
-      });
-    }
-
-    if (official.openstatesUrl) {
-      options.push({
-        text: 'View Profile',
-        onPress: () => Linking.openURL(official.openstatesUrl),
-      });
-    }
-
-    if (options.length === 0) {
-      Alert.alert('No Contact Info', 'No contact information is available for this official.');
-      return;
-    }
-
-    Alert.alert(
-      official.name,
-      `${official.party} — ${official.chamber} District ${official.district}`,
-      [...options.map((o) => ({ text: o.text, onPress: o.onPress })), { text: 'Cancel', style: 'cancel' as const }],
-    );
+  const openProfile = (official: Official) => {
+    router.push({ pathname: '/legislator-detail', params: { id: official.id } });
   };
 
   const toggleSave = (official: Official) => {
@@ -177,7 +145,7 @@ export default function OfficialsScreen() {
           Shadows.sm,
           pressed && styles.pressed,
         ]}
-        onPress={() => handleContact(item)}
+        onPress={() => openProfile(item)}
       >
         <View style={styles.cardRow}>
           {item.image ? (
@@ -185,8 +153,8 @@ export default function OfficialsScreen() {
           ) : (
             <View style={[styles.photo, styles.photoPlaceholder, { backgroundColor: inputBackground }]}>
               <ThemedText style={[styles.photoInitials, { color: mutedText }]}>
-                {item.givenName.charAt(0)}
-                {item.familyName.charAt(0)}
+                {(item.givenName ?? '').charAt(0)}
+                {(item.familyName ?? '').charAt(0)}
               </ThemedText>
             </View>
           )}

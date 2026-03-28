@@ -89,6 +89,13 @@ function MobileLayout() {
         }}
       />
       <Tabs.Screen
+        name="legislators"
+        options={{
+          title: 'Legislators',
+          tabBarIcon: ({ color }) => <MaterialIcons size={24} name="groups" color={color} />,
+        }}
+      />
+      <Tabs.Screen
         name="bills"
         options={{
           title: 'Bills',

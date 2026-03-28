@@ -235,6 +235,42 @@ export async function searchBills(query: string, state: string = 'KS', year?: nu
   return data.searchresult || [];
 }
 
+export interface SponsoredBillSummary {
+  billId: number;
+  billNumber: string;
+  title: string;
+  lastAction: string;
+  lastActionDate: string;
+  url: string;
+}
+
+export async function searchSponsoredBills(
+  lastName: string,
+): Promise<SponsoredBillSummary[]> {
+  const data = await makeApiRequest('search', {
+    state: 'KS',
+    query: `sponsor:${lastName}`,
+  });
+
+  const searchResult = data.searchresult ?? {};
+  const bills: SponsoredBillSummary[] = [];
+
+  for (const [key, value] of Object.entries(searchResult)) {
+    if (!/^\d+$/.test(key)) continue;
+    const item = value as Record<string, any>;
+    bills.push({
+      billId: item.bill_id,
+      billNumber: item.bill_number,
+      title: item.title ?? '',
+      lastAction: item.last_action ?? '',
+      lastActionDate: item.last_action_date ?? '',
+      url: item.url ?? '',
+    });
+  }
+
+  return bills;
+}
+
 /**
  * Map LegiScan status codes to readable status strings
  */

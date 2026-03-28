@@ -19,6 +19,7 @@ const NAV_ITEMS: NavItem[] = [
   { route: '/dashboard', label: 'Dashboard', icon: 'dashboard' },
   { route: '/actions', label: 'Actions', icon: 'campaign' },
   { route: '/officials', label: 'Electeds', icon: 'how-to-vote' },
+  { route: '/legislators', label: 'Legislators', icon: 'groups' },
   { route: '/bills', label: 'Bills', icon: 'description' },
 ];
 

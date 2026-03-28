@@ -2,8 +2,6 @@ import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
 import {
-  Alert,
-  Linking,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -17,7 +15,6 @@ import { Radius, Shadows, Spacing } from '@/constants/theme';
 import { useAuth } from '@/contexts/auth-context';
 import { useSavedOfficials } from '@/hooks/use-saved-officials';
 import { useThemeColor } from '@/hooks/use-theme-color';
-import type { Official } from '@/services/openstates';
 
 export default function DashboardScreen() {
   const router = useRouter();
@@ -33,47 +30,10 @@ export default function DashboardScreen() {
   const republican = useThemeColor({ light: '#fa3332', dark: '#FF6B6A' }, 'tint');
 
   const getPartyColor = (party: string) => {
-    const lower = party.toLowerCase();
+    const lower = (party ?? '').toLowerCase();
     if (lower.includes('democrat')) return democrat;
     if (lower.includes('republican')) return republican;
     return mutedText;
-  };
-
-  const handleContact = (official: Official) => {
-    const options: { text: string; onPress: () => void }[] = [];
-
-    if (official.email) {
-      options.push({
-        text: 'Email',
-        onPress: () => Linking.openURL(`mailto:${official.email}`),
-      });
-    }
-
-    const phone = official.contactDetails.find((c) => c.voice)?.voice;
-    if (phone) {
-      options.push({
-        text: 'Call',
-        onPress: () => Linking.openURL(`tel:${phone}`),
-      });
-    }
-
-    if (official.openstatesUrl) {
-      options.push({
-        text: 'View Profile',
-        onPress: () => Linking.openURL(official.openstatesUrl),
-      });
-    }
-
-    if (options.length === 0) {
-      Alert.alert('No Contact Info', 'No contact information is available for this official.');
-      return;
-    }
-
-    Alert.alert(
-      official.name,
-      `${official.party} — ${official.chamber} District ${official.district}`,
-      [...options.map((o) => ({ text: o.text, onPress: o.onPress })), { text: 'Cancel', style: 'cancel' as const }],
-    );
   };
 
   return (
@@ -152,7 +112,7 @@ export default function DashboardScreen() {
                     Shadows.sm,
                     pressed && styles.pressed,
                   ]}
-                  onPress={() => handleContact(official)}
+                  onPress={() => router.push({ pathname: '/legislator-detail', params: { id: official.id } })}
                 >
                   <View style={styles.cardRow}>
                     {official.image ? (
