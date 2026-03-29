@@ -1,5 +1,6 @@
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { usePathname, useRouter } from 'expo-router';
+import { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
@@ -8,18 +9,34 @@ import { useAuth } from '@/contexts/auth-context';
 
 type IconName = React.ComponentProps<typeof MaterialIcons>['name'];
 
+interface SubNavItem {
+  route: string;
+  label: string;
+}
+
 interface NavItem {
   route: string;
   label: string;
   icon: IconName;
+  children?: SubNavItem[];
+  activePrefix?: string;
 }
 
 const NAV_ITEMS: NavItem[] = [
   { route: '/profile', label: 'Profile', icon: 'person' },
   { route: '/dashboard', label: 'Dashboard', icon: 'dashboard' },
   { route: '/actions', label: 'Actions', icon: 'campaign' },
-  { route: '/officials', label: 'Electeds', icon: 'how-to-vote' },
-  { route: '/legislators', label: 'Legislators', icon: 'groups' },
+  {
+    route: '/officials/lookup',
+    label: 'Electeds',
+    icon: 'how-to-vote',
+    activePrefix: '/officials',
+    children: [
+      { route: '/officials/lookup', label: 'Lookup' },
+      { route: '/officials/state', label: 'State' },
+      { route: '/officials/federal', label: 'Federal' },
+    ],
+  },
   { route: '/bills', label: 'Bills', icon: 'description' },
 ];
 
@@ -33,6 +50,7 @@ export function WebSidebar() {
   const router = useRouter();
   const pathname = usePathname();
   const { logout } = useAuth();
+  const [hoveredGroup, setHoveredGroup] = useState<string | null>(null);
 
   const isActive = (route: string) => pathname === route || pathname.startsWith(route + '/');
 
@@ -52,6 +70,79 @@ export function WebSidebar() {
 
       <ScrollView style={styles.nav} showsVerticalScrollIndicator={false}>
         {NAV_ITEMS.map((item) => {
+          if (item.children) {
+            const groupActive = item.activePrefix
+              ? pathname.startsWith(item.activePrefix)
+              : isActive(item.route);
+            const showChildren = hoveredGroup === item.route || groupActive;
+
+            return (
+              <View
+                key={item.route}
+                onPointerEnter={() => setHoveredGroup(item.route)}
+                onPointerLeave={() => setHoveredGroup(null)}
+              >
+                <Pressable
+                  style={({ pressed }) => [
+                    styles.navItem,
+                    groupActive && { backgroundColor: ACTIVE_BG },
+                    pressed && !groupActive && { backgroundColor: HOVER_BG },
+                  ]}
+                  onPress={() => router.navigate(item.route as any)}
+                >
+                  <MaterialIcons
+                    name={item.icon}
+                    size={20}
+                    color={groupActive ? ACTIVE_COLOR : INACTIVE_COLOR}
+                  />
+                  <ThemedText
+                    style={[
+                      styles.navLabel,
+                      { color: groupActive ? ACTIVE_COLOR : INACTIVE_COLOR },
+                      groupActive && styles.navLabelActive,
+                    ]}
+                  >
+                    {item.label}
+                  </ThemedText>
+                  <MaterialIcons
+                    name={showChildren ? 'expand-less' : 'expand-more'}
+                    size={18}
+                    color={groupActive ? ACTIVE_COLOR : INACTIVE_COLOR}
+                  />
+                </Pressable>
+
+                {showChildren &&
+                  item.children.map((child) => {
+                    const childActive = pathname === child.route;
+                    return (
+                      <Pressable
+                        key={child.route}
+                        style={({ pressed }) => [
+                          styles.subNavItem,
+                          childActive && { backgroundColor: ACTIVE_BG },
+                          pressed && !childActive && { backgroundColor: HOVER_BG },
+                        ]}
+                        onPress={() => router.navigate(child.route as any)}
+                      >
+                        <ThemedText
+                          style={[
+                            styles.subNavLabel,
+                            { color: childActive ? ACTIVE_COLOR : INACTIVE_COLOR },
+                            childActive && styles.navLabelActive,
+                          ]}
+                        >
+                          {child.label}
+                        </ThemedText>
+                        {childActive && (
+                          <View style={[styles.activeIndicator, { backgroundColor: ACTIVE_COLOR }]} />
+                        )}
+                      </Pressable>
+                    );
+                  })}
+              </View>
+            );
+          }
+
           const active = isActive(item.route);
           return (
             <Pressable
@@ -166,6 +257,21 @@ const styles = StyleSheet.create({
     borderRadius: 2,
     position: 'absolute',
     right: 0,
+  },
+  subNavItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: Spacing.sm,
+    paddingLeft: 52,
+    paddingRight: Spacing.md,
+    borderRadius: 10,
+    marginBottom: 2,
+    position: 'relative',
+  },
+  subNavLabel: {
+    fontSize: 14,
+    fontWeight: '500',
+    flex: 1,
   },
   logoutButton: {
     flexDirection: 'row',

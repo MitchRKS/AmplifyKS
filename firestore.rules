@@ -1,22 +1,172 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
+    
+    // Helper function to check if user is authenticated
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    // Helper function to get user role
+    function getUserRole(uid) {
+      return get(/databases/$(database)/documents/users/$(uid)).data.role;
+    }
+    
+    // Helper function to check if user is admin or super admin
+    function isAdmin() {
+      return isAuthenticated() && 
+             getUserRole(request.auth.uid) in ['admin', 'super_admin'];
+    }
+    
+    // Helper function to check if user is super admin
+    function isSuperAdmin() {
+      return isAuthenticated() && 
+             getUserRole(request.auth.uid) == 'super_admin';
+    }
+    
+    // Helper function to check if user owns the document
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+    
+    // Users collection
     match /users/{userId} {
-      allow read, write: if request.auth != null && request.auth.uid == userId;
-
-      match /quizs/{docId} {
-        allow read, write: if request.auth != null && request.auth.uid == userId;
+      // Allow users to read and write their own document
+      allow read, write: if isAuthenticated() && request.auth.uid == userId;
+      
+      // Allow admins and super admins to read all user documents
+      allow read: if isAdmin();
+      
+      // Allow super admins to write (update/delete) any user document
+      allow write: if isSuperAdmin();
+      
+      // Allow new user creation during signup
+      allow create: if isAuthenticated() && 
+                    request.auth.uid == userId &&
+                    request.resource.data.keys().hasAll(['id', 'email', 'role', 'createdAt']) &&
+                    request.resource.data.id == userId &&
+                    request.resource.data.role == 'user';
+      
+      // TEMPORARY: Allow any user to promote themselves to admin if updating only the role field
+      // TODO: Remove this after initial admin setup!
+      allow update: if isAuthenticated() && 
+                    request.auth.uid == userId &&
+                    request.resource.data.diff(resource.data).affectedKeys().hasOnly(['role']);
+      
+      // Surveys subcollection - Users can read and write their own surveys
+      match /surveys/{surveyId} {
+        allow read, write: if isAuthenticated() && request.auth.uid == userId;
+        
+        // Allow admins to read all surveys
+        allow read: if isAdmin();
       }
 
+      // Saved Officials subcollection - Users can read and write their own saved officials
       match /savedOfficials/{officialId} {
-        allow read, write: if request.auth != null && request.auth.uid == userId;
+        allow read, write: if isAuthenticated() && request.auth.uid == userId;
+      }
+
+      // Quiz subcollection - Users can read and write their own quiz data
+      match /quizs/{docId} {
+        allow read, write: if isAuthenticated() && request.auth.uid == userId;
       }
     }
-
-    match /billTestimony/{billId} {
-      allow read: if request.auth != null;
-      allow write: if request.auth != null
-        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    
+    // Open Bills collection - Read by all authenticated users, Write by admins only
+    match /openBills/{billId} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin();
+    }
+    
+    // Committee Emails collection - Read by all authenticated users, Write by admins only
+    match /committeeEmails/{document=**} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin();
+    }
+    
+    // Bills collection - Public read, authenticated write
+    match /bills/{billId} {
+      allow read: if true;
+      allow write: if isAuthenticated();
+    }
+    
+    // Testimonies collection
+    match /testimonies/{testimonyId} {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated() && 
+                   (request.auth.uid == resource.data.userId || isAdmin());
+    }
+    
+    // Notes collection - User can only access their own notes
+    match /notes/{noteId} {
+      allow read, write: if isAuthenticated() && 
+                         request.auth.uid == resource.data.userId;
+    }
+    
+    // Surveys collection - Public read, admin write
+    match /surveys/{surveyId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+    
+    // Survey responses - Users can only access their own responses
+    match /survey_responses/{responseId} {
+      allow read, write: if isAuthenticated() && 
+                         request.auth.uid == resource.data.userId;
+    }
+    
+    // Bill Talking Points collection - Read by all authenticated users, Write by admins only
+    match /billTalkingPoints/{billId} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin();
+      
+      // Talking points subcollection
+      match /points/{pointId} {
+        allow read: if isAuthenticated();
+        allow write: if isAdmin();
+      }
+    }
+    
+    // Legislator Ratings collection - Users can rate legislators
+    match /legislatorRatings/{ratingId} {
+      // Anyone can read ratings
+      allow read: if true;
+      
+      // Users can only write their own ratings
+      // Rating ID format: userId_legislatorId
+      allow create: if isAuthenticated() && 
+                    ratingId.matches('^' + request.auth.uid + '_.*$') &&
+                    request.resource.data.userId == request.auth.uid &&
+                    request.resource.data.rating is int &&
+                    request.resource.data.rating >= 1 &&
+                    request.resource.data.rating <= 5;
+      
+      // Users can update their own ratings
+      allow update: if isAuthenticated() && 
+                    ratingId.matches('^' + request.auth.uid + '_.*$') &&
+                    resource.data.userId == request.auth.uid &&
+                    request.resource.data.rating is int &&
+                    request.resource.data.rating >= 1 &&
+                    request.resource.data.rating <= 5;
+      
+      // Users can delete their own ratings
+      allow delete: if isAuthenticated() && 
+                    ratingId.matches('^' + request.auth.uid + '_.*$') &&
+                    resource.data.userId == request.auth.uid;
+    }
+    
+    // Legislator Rating Stats collection - Read by all, Write by authenticated users
+    match /legislatorRatingStats/{legislatorId} {
+      // Anyone can read rating statistics
+      allow read: if true;
+      
+      // Only authenticated users can update stats (managed by the app)
+      allow write: if isAuthenticated();
+    }
+    
+    // Default deny all other collections
+    match /{document=**} {
+      allow read, write: if false;
     }
   }
 }

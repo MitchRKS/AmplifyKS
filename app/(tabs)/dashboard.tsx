@@ -120,8 +120,8 @@ export default function DashboardScreen() {
                     ) : (
                       <View style={[styles.photo, styles.photoPlaceholder, { backgroundColor: inputBackground }]}>
                         <ThemedText style={[styles.photoInitials, { color: mutedText }]}>
-                          {official.givenName.charAt(0)}
-                          {official.familyName.charAt(0)}
+                          {(official.givenName ?? '').charAt(0)}
+                          {(official.familyName ?? '').charAt(0)}
                         </ThemedText>
                       </View>
                     )}

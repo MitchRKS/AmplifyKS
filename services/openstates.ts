@@ -72,23 +72,30 @@ const chamberLabel = (orgClassification: string): string => {
   }
 };
 
-const transformPerson = (person: OpenStatesPerson): Official => ({
-  id: person.id,
-  name: person.name,
-  givenName: person.given_name ?? '',
-  familyName: person.family_name ?? '',
-  image: person.image ?? '',
-  email: person.email ?? '',
-  party: person.party ?? '',
-  chamber: person.current_role?.org_classification
-    ? chamberLabel(person.current_role.org_classification)
-    : '',
-  district: person.current_role?.district ?? '',
-  jurisdiction: person.jurisdiction?.name ?? '',
-  contactDetails: person.contact_details ?? [],
-  links: person.links ?? [],
-  openstatesUrl: person.openstates_url ?? '',
-});
+const transformPerson = (person: OpenStatesPerson): Official => {
+  const isFederal = person.jurisdiction?.name === 'United States';
+  const orgClass = person.current_role?.org_classification;
+  let chamber = orgClass ? chamberLabel(orgClass) : '';
+  if (isFederal && (chamber === 'Senate' || chamber === 'House')) {
+    chamber = `U.S. ${chamber}`;
+  }
+
+  return {
+    id: person.id,
+    name: person.name,
+    givenName: person.given_name ?? '',
+    familyName: person.family_name ?? '',
+    image: person.image ?? '',
+    email: person.email ?? '',
+    party: person.party ?? '',
+    chamber,
+    district: person.current_role?.district ?? '',
+    jurisdiction: person.jurisdiction?.name ?? '',
+    contactDetails: person.contact_details ?? [],
+    links: person.links ?? [],
+    openstatesUrl: person.openstates_url ?? '',
+  };
+};
 
 export const getOfficialsByLocation = async (
   lat: number,
@@ -255,4 +262,37 @@ export const getKansasLegislators = async (): Promise<Official[]> => {
   }
 
   return all;
+};
+
+const KS_CONGRESSIONAL_COORDS = [
+  { lat: 38.84, lng: -99.33 },
+  { lat: 39.05, lng: -95.68 },
+  { lat: 39.01, lng: -94.68 },
+  { lat: 37.69, lng: -97.34 },
+];
+
+export const getKansasFederalDelegation = async (): Promise<Official[]> => {
+  const calls = KS_CONGRESSIONAL_COORDS.map(async ({ lat, lng }) => {
+    try {
+      const url = `${OPENSTATES_BASE_URL}/people.geo?lat=${lat}&lng=${lng}`;
+      const response = await fetch(url, {
+        headers: { 'X-API-KEY': OPENSTATES_API_KEY },
+      });
+      if (!response.ok) return [];
+      const data: PeopleResponse = await response.json();
+      return data.results
+        .filter((p) => p.jurisdiction?.name === 'United States')
+        .map(transformPerson);
+    } catch {
+      return [];
+    }
+  });
+
+  const results = await Promise.all(calls);
+  const seen = new Set<string>();
+  return results.flat().filter((official) => {
+    if (seen.has(official.id)) return false;
+    seen.add(official.id);
+    return true;
+  });
 };

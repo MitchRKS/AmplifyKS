@@ -25,7 +25,7 @@ type ChamberFilter = 'All' | 'Senate' | 'House';
 type PartyFilter = 'All' | 'Democratic' | 'Republican';
 type SortOption = 'name' | 'district';
 
-export default function LegislatorsScreen() {
+export default function StateLegislatorsScreen() {
   const router = useRouter();
   const [legislators, setLegislators] = useState<Official[]>([]);
   const [loading, setLoading] = useState(true);
@@ -84,13 +84,10 @@ export default function LegislatorsScreen() {
           !query ||
           (l.name ?? '').toLowerCase().includes(query) ||
           (l.district ?? '').toLowerCase().includes(query);
-
         const matchesChamber =
           chamberFilter === 'All' || (l.chamber ?? '').toLowerCase() === chamberLower;
-
         const matchesParty =
           partyFilter === 'All' || (l.party ?? '').toLowerCase().startsWith(partyLower.slice(0, 3));
-
         return matchesSearch && matchesChamber && matchesParty;
       })
       .sort((a, b) => {
@@ -124,7 +121,6 @@ export default function LegislatorsScreen() {
 
   const renderCard = (item: Official) => {
     const saved = isSaved(item.id);
-
     return (
       <Pressable
         key={item.id}
@@ -147,7 +143,6 @@ export default function LegislatorsScreen() {
               </ThemedText>
             </View>
           )}
-
           <View style={styles.cardContent}>
             <View style={styles.nameRow}>
               <ThemedText type="defaultSemiBold" style={styles.officialName} numberOfLines={1}>
@@ -155,11 +150,8 @@ export default function LegislatorsScreen() {
               </ThemedText>
               <Pressable
                 accessibilityRole="button"
-                accessibilityLabel={saved ? 'Remove from saved' : 'Save legislator'}
-                onPress={(e) => {
-                  e.stopPropagation();
-                  toggleSave(item);
-                }}
+                accessibilityLabel={saved ? 'Remove from saved' : 'Save official'}
+                onPress={(e) => { e.stopPropagation(); toggleSave(item); }}
                 hitSlop={8}
                 style={styles.saveButton}
               >
@@ -170,32 +162,23 @@ export default function LegislatorsScreen() {
                 />
               </Pressable>
             </View>
-
             <View style={styles.tagRow}>
               {item.party ? (
                 <View style={[styles.partyBadge, { backgroundColor: getPartyColor(item.party) + '14' }]}>
-                  <ThemedText style={[styles.partyText, { color: getPartyColor(item.party) }]}>
-                    {item.party}
-                  </ThemedText>
+                  <ThemedText style={[styles.partyText, { color: getPartyColor(item.party) }]}>{item.party}</ThemedText>
                 </View>
               ) : null}
               {item.chamber ? (
                 <View style={[styles.chamberChip, { backgroundColor: border }]}>
-                  <ThemedText type="caption" style={{ color: mutedText }}>
-                    {item.chamber}
-                  </ThemedText>
+                  <ThemedText type="caption" style={{ color: mutedText }}>{item.chamber}</ThemedText>
                 </View>
               ) : null}
             </View>
-
             <ThemedText type="caption" style={{ color: mutedText }}>
               {item.district ? `District ${item.district}` : ''}
             </ThemedText>
-
             {item.email ? (
-              <ThemedText type="caption" style={{ color: tint }} numberOfLines={1}>
-                {item.email}
-              </ThemedText>
+              <ThemedText type="caption" style={{ color: tint }} numberOfLines={1}>{item.email}</ThemedText>
             ) : null}
           </View>
         </View>
@@ -208,16 +191,12 @@ export default function LegislatorsScreen() {
       <ScrollView
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
-        refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={tint} />
-        }
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={tint} />}
       >
         <ContentContainer>
           <View style={styles.header}>
-            <ThemedText type="title">Legislators</ThemedText>
-            <ThemedText style={[styles.subtitle, { color: mutedText }]}>
-              Current Kansas Legislature
-            </ThemedText>
+            <ThemedText type="title">State Legislature</ThemedText>
+            <ThemedText style={[styles.subtitle, { color: mutedText }]}>Current Kansas Legislature</ThemedText>
           </View>
 
           <View style={styles.searchRow}>
@@ -248,10 +227,7 @@ export default function LegislatorsScreen() {
                 onPress={() => setChamberFilter(chamber)}
               >
                 <ThemedText
-                  style={[
-                    styles.filterChipText,
-                    chamberFilter === chamber && { color: tint, fontWeight: '700' },
-                  ]}
+                  style={[styles.filterChipText, chamberFilter === chamber && { color: tint, fontWeight: '700' }]}
                 >
                   {chamber}
                 </ThemedText>
@@ -269,10 +245,7 @@ export default function LegislatorsScreen() {
                 onPress={() => setPartyFilter(party)}
               >
                 <ThemedText
-                  style={[
-                    styles.filterChipText,
-                    partyFilter === party && { color: tint, fontWeight: '700' },
-                  ]}
+                  style={[styles.filterChipText, partyFilter === party && { color: tint, fontWeight: '700' }]}
                 >
                   {party === 'All' ? 'All Parties' : party}
                 </ThemedText>
@@ -284,10 +257,7 @@ export default function LegislatorsScreen() {
             <ThemedText type="caption" style={{ color: mutedText }}>
               {filtered.length} legislator{filtered.length !== 1 ? 's' : ''}
             </ThemedText>
-            <Pressable
-              style={styles.sortToggle}
-              onPress={() => setSortBy(sortBy === 'name' ? 'district' : 'name')}
-            >
+            <Pressable style={styles.sortToggle} onPress={() => setSortBy(sortBy === 'name' ? 'district' : 'name')}>
               <MaterialIcons name="sort" size={14} color={tint} />
               <ThemedText type="caption" style={{ color: tint, fontWeight: '600' }}>
                 {sortBy === 'name' ? 'Name' : 'District'}
@@ -296,15 +266,13 @@ export default function LegislatorsScreen() {
           </View>
 
           {loading && legislators.length === 0 ? (
-            <View style={styles.loadingContainer}>
+            <View style={styles.centerContainer}>
               <ActivityIndicator size="large" color={tint} />
-              <ThemedText style={[styles.loadingText, { color: mutedText }]}>
-                Loading legislators...
-              </ThemedText>
+              <ThemedText style={{ color: mutedText, fontSize: 16 }}>Loading legislators...</ThemedText>
             </View>
           ) : filtered.length === 0 ? (
-            <View style={styles.emptyContainer}>
-              <ThemedText style={[styles.emptyText, { color: mutedText }]}>
+            <View style={styles.centerContainer}>
+              <ThemedText style={{ color: mutedText, fontSize: 16 }}>
                 {error
                   ? `Error: ${error}`
                   : searchQuery || chamberFilter !== 'All' || partyFilter !== 'All'
@@ -314,19 +282,14 @@ export default function LegislatorsScreen() {
               {error && (
                 <Pressable
                   style={[styles.retryButton, { backgroundColor: tint }]}
-                  onPress={() => {
-                    setLoading(true);
-                    fetchLegislators();
-                  }}
+                  onPress={() => { setLoading(true); fetchLegislators(); }}
                 >
                   <ThemedText style={styles.retryButtonText}>Retry</ThemedText>
                 </Pressable>
               )}
             </View>
           ) : (
-            <View style={styles.listSection}>
-              {filtered.map(renderCard)}
-            </View>
+            <View style={styles.listSection}>{filtered.map(renderCard)}</View>
           )}
         </ContentContainer>
       </ScrollView>
@@ -335,164 +298,35 @@ export default function LegislatorsScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  header: {
-    paddingHorizontal: Spacing.xl,
-    paddingTop: Spacing.md,
-    paddingBottom: Spacing.md,
-  },
-  subtitle: {
-    fontSize: 15,
-    marginTop: Spacing.xs,
-  },
-  searchRow: {
-    paddingHorizontal: Spacing.xl,
-    paddingBottom: Spacing.md,
-  },
-  searchInputWrapper: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    borderWidth: 1,
-    borderRadius: Radius.md,
-    paddingHorizontal: Spacing.md,
-    gap: Spacing.sm,
-  },
-  searchInput: {
-    flex: 1,
-    paddingVertical: 11,
-    fontSize: 16,
-  },
-  filterRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    paddingHorizontal: Spacing.xl,
-    paddingBottom: Spacing.md,
-    gap: Spacing.sm,
-    alignItems: 'center',
-  },
-  filterChip: {
-    borderWidth: 1,
-    borderRadius: Radius.sm,
-    paddingHorizontal: Spacing.md,
-    paddingVertical: Spacing.sm,
-  },
-  filterChipText: {
-    fontSize: 13,
-    fontWeight: '500',
-  },
-  filterDivider: {
-    width: 1,
-    height: 20,
-  },
-  resultsHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: Spacing.xl,
-    paddingBottom: Spacing.sm,
-  },
-  sortToggle: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    padding: Spacing.xs,
-  },
-  scrollContent: {
-    paddingBottom: Spacing['4xl'],
-  },
-  listSection: {
-    gap: Spacing.md,
-  },
-  card: {
-    borderWidth: 1,
-    borderRadius: Radius.lg,
-    padding: Spacing.lg,
-    marginBottom: Spacing.md,
-  },
-  cardRow: {
-    flexDirection: 'row',
-    gap: 14,
-  },
-  photo: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-  },
-  photoPlaceholder: {
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  photoInitials: {
-    fontSize: 18,
-    fontWeight: '600',
-  },
-  cardContent: {
-    flex: 1,
-    gap: 4,
-  },
-  nameRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: Spacing.sm,
-  },
-  officialName: {
-    fontSize: 16,
-    flex: 1,
-  },
-  saveButton: {
-    padding: 2,
-  },
-  tagRow: {
-    flexDirection: 'row',
-    gap: Spacing.sm,
-    flexWrap: 'wrap',
-  },
-  partyBadge: {
-    paddingHorizontal: Spacing.sm,
-    paddingVertical: 3,
-    borderRadius: Radius.sm,
-  },
-  partyText: {
-    fontSize: 12,
-    fontWeight: '700',
-  },
-  chamberChip: {
-    paddingHorizontal: Spacing.sm,
-    paddingVertical: 3,
-    borderRadius: Radius.sm,
-  },
-  pressed: {
-    opacity: 0.75,
-    transform: [{ scale: 0.98 }],
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    gap: Spacing.lg,
-  },
-  loadingText: {
-    fontSize: 16,
-  },
-  emptyContainer: {
-    paddingVertical: 60,
-    alignItems: 'center',
-  },
-  emptyText: {
-    fontSize: 16,
-  },
-  retryButton: {
-    marginTop: Spacing.lg,
-    paddingHorizontal: Spacing['2xl'],
-    paddingVertical: Spacing.md,
-    borderRadius: Radius.md,
-  },
-  retryButtonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '700',
-  },
+  container: { flex: 1 },
+  scrollContent: { paddingBottom: Spacing['4xl'] },
+  header: { paddingHorizontal: Spacing.xl, paddingTop: Spacing.md, paddingBottom: Spacing.md },
+  subtitle: { fontSize: 15, marginTop: Spacing.xs },
+  searchRow: { paddingHorizontal: Spacing.xl, paddingBottom: Spacing.md },
+  searchInputWrapper: { flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderRadius: Radius.md, paddingHorizontal: Spacing.md, gap: Spacing.sm },
+  searchInput: { flex: 1, paddingVertical: 11, fontSize: 16 },
+  filterRow: { flexDirection: 'row', flexWrap: 'wrap', paddingHorizontal: Spacing.xl, paddingBottom: Spacing.md, gap: Spacing.sm, alignItems: 'center' },
+  filterChip: { borderWidth: 1, borderRadius: Radius.sm, paddingHorizontal: Spacing.md, paddingVertical: Spacing.sm },
+  filterChipText: { fontSize: 13, fontWeight: '500' },
+  filterDivider: { width: 1, height: 20 },
+  resultsHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: Spacing.xl, paddingBottom: Spacing.sm },
+  sortToggle: { flexDirection: 'row', alignItems: 'center', gap: 4, padding: Spacing.xs },
+  listSection: { gap: Spacing.md },
+  card: { borderWidth: 1, borderRadius: Radius.lg, padding: Spacing.lg, marginBottom: Spacing.md },
+  cardRow: { flexDirection: 'row', gap: 14 },
+  photo: { width: 56, height: 56, borderRadius: 28 },
+  photoPlaceholder: { justifyContent: 'center', alignItems: 'center' },
+  photoInitials: { fontSize: 18, fontWeight: '600' },
+  cardContent: { flex: 1, gap: 4 },
+  nameRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: Spacing.sm },
+  officialName: { fontSize: 16, flex: 1 },
+  saveButton: { padding: 2 },
+  tagRow: { flexDirection: 'row', gap: Spacing.sm, flexWrap: 'wrap' },
+  partyBadge: { paddingHorizontal: Spacing.sm, paddingVertical: 3, borderRadius: Radius.sm },
+  partyText: { fontSize: 12, fontWeight: '700' },
+  chamberChip: { paddingHorizontal: Spacing.sm, paddingVertical: 3, borderRadius: Radius.sm },
+  pressed: { opacity: 0.75, transform: [{ scale: 0.98 }] },
+  centerContainer: { justifyContent: 'center', alignItems: 'center', paddingVertical: 60, gap: Spacing.md },
+  retryButton: { marginTop: Spacing.lg, paddingHorizontal: Spacing['2xl'], paddingVertical: Spacing.md, borderRadius: Radius.md },
+  retryButtonText: { color: '#fff', fontSize: 16, fontWeight: '700' },
 });

@@ -250,10 +250,10 @@ export default function LookupScreen() {
         <ContentContainer style={styles.content}>
           <View style={styles.hero}>
             <ThemedText type="title" style={styles.heroTitle}>
-              Who represents you in the Kansas Legislature?
+              Who represents you in Kansas?
             </ThemedText>
             <ThemedText style={[styles.heroSubtitle, { color: mutedText }]}>
-              Enter your address to find your state legislators and their contact information.
+              Enter your address to find your elected officials and their contact information.
             </ThemedText>
           </View>
 
@@ -318,7 +318,7 @@ export default function LookupScreen() {
           {!loading && searchResults.length > 0 && (
             <View style={styles.resultsSection}>
               <View style={styles.resultsHeader}>
-                <ThemedText type="subtitle">Your Legislators</ThemedText>
+                <ThemedText type="subtitle">Your Electeds</ThemedText>
                 <View style={[styles.countBadge, { backgroundColor: tint + '15' }]}>
                   <ThemedText style={[styles.countText, { color: tint }]}>
                     {searchResults.length}
@@ -345,7 +345,7 @@ export default function LookupScreen() {
               </ThemedText>
               <View style={styles.featuresGrid}>
                 {[
-                  { icon: 'how-to-vote' as const, title: 'Find Officials', desc: 'Look up your Kansas state legislators by address' },
+                  { icon: 'how-to-vote' as const, title: 'Find Officials', desc: 'Look up your Kansas elected officials by address' },
                   { icon: 'description' as const, title: 'Track Bills', desc: 'Follow legislation through the Kansas Legislature' },
                   { icon: 'edit-note' as const, title: 'Submit Testimony', desc: 'Draft and send testimony directly to committees' },
                   { icon: 'bookmark' as const, title: 'Save & Organize', desc: 'Save your officials and bills for quick access' },
@@ -382,7 +382,7 @@ export default function LookupScreen() {
 
             <MaterialIcons name="bookmark-border" size={36} color="rgba(255,255,255,0.85)" />
             <ThemedText style={styles.modalTitle}>
-              Want to save your legislators?
+              Want to save your elected officials?
             </ThemedText>
             <ThemedText style={styles.modalBody}>
               Create a free AmplifyKS account to save your officials, track bills, and submit testimony directly to committees.

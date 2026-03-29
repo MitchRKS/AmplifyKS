@@ -4,7 +4,10 @@ import { useAuth } from '@/contexts/auth-context';
 import { getFirestoreDb } from '@/services/firebase';
 import type { Official } from '@/services/openstates';
 
-import { collection, deleteDoc, doc, onSnapshot, setDoc } from 'firebase/firestore';
+import { collection, deleteDoc, doc, onSnapshot, setDoc, writeBatch } from 'firebase/firestore';
+
+const stripUndefined = (obj: Record<string, unknown>): Record<string, unknown> =>
+  JSON.parse(JSON.stringify(obj));
 
 export function useSavedOfficials() {
   const { user } = useAuth();
@@ -26,7 +29,8 @@ export function useSavedOfficials() {
         setSavedOfficials(officials);
         setIsLoaded(true);
       },
-      () => {
+      (error) => {
+        console.error('savedOfficials listener failed:', error);
         setSavedOfficials([]);
         setIsLoaded(true);
       },
@@ -39,7 +43,7 @@ export function useSavedOfficials() {
     async (official: Official) => {
       if (!user) return;
       const docRef = doc(getFirestoreDb(), 'users', user.uid, 'savedOfficials', official.id);
-      await setDoc(docRef, official);
+      await setDoc(docRef, stripUndefined(official as unknown as Record<string, unknown>));
     },
     [user],
   );
@@ -53,10 +57,24 @@ export function useSavedOfficials() {
     [user],
   );
 
+  const saveMultipleOfficials = useCallback(
+    async (officials: Official[]) => {
+      if (!user || officials.length === 0) return;
+      const db = getFirestoreDb();
+      const batch = writeBatch(db);
+      for (const official of officials) {
+        const docRef = doc(db, 'users', user.uid, 'savedOfficials', official.id);
+        batch.set(docRef, stripUndefined(official as unknown as Record<string, unknown>));
+      }
+      await batch.commit();
+    },
+    [user],
+  );
+
   const isSaved = useCallback(
     (officialId: string) => savedOfficials.some((o) => o.id === officialId),
     [savedOfficials],
   );
 
-  return { savedOfficials, isLoaded, saveOfficial, removeOfficial, isSaved };
+  return { savedOfficials, isLoaded, saveOfficial, removeOfficial, saveMultipleOfficials, isSaved };
 }
