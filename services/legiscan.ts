@@ -97,7 +97,12 @@ interface BillDetailResponse extends LegiscanResponse {
       url: string;
       state_link: string;
     }>;
-    votes: Array<any>;
+    votes: Array<{
+      roll_call_id: number;
+      date?: string;
+      desc?: string;
+      chamber?: string;
+    }>;
     amendments: Array<any>;
     supplements: Array<any>;
     calendar: Array<any>;
@@ -242,6 +247,153 @@ export interface SponsoredBillSummary {
   lastAction: string;
   lastActionDate: string;
   url: string;
+}
+
+// ── Voting Record Types & Functions ──
+
+interface SessionPerson {
+  people_id: number;
+  name: string;
+  first_name: string;
+  last_name: string;
+  district: string;
+  role: string;
+}
+
+interface RollCallVote {
+  people_id: number;
+  vote_id: number;
+  vote_text: string;
+}
+
+interface RollCall {
+  roll_call_id: number;
+  bill_id: number;
+  date: string | null;
+  desc: string | null;
+  chamber: string | null;
+  votes: RollCallVote[];
+}
+
+export interface LegislatorVoteRecord {
+  billNumber: string;
+  billTitle: string;
+  voteText: string;
+  voteDate: string | null;
+}
+
+const sessionPeopleCache = new Map<number, SessionPerson[]>();
+const rollCallCache = new Map<number, RollCall>();
+const votingRecordCache = new Map<string, LegislatorVoteRecord[]>();
+
+async function getSessionPeople(sessionId: number): Promise<SessionPerson[]> {
+  if (sessionPeopleCache.has(sessionId)) return sessionPeopleCache.get(sessionId)!;
+
+  const data = await makeApiRequest('getSessionPeople', { id: sessionId });
+  const people: SessionPerson[] = data.sessionpeople?.people ?? [];
+  sessionPeopleCache.set(sessionId, people);
+  return people;
+}
+
+async function getRollCall(rollCallId: number): Promise<RollCall> {
+  if (rollCallCache.has(rollCallId)) return rollCallCache.get(rollCallId)!;
+
+  const data = await makeApiRequest('getRollCall', { id: rollCallId });
+  const rollCall: RollCall = data.roll_call;
+  rollCallCache.set(rollCallId, rollCall);
+  return rollCall;
+}
+
+const matchesLegislatorName = (apiName: string, targetName: string): boolean => {
+  const normalize = (s: string) => s.toLowerCase().replace(/[^a-z ]/g, '').trim();
+  const api = normalize(apiName);
+  const target = normalize(targetName);
+  if (api === target) return true;
+
+  const apiParts = api.split(/\s+/);
+  const targetParts = target.split(/\s+/);
+  const apiLast = apiParts[apiParts.length - 1];
+  const targetLast = targetParts[targetParts.length - 1];
+  return apiLast === targetLast && apiParts[0][0] === targetParts[0][0];
+};
+
+async function resolvePeopleId(
+  legislatorName: string,
+  district: string,
+  chamber: string,
+  sessionId: number,
+): Promise<number | null> {
+  const people = await getSessionPeople(sessionId);
+  const districtNum = parseInt(district, 10);
+  const chamberRole = chamber.toLowerCase().includes('senate') ? 'Sen' : 'Rep';
+
+  const candidates = people.filter((p) => {
+    const pDistrict = parseInt(p.district, 10);
+    if (!isNaN(districtNum) && !isNaN(pDistrict) && pDistrict === districtNum) {
+      if (p.role?.startsWith(chamberRole)) return true;
+    }
+    return false;
+  });
+
+  const byName = candidates.find((p) => matchesLegislatorName(p.name, legislatorName));
+  if (byName) return byName.people_id;
+  if (candidates.length === 1) return candidates[0].people_id;
+
+  const fallback = people.find((p) => matchesLegislatorName(p.name, legislatorName));
+  return fallback?.people_id ?? null;
+}
+
+export async function fetchVotingRecord(
+  legislatorName: string,
+  district: string,
+  chamber: string,
+  maxBillScans: number = 200,
+): Promise<LegislatorVoteRecord[]> {
+  const sessionId = await getCurrentSession();
+  const cacheKey = `${legislatorName}_${district}_${chamber}_${sessionId}`;
+
+  if (votingRecordCache.has(cacheKey)) return votingRecordCache.get(cacheKey)!;
+
+  const peopleId = await resolvePeopleId(legislatorName, district, chamber, sessionId);
+  if (peopleId == null) return [];
+
+  const allBills = await getMasterList(sessionId);
+  const sorted = [...allBills]
+    .sort((a, b) => (b.last_action_date ?? '').localeCompare(a.last_action_date ?? ''))
+    .slice(0, maxBillScans);
+
+  const records: LegislatorVoteRecord[] = [];
+  const seenRollCalls = new Set<number>();
+
+  for (const bill of sorted) {
+    try {
+      const detail = await getBillDetail(bill.bill_id);
+      if (!detail.votes || detail.votes.length === 0) continue;
+
+      for (const voteSummary of detail.votes) {
+        const rollCallId = voteSummary.roll_call_id;
+        if (!rollCallId || seenRollCalls.has(rollCallId)) continue;
+
+        const rollCall = await getRollCall(rollCallId);
+        const legislatorVote = rollCall.votes.find((v) => v.people_id === peopleId);
+        if (!legislatorVote) continue;
+
+        seenRollCalls.add(rollCallId);
+        records.push({
+          billNumber: detail.bill_number ?? bill.number,
+          billTitle: detail.title ?? bill.title,
+          voteText: legislatorVote.vote_text,
+          voteDate: rollCall.date ?? voteSummary.date ?? null,
+        });
+      }
+    } catch {
+      continue;
+    }
+  }
+
+  records.sort((a, b) => (b.voteDate ?? '').localeCompare(a.voteDate ?? ''));
+  votingRecordCache.set(cacheKey, records);
+  return records;
 }
 
 export async function searchSponsoredBills(

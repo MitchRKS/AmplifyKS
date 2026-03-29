@@ -9,6 +9,8 @@ import { collection, deleteDoc, doc, onSnapshot, setDoc, writeBatch } from 'fire
 const stripUndefined = (obj: Record<string, unknown>): Record<string, unknown> =>
   JSON.parse(JSON.stringify(obj));
 
+const toDocId = (id: string) => id.replaceAll('/', '_');
+
 export function useSavedOfficials() {
   const { user } = useAuth();
   const [savedOfficials, setSavedOfficials] = useState<Official[]>([]);
@@ -42,7 +44,7 @@ export function useSavedOfficials() {
   const saveOfficial = useCallback(
     async (official: Official) => {
       if (!user) return;
-      const docRef = doc(getFirestoreDb(), 'users', user.uid, 'savedOfficials', official.id);
+      const docRef = doc(getFirestoreDb(), 'users', user.uid, 'savedOfficials', toDocId(official.id));
       await setDoc(docRef, stripUndefined(official as unknown as Record<string, unknown>));
     },
     [user],
@@ -51,7 +53,7 @@ export function useSavedOfficials() {
   const removeOfficial = useCallback(
     async (officialId: string) => {
       if (!user) return;
-      const docRef = doc(getFirestoreDb(), 'users', user.uid, 'savedOfficials', officialId);
+      const docRef = doc(getFirestoreDb(), 'users', user.uid, 'savedOfficials', toDocId(officialId));
       await deleteDoc(docRef);
     },
     [user],
@@ -63,7 +65,7 @@ export function useSavedOfficials() {
       const db = getFirestoreDb();
       const batch = writeBatch(db);
       for (const official of officials) {
-        const docRef = doc(db, 'users', user.uid, 'savedOfficials', official.id);
+        const docRef = doc(db, 'users', user.uid, 'savedOfficials', toDocId(official.id));
         batch.set(docRef, stripUndefined(official as unknown as Record<string, unknown>));
       }
       await batch.commit();

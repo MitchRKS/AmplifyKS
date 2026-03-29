@@ -15,7 +15,7 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Radius, Shadows, Spacing } from '@/constants/theme';
 import { useOpenTestimonyBillIds } from '@/hooks/use-open-testimony-bills';
-import { alignmentLabel, useQuiz } from '@/hooks/use-quiz';
+import { useQuiz } from '@/hooks/use-quiz';
 import { useThemeColor } from '@/hooks/use-theme-color';
 import * as LegiscanAPI from '@/services/legiscan';
 
@@ -215,8 +215,8 @@ export default function ActionsScreen() {
                 </ThemedText>
                 <ThemedText type="caption" style={{ color: mutedText, lineHeight: 18 }}>
                   {quiz.hasTakenQuiz && quiz.result
-                    ? `${alignmentLabel(quiz.result.mainstreamAlignmentScore)} — ${quiz.result.mainstreamAlignmentScore}%`
-                    : 'Answer 10 questions to see where you stand on Kansas issues.'}
+                    ? 'Quiz complete — view legislator profiles to see your match scores.'
+                    : 'Answer 10 questions to match your positions with legislators\' voting records.'}
                 </ThemedText>
               </View>
               <MaterialIcons name="chevron-right" size={22} color={mutedText} />

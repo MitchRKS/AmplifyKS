@@ -21,7 +21,8 @@ import {
   type ResponseValue,
 } from '@/constants/quiz-questions';
 import { Radius, Shadows, Spacing } from '@/constants/theme';
-import { alignmentLabel, categoryAlignmentPercent, useQuiz } from '@/hooks/use-quiz';
+import { useQuiz } from '@/hooks/use-quiz';
+import { positionText } from '@/services/legislator-match-engine';
 import { useThemeColor } from '@/hooks/use-theme-color';
 
 type IconName = React.ComponentProps<typeof MaterialIcons>['name'];
@@ -84,6 +85,10 @@ export default function QuizScreen() {
         result={quiz.result}
         onDone={() => router.back()}
         onRetake={handleRetake}
+        onViewLegislators={() => {
+          router.back();
+          setTimeout(() => router.push('/(tabs)/officials'), 100);
+        }}
         tint={tint}
         mutedText={mutedText}
         surface={surface}
@@ -227,6 +232,7 @@ function ResultsView({
   result,
   onDone,
   onRetake,
+  onViewLegislators,
   tint,
   mutedText,
   surface,
@@ -235,6 +241,7 @@ function ResultsView({
   result: ReturnType<typeof useQuiz>['result'];
   onDone: () => void;
   onRetake: () => void;
+  onViewLegislators: () => void;
   tint: string;
   mutedText: string;
   surface: string;
@@ -249,12 +256,6 @@ function ResultsView({
       </ThemedView>
     );
   }
-
-  const barColor = (pct: number) => {
-    if (pct >= 75) return '#4CAF50';
-    if (pct >= 50) return '#ffc629';
-    return '#fa3332';
-  };
 
   return (
     <ThemedView style={styles.container}>
@@ -283,19 +284,7 @@ function ResultsView({
               Quiz Complete!
             </ThemedText>
             <ThemedText type="caption" style={[styles.resultSubtitle, { color: mutedText }]}>
-              See how your positions align.
-            </ThemedText>
-          </View>
-
-          <View style={[styles.card, { backgroundColor: surface, borderColor: border }, Shadows.sm]}>
-            <ThemedText type="subtitle" style={styles.sectionTitle}>
-              Overall Alignment
-            </ThemedText>
-            <ThemedText type="title" style={[styles.scoreText, { color: tint }]}>
-              {result.mainstreamAlignmentScore}%
-            </ThemedText>
-            <ThemedText type="caption" style={{ color: mutedText, textAlign: 'center' }}>
-              {alignmentLabel(result.mainstreamAlignmentScore)}
+              Your positions have been recorded. Visit a legislator's profile to see how you match.
             </ThemedText>
           </View>
 
@@ -307,7 +296,7 @@ function ResultsView({
             {ISSUE_CATEGORIES.map((cat) => {
               const score = result.categoryScores[cat];
               if (score == null) return null;
-              const pct = categoryAlignmentPercent(score);
+              const label = positionText(score);
               return (
                 <View key={cat} style={styles.categoryRow}>
                   <View style={styles.categoryHeader}>
@@ -319,13 +308,16 @@ function ResultsView({
                       />
                       <ThemedText style={styles.categoryLabel}>{cat}</ThemedText>
                     </View>
-                    <ThemedText style={[styles.categoryPct, { color: barColor(pct) }]}>
-                      {pct}%
+                    <ThemedText style={[styles.categoryPct, { color: tint }]}>
+                      {label}
                     </ThemedText>
                   </View>
                   <View style={[styles.barOuter, { backgroundColor: border + '40' }]}>
                     <View
-                      style={[styles.barInner, { backgroundColor: barColor(pct), width: `${pct}%` }]}
+                      style={[
+                        styles.barInner,
+                        { backgroundColor: tint, width: `${Math.round(((score - 1) / 4) * 100)}%` },
+                      ]}
                     />
                   </View>
                 </View>
@@ -340,9 +332,10 @@ function ResultsView({
                 { backgroundColor: tint },
                 pressed && styles.pressed,
               ]}
-              onPress={onDone}
+              onPress={onViewLegislators}
             >
-              <ThemedText style={styles.resultButtonText}>Done</ThemedText>
+              <MaterialIcons name="people" size={20} color="#fff" />
+              <ThemedText style={styles.resultButtonText}>See Legislator Matches</ThemedText>
             </Pressable>
             <Pressable
               style={({ pressed }) => [

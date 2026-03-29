@@ -21,8 +21,6 @@ export interface QuizResultSummary {
   completedDate: Date;
   categoryScores: Partial<Record<IssueCategory, number>>;
   totalQuestionsAnswered: number;
-  mainstreamAlignmentScore: number;
-  overallProgressiveness: number;
 }
 
 interface QuizState {
@@ -54,16 +52,11 @@ const computeResults = (responses: Record<string, UserQuizResponse>): QuizResult
   }
 
   const answered = Object.values(responses).filter((r) => !r.isSkipped).length;
-  const scoreValues = Object.values(categoryScores).filter((v): v is number => v != null && v > 0);
-  const avg = scoreValues.length > 0 ? scoreValues.reduce((a, b) => a + b, 0) / scoreValues.length : 0;
-  const alignment = scoreValues.length > 0 ? Math.round(((avg - 1) / 4) * 100) : 0;
 
   return {
     completedDate: new Date(),
     categoryScores,
     totalQuestionsAnswered: answered,
-    mainstreamAlignmentScore: alignment,
-    overallProgressiveness: avg,
   };
 };
 
@@ -125,8 +118,6 @@ export function useQuiz() {
           completedDate: data.completedDate?.toDate?.() ?? new Date(),
           categoryScores,
           totalQuestionsAnswered: data.totalQuestionsAnswered ?? 0,
-          mainstreamAlignmentScore: data.mainstreamAlignmentScore ?? 0,
-          overallProgressiveness: data.overallProgressiveness ?? 0,
         };
 
         setState({
@@ -221,8 +212,6 @@ export function useQuiz() {
         categoryScores: categoryScoresDict,
         totalQuestionsAnswered: result.totalQuestionsAnswered,
         responses: responsesArray,
-        overallProgressiveness: result.overallProgressiveness,
-        mainstreamAlignmentScore: result.mainstreamAlignmentScore,
       });
     } catch (err) {
       console.error('Quiz Firebase save failed:', err);
@@ -256,14 +245,3 @@ export function useQuiz() {
   };
 }
 
-export const alignmentLabel = (score: number): string => {
-  if (score >= 80) return 'Strong Alignment';
-  if (score >= 60) return 'Moderate Alignment';
-  if (score >= 40) return 'Some Alignment';
-  return 'Low Alignment';
-};
-
-export const categoryAlignmentPercent = (score: number): number => {
-  if (score <= 0) return 0;
-  return Math.round(((score - 1) / 4) * 100);
-};

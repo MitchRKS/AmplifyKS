@@ -3,13 +3,15 @@ import { Image } from 'expo-image';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import * as WebBrowser from 'expo-web-browser';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Linking, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, Linking, Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
+import { MatchScoreBadge } from '@/components/legislator-match-detail';
 import { ContentContainer } from '@/components/content-container';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { Radius, Shadows, Spacing } from '@/constants/theme';
+import { useLegislatorMatch } from '@/hooks/use-legislator-match';
 import { useSavedOfficials } from '@/hooks/use-saved-officials';
 import { useThemeColor } from '@/hooks/use-theme-color';
 import {
@@ -45,6 +47,7 @@ export default function LegislatorDetailScreen() {
   const billsLoaded = useRef(false);
 
   const { saveOfficial, removeOfficial, isSaved } = useSavedOfficials();
+  const { getMatch, computeScore, isMatchAvailable, bt50Loaded } = useLegislatorMatch();
 
   const tint = useThemeColor({ light: '#0097b2', dark: '#33C4DB' }, 'tint');
   const mutedText = useThemeColor({ light: '#5E6368', dark: '#9CA3AF' }, 'text');
@@ -69,6 +72,12 @@ export default function LegislatorDetailScreen() {
     };
     load();
   }, [params.id]);
+
+  useEffect(() => {
+    if (legislator && isMatchAvailable && bt50Loaded) {
+      computeScore(legislator);
+    }
+  }, [legislator, isMatchAvailable, bt50Loaded, computeScore]);
 
   const loadCommittees = useCallback(async () => {
     if (committeesLoaded.current || !legislator) return;
@@ -224,6 +233,10 @@ export default function LegislatorDetailScreen() {
                   </ThemedText>
                 </View>
               ) : null}
+              {(() => {
+                const match = getMatch(legislator);
+                return match ? <MatchScoreBadge percent={match.compositePercent} /> : null;
+              })()}
             </View>
           </View>
 
@@ -329,7 +342,7 @@ function ContactTab({
 }) {
   return (
     <>
-      {(legislator.email || capitolOffice?.voice) && (
+      {Platform.OS !== 'web' && (legislator.email || capitolOffice?.voice) && (
         <View style={styles.quickActions}>
           {legislator.email ? (
             <Pressable
@@ -360,10 +373,10 @@ function ContactTab({
         </View>
       )}
 
-      {legislator.offices.length > 0 && (
+      {(legislator.offices.length > 0 || legislator.email) && (
         <View style={[styles.card, { backgroundColor: surface, borderColor: border }, Shadows.sm]}>
           <ThemedText type="defaultSemiBold" style={styles.sectionTitle}>
-            Offices
+            Contact
           </ThemedText>
           {legislator.offices.map((office, i) => (
             <View
@@ -411,77 +424,23 @@ function ContactTab({
               ) : null}
             </View>
           ))}
-        </View>
-      )}
-
-      {legislator.email && (
-        <View style={[styles.card, { backgroundColor: surface, borderColor: border }, Shadows.sm]}>
-          <ThemedText type="defaultSemiBold" style={styles.sectionTitle}>
-            Email
-          </ThemedText>
-          <Pressable onPress={() => Linking.openURL(`mailto:${legislator.email}`)}>
-            <View style={styles.infoRow}>
-              <MaterialIcons name="email" size={16} color={mutedText} />
-              <ThemedText style={[styles.infoText, { color: tint }]}>
-                {legislator.email}
-              </ThemedText>
-            </View>
-          </Pressable>
-        </View>
-      )}
-
-      {(legislator.legislatureLinks.length > 0 ||
-        legislator.sources.length > 0 ||
-        legislator.openstatesUrl) && (
-        <View style={[styles.card, { backgroundColor: surface, borderColor: border }, Shadows.sm]}>
-          <ThemedText type="defaultSemiBold" style={styles.sectionTitle}>
-            Links
-          </ThemedText>
-          {legislator.legislatureLinks.map((link, i) => (
-            <Pressable
-              key={`link-${i}`}
-              style={({ pressed }) => [styles.linkRow, pressed && styles.pressed]}
-              onPress={() => WebBrowser.openBrowserAsync(link.url)}
+          {legislator.email ? (
+            <View
+              style={[
+                styles.officeBlock,
+                legislator.offices.length > 0 && { borderTopWidth: 1, borderTopColor: border, paddingTop: Spacing.md },
+              ]}
             >
-              <ThemedText style={[styles.linkText, { color: tint }]} numberOfLines={1}>
-                {link.note || 'Legislature Website'}
-              </ThemedText>
-              <IconSymbol name="arrow.up.right" size={16} color={tint} />
-            </Pressable>
-          ))}
-          {legislator.openstatesUrl ? (
-            <>
-              {legislator.legislatureLinks.length > 0 && (
-                <View style={[styles.linkDivider, { backgroundColor: border }]} />
-              )}
-              <Pressable
-                style={({ pressed }) => [styles.linkRow, pressed && styles.pressed]}
-                onPress={() => WebBrowser.openBrowserAsync(legislator.openstatesUrl)}
-              >
-                <ThemedText style={[styles.linkText, { color: tint }]}>
-                  OpenStates Profile
-                </ThemedText>
-                <IconSymbol name="arrow.up.right" size={16} color={tint} />
-              </Pressable>
-            </>
-          ) : null}
-          {legislator.sources.map((source, i) => {
-            const label = labelForSource(source.url);
-            return (
-              <View key={`source-${i}`}>
-                <View style={[styles.linkDivider, { backgroundColor: border }]} />
-                <Pressable
-                  style={({ pressed }) => [styles.linkRow, pressed && styles.pressed]}
-                  onPress={() => WebBrowser.openBrowserAsync(source.url)}
-                >
-                  <ThemedText style={[styles.linkText, { color: tint }]} numberOfLines={1}>
-                    {source.note || label}
+              <Pressable onPress={() => Linking.openURL(`mailto:${legislator.email}`)}>
+                <View style={styles.infoRow}>
+                  <MaterialIcons name="email" size={16} color={mutedText} />
+                  <ThemedText style={[styles.infoText, { color: tint }]}>
+                    {legislator.email}
                   </ThemedText>
-                  <IconSymbol name="arrow.up.right" size={16} color={tint} />
-                </Pressable>
-              </View>
-            );
-          })}
+                </View>
+              </Pressable>
+            </View>
+          ) : null}
         </View>
       )}
     </>
@@ -755,20 +714,6 @@ function VotesTab({
   );
 }
 
-/* ── Helpers ── */
-
-const labelForSource = (url: string): string => {
-  if (url.includes('ballotpedia')) return 'Ballotpedia';
-  if (url.includes('linkedin')) return 'LinkedIn';
-  if (url.includes('kslegislature')) return 'Kansas Legislature';
-  if (url.includes('wikipedia')) return 'Wikipedia';
-  try {
-    return new URL(url).hostname.replace('www.', '');
-  } catch {
-    return 'Website';
-  }
-};
-
 /* ── Styles ── */
 
 const styles = StyleSheet.create({
@@ -914,20 +859,6 @@ const styles = StyleSheet.create({
   infoText: {
     fontSize: 15,
     lineHeight: 22,
-    flex: 1,
-  },
-  linkRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: Spacing.md,
-  },
-  linkDivider: {
-    height: 1,
-  },
-  linkText: {
-    fontSize: 15,
-    fontWeight: '600',
     flex: 1,
   },
   pressed: {

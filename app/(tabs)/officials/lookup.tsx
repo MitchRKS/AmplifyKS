@@ -16,10 +16,12 @@ import {
   View,
 } from 'react-native';
 
+import { MatchScoreBadge } from '@/components/legislator-match-detail';
 import { ContentContainer } from '@/components/content-container';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Radius, Shadows, Spacing } from '@/constants/theme';
+import { useLegislatorMatch } from '@/hooks/use-legislator-match';
 import { useSavedOfficials } from '@/hooks/use-saved-officials';
 import { useThemeColor } from '@/hooks/use-theme-color';
 import { getOfficialsByLocation, type Official } from '@/services/openstates';
@@ -34,6 +36,7 @@ export default function LookupScreen() {
   const [saving, setSaving] = useState(false);
 
   const { savedOfficials, saveOfficial, removeOfficial, saveMultipleOfficials, isSaved } = useSavedOfficials();
+  const { getMatch } = useLegislatorMatch();
 
   const surface = useThemeColor({ light: '#FFFFFF', dark: '#1C1F26' }, 'background');
   const inputBackground = useThemeColor({ light: '#F0F2F5', dark: '#1C1F26' }, 'background');
@@ -214,9 +217,15 @@ export default function LookupScreen() {
                 </View>
               ) : null}
             </View>
-            <ThemedText type="caption" style={{ color: mutedText }}>
-              {item.district ? `District ${item.district}` : ''}
-            </ThemedText>
+            <View style={styles.districtRow}>
+              <ThemedText type="caption" style={{ color: mutedText }}>
+                {item.district ? `District ${item.district}` : ''}
+              </ThemedText>
+              {(() => {
+                const match = getMatch(item);
+                return match ? <MatchScoreBadge percent={match.compositePercent} /> : null;
+              })()}
+            </View>
             {item.email ? (
               <ThemedText type="caption" style={{ color: tint }} numberOfLines={1}>{item.email}</ThemedText>
             ) : null}
@@ -445,6 +454,7 @@ const styles = StyleSheet.create({
   partyBadge: { paddingHorizontal: Spacing.sm, paddingVertical: 3, borderRadius: Radius.sm },
   partyText: { fontSize: 12, fontWeight: '700' },
   chamberChip: { paddingHorizontal: Spacing.sm, paddingVertical: 3, borderRadius: Radius.sm },
+  districtRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   removeButton: { flexDirection: 'row', alignItems: 'center', alignSelf: 'flex-end', gap: Spacing.xs, marginTop: Spacing.md, paddingHorizontal: Spacing.md, paddingVertical: Spacing.xs, borderWidth: 1, borderRadius: Radius.sm },
   pressed: { opacity: 0.75, transform: [{ scale: 0.98 }] },
   centerContainer: { justifyContent: 'center', alignItems: 'center', paddingVertical: 60, gap: Spacing.md },
