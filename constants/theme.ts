@@ -96,9 +96,15 @@ export const Shadows = {
   },
 } as const;
 
+export const Breakpoints = {
+  mobile: 600,
+  tablet: 900,
+} as const;
+
 export const Layout = {
   maxContentWidth: 680,
   screenPadding: 20,
+  sidebarWidth: 256,
 } as const;
 
 export const Fonts = Platform.select({

@@ -1,9 +1,10 @@
 import { Slot, usePathname, useRouter } from 'expo-router';
-import { Platform, Pressable, StyleSheet, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
+import { useResponsiveLayout } from '@/hooks/use-responsive-layout';
 import { useThemeColor } from '@/hooks/use-theme-color';
 
 const SUBTABS = [
@@ -15,11 +16,12 @@ const SUBTABS = [
 export default function OfficialsLayout() {
   const pathname = usePathname();
   const router = useRouter();
+  const { showSidebar } = useResponsiveLayout();
   const tint = useThemeColor({ light: '#0097b2', dark: '#33C4DB' }, 'tint');
   const mutedText = useThemeColor({ light: '#5E6368', dark: '#9CA3AF' }, 'text');
   const border = useThemeColor({ light: '#d5d5d5', dark: '#2D3139' }, 'background');
 
-  if (Platform.OS === 'web') return <Slot />;
+  if (showSidebar) return <Slot />;
 
   return (
     <ThemedView style={styles.container}>

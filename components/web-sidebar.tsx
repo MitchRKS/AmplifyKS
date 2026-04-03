@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
-import { Spacing } from '@/constants/theme';
+import { Layout, Spacing } from '@/constants/theme';
 import { useAuth } from '@/contexts/auth-context';
 
 type IconName = React.ComponentProps<typeof MaterialIcons>['name'];
@@ -192,7 +192,7 @@ export function WebSidebar() {
 
 const styles = StyleSheet.create({
   container: {
-    width: 256,
+    width: Layout.sidebarWidth,
     backgroundColor: '#1c355e',
     paddingTop: Spacing['3xl'],
     paddingBottom: Spacing.xl,

@@ -19,11 +19,13 @@ import { ContentContainer } from '@/components/content-container';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Radius, Shadows, Spacing } from '@/constants/theme';
+import { useResponsiveLayout } from '@/hooks/use-responsive-layout';
 import { useThemeColor } from '@/hooks/use-theme-color';
 import { getOfficialsByLocation, type Official } from '@/services/openstates';
 
 export default function LookupScreen() {
   const router = useRouter();
+  const { isMobile } = useResponsiveLayout();
   const [address, setAddress] = useState('');
   const [searchResults, setSearchResults] = useState<Official[]>([]);
   const [loading, setLoading] = useState(false);
@@ -228,16 +230,18 @@ export default function LookupScreen() {
             >
               <ThemedText style={[styles.signInLink, { color: tint }]}>Sign In</ThemedText>
             </Pressable>
-            <Pressable
-              style={({ pressed }) => [
-                styles.createAccountButton,
-                { backgroundColor: tint },
-                pressed && styles.pressed,
-              ]}
-              onPress={() => router.navigate('/(auth)/register')}
-            >
-              <ThemedText style={styles.createAccountText}>Create Account</ThemedText>
-            </Pressable>
+            {!isMobile && (
+              <Pressable
+                style={({ pressed }) => [
+                  styles.createAccountButton,
+                  { backgroundColor: tint },
+                  pressed && styles.pressed,
+                ]}
+                onPress={() => router.navigate('/(auth)/register')}
+              >
+                <ThemedText style={styles.createAccountText}>Create Account</ThemedText>
+              </Pressable>
+            )}
           </View>
         </ContentContainer>
       </View>
@@ -485,8 +489,8 @@ const styles = StyleSheet.create({
   },
   heroTitle: {
     textAlign: 'center',
-    fontSize: 32,
-    lineHeight: 40,
+    fontSize: 28,
+    lineHeight: 36,
     letterSpacing: -0.8,
   },
   heroSubtitle: {
@@ -697,7 +701,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: Spacing.sm,
     width: '48%',
-    minWidth: 200,
+    minWidth: 140,
     maxWidth: 320,
   },
   featureIcon: {

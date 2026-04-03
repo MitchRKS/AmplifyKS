@@ -9,15 +9,16 @@ import { WebSidebar } from '@/components/web-sidebar';
 import { Colors } from '@/constants/theme';
 import { useAuth } from '@/contexts/auth-context';
 import { useColorScheme } from '@/hooks/use-color-scheme';
+import { useResponsiveLayout } from '@/hooks/use-responsive-layout';
 
-function WebLayout() {
+function DesktopLayout() {
   const colorScheme = useColorScheme();
   const bg = Colors[colorScheme ?? 'light'].background;
 
   return (
-    <View style={styles.webContainer}>
+    <View style={styles.desktopContainer}>
       <WebSidebar />
-      <View style={[styles.webContent, { backgroundColor: bg }]}>
+      <View style={[styles.desktopContent, { backgroundColor: bg }]}>
         <Slot />
       </View>
     </View>
@@ -34,8 +35,8 @@ function MobileLayout() {
       screenOptions={{
         tabBarActiveTintColor: palette.tint,
         tabBarInactiveTintColor: palette.tabIconDefault,
-        headerShown: true,
-        tabBarButton: HapticTab,
+        headerShown: Platform.OS !== 'web',
+        tabBarButton: Platform.OS !== 'web' ? HapticTab : undefined,
         headerStyle: {
           backgroundColor: palette.headerBackground,
         },
@@ -45,20 +46,33 @@ function MobileLayout() {
           color: palette.text,
         },
         headerShadowVisible: false,
-        tabBarStyle: {
-          backgroundColor: palette.tabBarBackground,
-          borderTopColor: palette.border,
-        },
+        tabBarStyle: Platform.select({
+          web: {
+            backgroundColor: palette.tabBarBackground,
+            borderTopColor: palette.border,
+            borderTopWidth: 1,
+            height: 56,
+            paddingBottom: 4,
+            paddingTop: 4,
+          },
+          default: {
+            backgroundColor: palette.tabBarBackground,
+            borderTopColor: palette.border,
+          },
+        }),
         tabBarLabelStyle: {
           fontSize: 11,
           fontWeight: '600',
           letterSpacing: 0.2,
         },
-        headerRight: () => (
-          <Pressable onPress={logout} style={{ marginRight: 16, padding: 4 }}>
-            <MaterialIcons name="logout" size={22} color={palette.tint} />
-          </Pressable>
-        ),
+        headerRight:
+          Platform.OS !== 'web'
+            ? () => (
+                <Pressable onPress={logout} style={{ marginRight: 16, padding: 4 }}>
+                  <MaterialIcons name="logout" size={22} color={palette.tint} />
+                </Pressable>
+              )
+            : undefined,
       }}>
       <Tabs.Screen
         name="profile"
@@ -88,12 +102,13 @@ function MobileLayout() {
           tabBarIcon: ({ color }) => <MaterialIcons size={24} name="how-to-vote" color={color} />,
         }}
       />
-
       <Tabs.Screen
         name="bills"
         options={{
           title: 'Bills',
-          tabBarIcon: ({ color }) => <IconSymbol size={24} name="doc.text.magnifyingglass" color={color} />,
+          tabBarIcon: ({ color }) => (
+            <IconSymbol size={24} name="doc.text.magnifyingglass" color={color} />
+          ),
         }}
       />
     </Tabs>
@@ -101,18 +116,21 @@ function MobileLayout() {
 }
 
 export default function TabLayout() {
-  if (Platform.OS === 'web') {
-    return <WebLayout />;
+  const { showSidebar } = useResponsiveLayout();
+
+  if (Platform.OS === 'web' && showSidebar) {
+    return <DesktopLayout />;
   }
+
   return <MobileLayout />;
 }
 
 const styles = StyleSheet.create({
-  webContainer: {
+  desktopContainer: {
     flex: 1,
     flexDirection: 'row',
   },
-  webContent: {
+  desktopContent: {
     flex: 1,
   },
 });
