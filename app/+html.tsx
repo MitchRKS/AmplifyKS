@@ -33,4 +33,10 @@ body {
   height: 100vh;
   height: 100dvh;
 }
+
+@supports (padding-bottom: env(safe-area-inset-bottom)) {
+  #root {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+}
 `;

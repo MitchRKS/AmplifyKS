@@ -4,7 +4,9 @@ import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
 import 'react-native-reanimated';
 
+import { AchievementCelebration } from '@/components/gamification/achievement-celebration';
 import { AuthProvider, useAuth } from '@/contexts/auth-context';
+import { GamificationProvider } from '@/contexts/gamification-context';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 
 function RootNavigator() {
@@ -41,10 +43,13 @@ export default function RootLayout() {
 
   return (
     <AuthProvider>
-      <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-        <RootNavigator />
-        <StatusBar style="auto" />
-      </ThemeProvider>
+      <GamificationProvider>
+        <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
+          <RootNavigator />
+          <AchievementCelebration />
+          <StatusBar style="auto" />
+        </ThemeProvider>
+      </GamificationProvider>
     </AuthProvider>
   );
 }

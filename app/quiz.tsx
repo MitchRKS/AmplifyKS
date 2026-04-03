@@ -21,6 +21,7 @@ import {
   type ResponseValue,
 } from '@/constants/quiz-questions';
 import { Radius, Shadows, Spacing } from '@/constants/theme';
+import { useGamification } from '@/contexts/gamification-context';
 import { useQuiz } from '@/hooks/use-quiz';
 import { positionText } from '@/services/legislator-match-engine';
 import { useThemeColor } from '@/hooks/use-theme-color';
@@ -30,6 +31,7 @@ type IconName = React.ComponentProps<typeof MaterialIcons>['name'];
 export default function QuizScreen() {
   const router = useRouter();
   const quiz = useQuiz();
+  const { recordAction } = useGamification();
   const [currentIndex, setCurrentIndex] = useState(0);
   const [showResults, setShowResults] = useState(false);
 
@@ -60,6 +62,7 @@ export default function QuizScreen() {
 
   const handleSubmit = async () => {
     await quiz.submitQuiz();
+    recordAction('Quiz Completed', 'Completed the political alignment quiz');
     setShowResults(true);
   };
 

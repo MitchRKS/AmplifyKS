@@ -3,6 +3,7 @@ import { Slot, Tabs } from 'expo-router';
 import React from 'react';
 import { Platform, Pressable, StyleSheet, View } from 'react-native';
 
+import { AppHeader } from '@/components/app-header';
 import { HapticTab } from '@/components/haptic-tab';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { WebSidebar } from '@/components/web-sidebar';
@@ -29,14 +30,16 @@ function MobileLayout() {
   const colorScheme = useColorScheme();
   const { logout } = useAuth();
   const palette = Colors[colorScheme ?? 'light'];
+  const isWeb = Platform.OS === 'web';
 
   return (
     <Tabs
       screenOptions={{
         tabBarActiveTintColor: palette.tint,
         tabBarInactiveTintColor: palette.tabIconDefault,
-        headerShown: Platform.OS !== 'web',
-        tabBarButton: Platform.OS !== 'web' ? HapticTab : undefined,
+        headerShown: true,
+        header: isWeb ? () => <AppHeader /> : undefined,
+        tabBarButton: !isWeb ? HapticTab : undefined,
         headerStyle: {
           backgroundColor: palette.headerBackground,
         },
@@ -51,9 +54,8 @@ function MobileLayout() {
             backgroundColor: palette.tabBarBackground,
             borderTopColor: palette.border,
             borderTopWidth: 1,
-            height: 56,
-            paddingBottom: 4,
-            paddingTop: 4,
+            paddingBottom: 6,
+            paddingTop: 6,
           },
           default: {
             backgroundColor: palette.tabBarBackground,
@@ -65,20 +67,20 @@ function MobileLayout() {
           fontWeight: '600',
           letterSpacing: 0.2,
         },
-        headerRight:
-          Platform.OS !== 'web'
-            ? () => (
-                <Pressable onPress={logout} style={{ marginRight: 16, padding: 4 }}>
-                  <MaterialIcons name="logout" size={22} color={palette.tint} />
-                </Pressable>
-              )
-            : undefined,
+        headerRight: !isWeb
+          ? () => (
+              <Pressable onPress={logout} style={{ marginRight: 16, padding: 4 }}>
+                <MaterialIcons name="logout" size={22} color={palette.tint} />
+              </Pressable>
+            )
+          : undefined,
       }}>
       <Tabs.Screen
         name="profile"
         options={{
           title: 'Profile',
           tabBarIcon: ({ color }) => <MaterialIcons size={24} name="person" color={color} />,
+          tabBarItemStyle: isWeb ? { display: 'none' } : undefined,
         }}
       />
       <Tabs.Screen
@@ -109,6 +111,19 @@ function MobileLayout() {
           tabBarIcon: ({ color }) => (
             <IconSymbol size={24} name="doc.text.magnifyingglass" color={color} />
           ),
+        }}
+      />
+      <Tabs.Screen
+        name="points"
+        options={{
+          href: null,
+        }}
+      />
+      <Tabs.Screen
+        name="organizations"
+        options={{
+          title: 'Orgs',
+          tabBarIcon: ({ color }) => <MaterialIcons size={24} name="groups" color={color} />,
         }}
       />
     </Tabs>

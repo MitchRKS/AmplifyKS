@@ -13,6 +13,7 @@ import { Radius, Shadows, Spacing } from '@/constants/theme';
 import { useBillTestimonyStatus } from '@/hooks/use-bill-testimony-status';
 import { useThemeColor } from '@/hooks/use-theme-color';
 import { useUserProfile } from '@/hooks/use-user-profile';
+import { useGamification } from '@/contexts/gamification-context';
 import * as LegiscanAPI from '@/services/legiscan';
 
 interface BillDetail {
@@ -49,6 +50,7 @@ export default function BillDetailScreen() {
   const [testimonyExpanded, setTestimonyExpanded] = useState(false);
   const { profile } = useUserProfile();
   const { isOpen: testimonyOpen, isLoading: testimonyStatusLoading, toggleOpen } = useBillTestimonyStatus(params.id as string);
+  const { recordAction } = useGamification();
 
   useEffect(() => {
     const fetchBillDetail = async () => {
@@ -91,6 +93,7 @@ export default function BillDetailScreen() {
         };
 
         setBill(transformedBill);
+        recordAction('View Legislation', transformedBill.billNumber);
       } catch (error) {
         console.error('Error fetching bill detail:', error);
         Alert.alert(

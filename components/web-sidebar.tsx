@@ -38,6 +38,7 @@ const NAV_ITEMS: NavItem[] = [
     ],
   },
   { route: '/bills', label: 'Bills', icon: 'description' },
+  { route: '/organizations', label: 'Organizations', icon: 'groups' },
 ];
 
 const ACTIVE_BG = 'rgba(0, 151, 178, 0.12)';

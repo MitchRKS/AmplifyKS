@@ -11,6 +11,7 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { Radius, Shadows, Spacing } from '@/constants/theme';
+import { useGamification } from '@/contexts/gamification-context';
 import { useLegislatorMatch } from '@/hooks/use-legislator-match';
 import { useSavedOfficials } from '@/hooks/use-saved-officials';
 import { useThemeColor } from '@/hooks/use-theme-color';
@@ -47,6 +48,7 @@ export default function LegislatorDetailScreen() {
   const billsLoaded = useRef(false);
 
   const { saveOfficial, removeOfficial, isSaved } = useSavedOfficials();
+  const { recordAction } = useGamification();
   const { getMatch, computeScore, isMatchAvailable, bt50Loaded } = useLegislatorMatch();
 
   const tint = useThemeColor({ light: '#0097b2', dark: '#33C4DB' }, 'tint');
@@ -282,6 +284,7 @@ export default function LegislatorDetailScreen() {
               surface={surface}
               border={border}
               inputBackground={inputBackground}
+              onContact={(desc) => recordAction('Contact Legislator', desc)}
             />
           )}
           {activeTab === 'committees' && (
@@ -331,6 +334,7 @@ function ContactTab({
   mutedText,
   surface,
   border,
+  onContact,
 }: {
   legislator: OfficialDetail;
   capitolOffice?: OfficialDetail['offices'][number];
@@ -339,6 +343,7 @@ function ContactTab({
   surface: string;
   border: string;
   inputBackground: string;
+  onContact?: (description: string) => void;
 }) {
   return (
     <>
@@ -351,7 +356,10 @@ function ContactTab({
                 { backgroundColor: tint },
                 pressed && styles.pressed,
               ]}
-              onPress={() => Linking.openURL(`mailto:${legislator.email}`)}
+              onPress={() => {
+                Linking.openURL(`mailto:${legislator.email}`);
+                onContact?.(`Emailed ${legislator.name}`);
+              }}
             >
               <MaterialIcons name="email" size={20} color="#fff" />
               <ThemedText style={styles.actionButtonText}>Email</ThemedText>
@@ -364,7 +372,10 @@ function ContactTab({
                 { backgroundColor: tint },
                 pressed && styles.pressed,
               ]}
-              onPress={() => Linking.openURL(`tel:${capitolOffice.voice}`)}
+              onPress={() => {
+                Linking.openURL(`tel:${capitolOffice.voice}`);
+                onContact?.(`Called ${legislator.name}`);
+              }}
             >
               <MaterialIcons name="phone" size={20} color="#fff" />
               <ThemedText style={styles.actionButtonText}>Call</ThemedText>
