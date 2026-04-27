@@ -6,7 +6,7 @@ import { Platform, Pressable, StyleSheet, View } from 'react-native';
 import { AppHeader } from '@/components/app-header';
 import { HapticTab } from '@/components/haptic-tab';
 import { IconSymbol } from '@/components/ui/icon-symbol';
-import { WebSidebar } from '@/components/web-sidebar';
+import { WebTopNav } from '@/components/web-top-nav';
 import { Colors } from '@/constants/theme';
 import { useAuth } from '@/contexts/auth-context';
 import { useColorScheme } from '@/hooks/use-color-scheme';
@@ -18,7 +18,7 @@ function DesktopLayout() {
 
   return (
     <View style={styles.desktopContainer}>
-      <WebSidebar />
+      <WebTopNav />
       <View style={[styles.desktopContent, { backgroundColor: bg }]}>
         <Slot />
       </View>
@@ -143,9 +143,10 @@ export default function TabLayout() {
 const styles = StyleSheet.create({
   desktopContainer: {
     flex: 1,
-    flexDirection: 'row',
+    flexDirection: 'column',
   },
   desktopContent: {
     flex: 1,
+    minHeight: 0,
   },
 });

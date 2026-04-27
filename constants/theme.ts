@@ -105,6 +105,7 @@ export const Layout = {
   maxContentWidth: 680,
   screenPadding: 20,
   sidebarWidth: 256,
+  topNavHeight: 56,
 } as const;
 
 export const Fonts = Platform.select({

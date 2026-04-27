@@ -11,6 +11,20 @@ const stripUndefined = (obj: Record<string, unknown>): Record<string, unknown> =
 
 const toDocId = (id: string) => id.replaceAll('/', '_');
 
+const upsertOfficial = (list: Official[], incoming: Official): Official[] => {
+  const next = list.filter((item) => item.id !== incoming.id);
+  next.unshift(incoming);
+  return next;
+};
+
+const mergeOfficials = (list: Official[], incoming: Official[]): Official[] => {
+  let next = list;
+  for (const official of incoming) {
+    next = upsertOfficial(next, official);
+  }
+  return next;
+};
+
 export function useSavedOfficials() {
   const { user } = useAuth();
   const [savedOfficials, setSavedOfficials] = useState<Official[]>([]);
@@ -43,32 +57,73 @@ export function useSavedOfficials() {
 
   const saveOfficial = useCallback(
     async (official: Official) => {
-      if (!user) return;
+      if (!user) {
+        throw new Error('Please sign in to save officials.');
+      }
+      if (!official?.id) {
+        throw new Error('Unable to save official: missing official id.');
+      }
+
+      setSavedOfficials((prev) => upsertOfficial(prev, official));
       const docRef = doc(getFirestoreDb(), 'users', user.uid, 'savedOfficials', toDocId(official.id));
-      await setDoc(docRef, stripUndefined(official as unknown as Record<string, unknown>));
+      try {
+        await setDoc(docRef, stripUndefined(official as unknown as Record<string, unknown>));
+      } catch (error) {
+        console.error('saveOfficial failed:', error);
+        throw error;
+      }
     },
     [user],
   );
 
   const removeOfficial = useCallback(
     async (officialId: string) => {
-      if (!user) return;
+      if (!user) {
+        throw new Error('Please sign in to manage saved officials.');
+      }
+      if (!officialId) {
+        throw new Error('Unable to remove official: missing official id.');
+      }
+
+      const previous = savedOfficials;
+      setSavedOfficials((prev) => prev.filter((official) => official.id !== officialId));
       const docRef = doc(getFirestoreDb(), 'users', user.uid, 'savedOfficials', toDocId(officialId));
-      await deleteDoc(docRef);
+      try {
+        await deleteDoc(docRef);
+      } catch (error) {
+        console.error('removeOfficial failed:', error);
+        setSavedOfficials(previous);
+        throw error;
+      }
     },
-    [user],
+    [savedOfficials, user],
   );
 
   const saveMultipleOfficials = useCallback(
     async (officials: Official[]) => {
-      if (!user || officials.length === 0) return;
+      if (!user) {
+        throw new Error('Please sign in to save officials.');
+      }
+      if (officials.length === 0) return;
+
+      const validOfficials = officials.filter((official) => official?.id);
+      if (validOfficials.length === 0) {
+        throw new Error('Unable to save officials: no valid official ids.');
+      }
+
+      setSavedOfficials((prev) => mergeOfficials(prev, validOfficials));
       const db = getFirestoreDb();
       const batch = writeBatch(db);
-      for (const official of officials) {
+      for (const official of validOfficials) {
         const docRef = doc(db, 'users', user.uid, 'savedOfficials', toDocId(official.id));
         batch.set(docRef, stripUndefined(official as unknown as Record<string, unknown>));
       }
-      await batch.commit();
+      try {
+        await batch.commit();
+      } catch (error) {
+        console.error('saveMultipleOfficials failed:', error);
+        throw error;
+      }
     },
     [user],
   );

@@ -21,7 +21,12 @@ import {
   type CommitteeAssignment,
   type OfficialDetail,
 } from '@/services/openstates';
-import { searchSponsoredBills, type SponsoredBillSummary } from '@/services/legiscan';
+import {
+  fetchVotingRecord,
+  searchSponsoredBills,
+  type LegislatorVoteRecord,
+  type SponsoredBillSummary,
+} from '@/services/legiscan';
 
 type ProfileTab = 'contact' | 'committees' | 'bills' | 'votes';
 
@@ -46,6 +51,9 @@ export default function LegislatorDetailScreen() {
   const [sponsoredBills, setSponsoredBills] = useState<SponsoredBillSummary[]>([]);
   const [billsLoading, setBillsLoading] = useState(false);
   const billsLoaded = useRef(false);
+  const [voteHistory, setVoteHistory] = useState<LegislatorVoteRecord[]>([]);
+  const [votesLoading, setVotesLoading] = useState(false);
+  const votesLoaded = useRef(false);
 
   const { saveOfficial, removeOfficial, isSaved } = useSavedOfficials();
   const { recordAction } = useGamification();
@@ -114,10 +122,29 @@ export default function LegislatorDetailScreen() {
     }
   }, [legislator]);
 
+  const loadVotes = useCallback(async () => {
+    if (votesLoaded.current || !legislator) return;
+    votesLoaded.current = true;
+    setVotesLoading(true);
+    try {
+      const result = await fetchVotingRecord(
+        legislator.name,
+        legislator.district,
+        legislator.chamber,
+      );
+      setVoteHistory(result);
+    } catch {
+      /* handled gracefully */
+    } finally {
+      setVotesLoading(false);
+    }
+  }, [legislator]);
+
   const handleTabChange = (tab: ProfileTab) => {
     setActiveTab(tab);
     if (tab === 'committees') loadCommittees();
     if (tab === 'bills') loadBills();
+    if (tab === 'votes') loadVotes();
   };
 
   const getPartyColor = (party: string) => {
@@ -312,6 +339,8 @@ export default function LegislatorDetailScreen() {
           {activeTab === 'votes' && (
             <VotesTab
               legislator={legislator}
+              votes={voteHistory}
+              loading={votesLoading}
               tint={tint}
               mutedText={mutedText}
               surface={surface}
@@ -638,6 +667,8 @@ function BillsTab({
 
 function VotesTab({
   legislator,
+  votes,
+  loading,
   tint,
   mutedText,
   surface,
@@ -645,6 +676,8 @@ function VotesTab({
   inputBackground,
 }: {
   legislator: OfficialDetail;
+  votes: LegislatorVoteRecord[];
+  loading: boolean;
   tint: string;
   mutedText: string;
   surface: string;
@@ -721,6 +754,54 @@ function VotesTab({
           <IconSymbol name="arrow.up.right" size={16} color={tint} />
         </Pressable>
       ) : null}
+
+      <View style={[styles.voteHistorySection, { borderTopColor: border }]}>
+        <ThemedText type="defaultSemiBold" style={styles.voteHistoryTitle}>
+          Recent vote history
+        </ThemedText>
+        {loading ? (
+          <View style={styles.voteHistoryLoading}>
+            <ActivityIndicator size="small" color={tint} />
+            <ThemedText type="caption" style={{ color: mutedText }}>
+              Loading vote history...
+            </ThemedText>
+          </View>
+        ) : votes.length === 0 ? (
+          <ThemedText type="caption" style={{ color: mutedText }}>
+            No voting history available.
+          </ThemedText>
+        ) : (
+          votes.slice(0, 25).map((vote, index) => (
+            <View
+              key={`${vote.billNumber}-${vote.voteDate ?? 'unknown'}-${index}`}
+              style={[
+                styles.voteHistoryItem,
+                index > 0 && { borderTopWidth: 1, borderTopColor: border },
+              ]}
+            >
+              <View style={styles.voteHistoryHeader}>
+                <ThemedText type="defaultSemiBold" style={{ fontSize: 14 }}>
+                  {vote.billNumber}
+                </ThemedText>
+                <ThemedText type="caption" style={{ color: mutedText }}>
+                  {vote.voteDate
+                    ? new Date(vote.voteDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+                    : 'Date unknown'}
+                </ThemedText>
+              </View>
+              <ThemedText type="caption" style={{ color: mutedText }} numberOfLines={2}>
+                {vote.billTitle}
+              </ThemedText>
+              <View style={styles.voteHistoryVoteRow}>
+                <MaterialIcons name="how-to-vote" size={14} color={mutedText} />
+                <ThemedText type="caption" style={{ color: tint, fontWeight: '700' }}>
+                  {vote.voteText}
+                </ThemedText>
+              </View>
+            </View>
+          ))
+        )}
+      </View>
     </View>
   );
 }
@@ -953,5 +1034,34 @@ const styles = StyleSheet.create({
   voteLinkContent: {
     flex: 1,
     gap: 2,
+  },
+  voteHistorySection: {
+    borderTopWidth: 1,
+    marginTop: Spacing.md,
+    paddingTop: Spacing.md,
+    gap: Spacing.md,
+  },
+  voteHistoryTitle: {
+    fontSize: 16,
+  },
+  voteHistoryLoading: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.sm,
+  },
+  voteHistoryItem: {
+    gap: 4,
+    paddingTop: Spacing.sm,
+  },
+  voteHistoryHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    gap: Spacing.sm,
+  },
+  voteHistoryVoteRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
   },
 });

@@ -1,12 +1,21 @@
 // LegiScan API Service
 // API Documentation: https://legiscan.com/gaits/documentation/legiscan
 
+import AsyncStorage from '@react-native-async-storage/async-storage';
+
 const LEGISCAN_API_KEY = '18cf0e63a5cb8e7b5cd0e5102f664e2a';
 const LEGISCAN_BASE_URL = 'https://api.legiscan.com';
+const SPONSORED_BILLS_CACHE_TTL_MS = 1000 * 60 * 60 * 12; // 12 hours
+const VOTING_RECORD_CACHE_TTL_MS = 1000 * 60 * 60 * 24; // 24 hours
 
 interface LegiscanResponse {
   status: string;
   [key: string]: any;
+}
+
+interface PersistentCacheEntry<T> {
+  timestamp: number;
+  data: T;
 }
 
 interface SessionListResponse extends LegiscanResponse {
@@ -285,6 +294,34 @@ export interface LegislatorVoteRecord {
 const sessionPeopleCache = new Map<number, SessionPerson[]>();
 const rollCallCache = new Map<number, RollCall>();
 const votingRecordCache = new Map<string, LegislatorVoteRecord[]>();
+const sponsoredBillsCache = new Map<string, SponsoredBillSummary[]>();
+
+const readPersistentCache = async <T>(
+  key: string,
+  ttlMs: number,
+): Promise<T | null> => {
+  try {
+    const raw = await AsyncStorage.getItem(key);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as PersistentCacheEntry<T>;
+    if (Date.now() - parsed.timestamp > ttlMs) {
+      await AsyncStorage.removeItem(key);
+      return null;
+    }
+    return parsed.data;
+  } catch {
+    return null;
+  }
+};
+
+const writePersistentCache = async <T>(key: string, data: T): Promise<void> => {
+  try {
+    const payload: PersistentCacheEntry<T> = { timestamp: Date.now(), data };
+    await AsyncStorage.setItem(key, JSON.stringify(payload));
+  } catch {
+    // Ignore cache write failures; network path still works.
+  }
+};
 
 async function getSessionPeople(sessionId: number): Promise<SessionPerson[]> {
   if (sessionPeopleCache.has(sessionId)) return sessionPeopleCache.get(sessionId)!;
@@ -351,8 +388,17 @@ export async function fetchVotingRecord(
 ): Promise<LegislatorVoteRecord[]> {
   const sessionId = await getCurrentSession();
   const cacheKey = `${legislatorName}_${district}_${chamber}_${sessionId}`;
+  const persistentKey = `legiscan:voting-record:${cacheKey}`;
 
   if (votingRecordCache.has(cacheKey)) return votingRecordCache.get(cacheKey)!;
+  const persisted = await readPersistentCache<LegislatorVoteRecord[]>(
+    persistentKey,
+    VOTING_RECORD_CACHE_TTL_MS,
+  );
+  if (persisted) {
+    votingRecordCache.set(cacheKey, persisted);
+    return persisted;
+  }
 
   const peopleId = await resolvePeopleId(legislatorName, district, chamber, sessionId);
   if (peopleId == null) return [];
@@ -393,12 +439,27 @@ export async function fetchVotingRecord(
 
   records.sort((a, b) => (b.voteDate ?? '').localeCompare(a.voteDate ?? ''));
   votingRecordCache.set(cacheKey, records);
+  await writePersistentCache(persistentKey, records);
   return records;
 }
 
 export async function searchSponsoredBills(
   lastName: string,
 ): Promise<SponsoredBillSummary[]> {
+  const normalizedLastName = lastName.trim().toLowerCase();
+  const cacheKey = `legiscan:sponsored-bills:${normalizedLastName}`;
+  if (sponsoredBillsCache.has(cacheKey)) {
+    return sponsoredBillsCache.get(cacheKey)!;
+  }
+  const persisted = await readPersistentCache<SponsoredBillSummary[]>(
+    cacheKey,
+    SPONSORED_BILLS_CACHE_TTL_MS,
+  );
+  if (persisted) {
+    sponsoredBillsCache.set(cacheKey, persisted);
+    return persisted;
+  }
+
   const data = await makeApiRequest('search', {
     state: 'KS',
     query: `sponsor:${lastName}`,
@@ -420,6 +481,8 @@ export async function searchSponsoredBills(
     });
   }
 
+  sponsoredBillsCache.set(cacheKey, bills);
+  await writePersistentCache(cacheKey, bills);
   return bills;
 }
 

@@ -21,6 +21,7 @@ import { ContentContainer } from '@/components/content-container';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Radius, Shadows, Spacing } from '@/constants/theme';
+import { useAuth } from '@/contexts/auth-context';
 import { useLegislatorMatch } from '@/hooks/use-legislator-match';
 import { useSavedOfficials } from '@/hooks/use-saved-officials';
 import { useThemeColor } from '@/hooks/use-theme-color';
@@ -28,14 +29,16 @@ import { getOfficialsByLocation, type Official } from '@/services/openstates';
 
 export default function LookupScreen() {
   const router = useRouter();
+  const { user, isLoading: authLoading } = useAuth();
   const [address, setAddress] = useState('');
   const [searchResults, setSearchResults] = useState<Official[]>([]);
   const [loading, setLoading] = useState(false);
   const [hasSearched, setHasSearched] = useState(false);
-  const [showSaveModal, setShowSaveModal] = useState(false);
+  const [pendingOfficials, setPendingOfficials] = useState<Official[]>([]);
+  const showSaveModal = pendingOfficials.length > 0;
   const [saving, setSaving] = useState(false);
 
-  const { savedOfficials, saveOfficial, removeOfficial, saveMultipleOfficials, isSaved } = useSavedOfficials();
+  const { saveOfficial, removeOfficial, saveMultipleOfficials, isSaved } = useSavedOfficials();
   const { getMatch } = useLegislatorMatch();
 
   const surface = useThemeColor({ light: '#FFFFFF', dark: '#1C1F26' }, 'background');
@@ -58,9 +61,11 @@ export default function LookupScreen() {
       if (results.length === 0) {
         Alert.alert('No Results', 'No elected officials found for this location.');
       } else {
-        const hasUnsaved = results.some((r) => !isSaved(r.id));
-        if (hasUnsaved) {
-          setTimeout(() => setShowSaveModal(true), 800);
+        // Capture which officials are unsaved RIGHT NOW, before the Firestore snapshot
+        // may arrive and change isSaved's return values (race condition on web).
+        const toSave = results.filter((r) => !isSaved(r.id));
+        if (toSave.length > 0) {
+          setTimeout(() => setPendingOfficials(toSave), 800);
         }
       }
     } catch (error) {
@@ -134,29 +139,63 @@ export default function LookupScreen() {
     router.push({ pathname: '/legislator-detail', params: { id: official.id } });
   };
 
-  const toggleSave = (official: Official) => {
-    if (isSaved(official.id)) {
-      removeOfficial(official.id);
-    } else {
-      saveOfficial(official);
+  const promptLoginToSave = () => {
+    Alert.alert('Sign in required', 'Please sign in or create an account to save elected officials.', [
+      { text: 'Not Now', style: 'cancel' },
+      { text: 'Sign In', onPress: () => router.navigate('/(auth)/login') },
+      { text: 'Create Account', onPress: () => router.navigate('/(auth)/register') },
+    ]);
+  };
+
+  const toggleSave = async (official: Official) => {
+    if (authLoading) {
+      Alert.alert('Please wait', 'Checking your sign-in status...');
+      return;
+    }
+    if (!user) {
+      promptLoginToSave();
+      return;
+    }
+
+    try {
+      if (isSaved(official.id)) {
+        await removeOfficial(official.id);
+      } else {
+        await saveOfficial(official);
+      }
+    } catch (error) {
+      console.error('Error saving official:', error);
+      const message = error instanceof Error ? error.message : 'Unable to update saved officials. Please try again.';
+      Alert.alert('Error', message);
     }
   };
 
   const handleSaveAll = async () => {
-    const unsaved = searchResults.filter((r) => !isSaved(r.id));
-    if (unsaved.length === 0) {
-      setShowSaveModal(false);
+    if (pendingOfficials.length === 0) {
+      setPendingOfficials([]);
+      return;
+    }
+    if (authLoading) {
+      Alert.alert('Please wait', 'Checking your sign-in status...');
+      return;
+    }
+    if (!user) {
+      setPendingOfficials([]);
+      promptLoginToSave();
       return;
     }
     setSaving(true);
     try {
-      await saveMultipleOfficials(unsaved);
-      setShowSaveModal(false);
-      router.navigate('/(tabs)/dashboard');
-    } catch {
+      await saveMultipleOfficials(pendingOfficials);
       setSaving(false);
-      setShowSaveModal(false);
-      Alert.alert('Error', 'Unable to save officials. Please try again.');
+      setPendingOfficials([]);
+      router.navigate('/(tabs)/dashboard');
+    } catch (error) {
+      console.error('Error saving multiple officials:', error);
+      const message = error instanceof Error ? error.message : 'Unable to save officials. Please try again.';
+      setSaving(false);
+      setPendingOfficials([]);
+      Alert.alert('Error', message);
     }
   };
 
@@ -193,7 +232,10 @@ export default function LookupScreen() {
                 <Pressable
                   accessibilityRole="button"
                   accessibilityLabel={saved ? 'Remove from saved' : 'Save official'}
-                  onPress={(e) => { e.stopPropagation(); toggleSave(item); }}
+                  onPress={(e) => {
+                    e.stopPropagation();
+                    void toggleSave(item);
+                  }}
                   hitSlop={8}
                   style={styles.saveButton}
                 >
@@ -264,18 +306,6 @@ export default function LookupScreen() {
                 Look up your representatives by address or location
               </ThemedText>
             </View>
-
-            {savedOfficials.length > 0 && (
-              <View style={styles.section}>
-                <View style={styles.sectionHeaderRow}>
-                  <ThemedText type="subtitle">Saved Officials</ThemedText>
-                  <View style={[styles.countBadge, { backgroundColor: tint + '15' }]}>
-                    <ThemedText style={[styles.countText, { color: tint }]}>{savedOfficials.length}</ThemedText>
-                  </View>
-                </View>
-                {savedOfficials.map((official) => renderCard(official, false))}
-              </View>
-            )}
 
             <View style={styles.section}>
               <ThemedText type="subtitle" style={styles.sectionTitle}>Look Up Officials</ThemedText>
@@ -362,13 +392,13 @@ export default function LookupScreen() {
         visible={showSaveModal}
         transparent
         animationType="fade"
-        onRequestClose={() => setShowSaveModal(false)}
+        onRequestClose={() => setPendingOfficials([])}
       >
         <View style={styles.modalOverlay}>
           <View style={[styles.modalCard, { backgroundColor: surface, borderColor: border }, Shadows.lg]}>
             <Pressable
               style={styles.modalClose}
-              onPress={() => setShowSaveModal(false)}
+              onPress={() => setPendingOfficials([])}
               hitSlop={12}
             >
               <MaterialIcons name="close" size={20} color={mutedText} />
@@ -381,7 +411,7 @@ export default function LookupScreen() {
               Save as your electeds?
             </ThemedText>
             <ThemedText style={[styles.modalBody, { color: mutedText }]}>
-              We found {searchResults.length} official{searchResults.length !== 1 ? 's' : ''} for
+              We found {pendingOfficials.length} official{pendingOfficials.length !== 1 ? 's' : ''} for
               your location. Would you like to save them for quick access?
             </ThemedText>
 
@@ -408,7 +438,7 @@ export default function LookupScreen() {
                   { borderColor: border },
                   pressed && styles.pressed,
                 ]}
-                onPress={() => setShowSaveModal(false)}
+                onPress={() => setPendingOfficials([])}
                 disabled={saving}
               >
                 <ThemedText style={[styles.modalSecondaryText, { color: mutedText }]}>No Thanks</ThemedText>

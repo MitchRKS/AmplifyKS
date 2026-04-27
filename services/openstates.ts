@@ -239,6 +239,12 @@ interface PeopleListResponse {
   pagination: { max_page: number; page: number };
 }
 
+const isKansasLegislator = (person: OpenStatesPerson): boolean => {
+  if (person.jurisdiction?.name !== 'Kansas') return false;
+  const roleClass = person.current_role?.org_classification;
+  return roleClass === 'upper' || roleClass === 'lower';
+};
+
 export const getKansasLegislators = async (): Promise<Official[]> => {
   const all: Official[] = [];
   let page = 1;
@@ -255,7 +261,7 @@ export const getKansasLegislators = async (): Promise<Official[]> => {
     }
 
     const data: PeopleListResponse = await response.json();
-    all.push(...data.results.map(transformPerson));
+    all.push(...data.results.filter(isKansasLegislator).map(transformPerson));
 
     if (page >= data.pagination.max_page) break;
     page++;

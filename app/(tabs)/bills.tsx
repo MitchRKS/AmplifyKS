@@ -1,6 +1,6 @@
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { useRouter } from 'expo-router';
-import { useMemo, useEffect, useState } from 'react';
+import { useMemo, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -27,6 +27,7 @@ type SortOption = 'dateDesc' | 'dateAsc' | 'numberAsc' | 'numberDesc' | 'titleAs
 interface Bill {
   id: number;
   billNumber: string;
+  committee: string;
   title: string;
   description: string;
   status: string;
@@ -35,6 +36,9 @@ interface Bill {
   lastActionDate: string;
   url: string;
 }
+
+const BILL_DETAIL_FETCH_CONCURRENCY = 4;
+const committeeNameCache = new Map<number, string>();
 
 const SORT_OPTIONS: { value: SortOption; label: string }[] = [
   { value: 'dateDesc', label: 'Last action (newest)' },
@@ -97,6 +101,65 @@ function sortBills(bills: Bill[], sortBy: SortOption): Bill[] {
   }
 }
 
+function extractCommitteeFromAction(action?: string): string | null {
+  if (!action?.trim()) {
+    return null;
+  }
+
+  const patterns = [
+    /(?:Referred|Rereferred)\s+to\s+Committee\s+on\s+([^;,.]+)/i,
+    /Withdrawn\s+from\s+Committee\s+on\s+([^;,.]+)/i,
+    /by\s+Committee\s+on\s+([^;,.]+)/i,
+    /Committee\s+on\s+([^;,.]+)/i,
+  ];
+
+  for (const pattern of patterns) {
+    const match = action.match(pattern);
+    const committeeName = match?.[1]?.trim();
+    if (committeeName) {
+      return committeeName;
+    }
+  }
+
+  return null;
+}
+
+function getCommitteeName(
+  committee?: { chamber?: string; name?: string } | null,
+  fallbackAction?: string,
+  fallbackChamber?: string
+): string {
+  const committeeName = committee?.name?.trim();
+  if (!committeeName) {
+    const parsedFromAction = extractCommitteeFromAction(fallbackAction);
+    if (!parsedFromAction) {
+      return 'Committee unavailable';
+    }
+    return LegiscanAPI.formatCommitteeName(fallbackChamber || 'Unknown', parsedFromAction);
+  }
+  if (committee?.chamber?.trim()) {
+    return LegiscanAPI.formatCommitteeName(committee.chamber, committeeName);
+  }
+  return committeeName;
+}
+
+function extractCommitteeName(rawBill: Record<string, unknown>): string {
+  const committee = rawBill.committee;
+  const fallbackAction = typeof rawBill.last_action === 'string' ? rawBill.last_action : undefined;
+  const fallbackBillNumber = typeof rawBill.number === 'string' ? rawBill.number : undefined;
+  const fallbackChamber = LegiscanAPI.getChamber(fallbackBillNumber);
+  if (committee && typeof committee === 'object') {
+    const committeeObj = committee as { chamber?: string; name?: string };
+    return getCommitteeName(committeeObj, fallbackAction, fallbackChamber);
+  }
+  return getCommitteeName(undefined, fallbackAction, fallbackChamber);
+}
+
+function formatLastActionForCard(lastAction: string): string {
+  // Remove leading chamber label for a cleaner card preview.
+  return lastAction.replace(/^(House|Senate)\s+/i, '');
+}
+
 export default function BillsScreen() {
   const router = useRouter();
   const [searchQuery, setSearchQuery] = useState('');
@@ -108,6 +171,8 @@ export default function BillsScreen() {
   const [bills, setBills] = useState<Bill[]>([]);
   const [sessionName, setSessionName] = useState('Loading...');
   const [error, setError] = useState<string | null>(null);
+  const committeeHydrationRequestId = useRef(0);
+  const isMountedRef = useRef(true);
 
   const inputBackground = useThemeColor({ light: '#F0F2F5', dark: '#1C1F26' }, 'background');
   const inputBorder = useThemeColor({ light: '#d5d5d5', dark: '#2D3139' }, 'background');
@@ -117,6 +182,63 @@ export default function BillsScreen() {
   const tint = useThemeColor({ light: '#0097b2', dark: '#33C4DB' }, 'tint');
   const mutedText = useThemeColor({ light: '#5E6368', dark: '#9CA3AF' }, 'text');
   const border = useThemeColor({ light: '#d5d5d5', dark: '#2D3139' }, 'background');
+
+  useEffect(() => {
+    return () => {
+      isMountedRef.current = false;
+      committeeHydrationRequestId.current += 1;
+    };
+  }, []);
+
+  const hydrateBillCommittees = async (billList: Bill[], requestId: number): Promise<void> => {
+    const missingCommitteeBillIds = billList
+      .filter((bill) => bill.committee === 'Committee unavailable' && !committeeNameCache.has(bill.id))
+      .map((bill) => bill.id);
+
+    if (missingCommitteeBillIds.length > 0) {
+      let cursor = 0;
+      const worker = async () => {
+        while (cursor < missingCommitteeBillIds.length) {
+          const currentIndex = cursor;
+          cursor += 1;
+          const billId = missingCommitteeBillIds[currentIndex];
+
+          try {
+            const billDetail = await LegiscanAPI.getBillDetail(billId);
+            const historyCommitteeAction =
+              billDetail.history?.find((entry) => extractCommitteeFromAction(entry.action))?.action;
+            const fallbackAction = historyCommitteeAction || billList.find((bill) => bill.id === billId)?.lastAction;
+            const fallbackChamber = billDetail.committee?.chamber || LegiscanAPI.getChamber(billDetail.bill_number);
+            const committeeName = getCommitteeName(
+              billDetail.committee,
+              fallbackAction,
+              fallbackChamber
+            );
+            if (committeeName !== 'Committee unavailable') {
+              committeeNameCache.set(billId, committeeName);
+            }
+          } catch {
+            // Network/API failures should not poison the cache.
+            continue;
+          }
+        }
+      };
+
+      const workerCount = Math.min(BILL_DETAIL_FETCH_CONCURRENCY, missingCommitteeBillIds.length);
+      await Promise.all(Array.from({ length: workerCount }, () => worker()));
+    }
+
+    if (!isMountedRef.current || requestId !== committeeHydrationRequestId.current) {
+      return;
+    }
+
+    setBills((previousBills) =>
+      previousBills.map((bill) => ({
+        ...bill,
+        committee: committeeNameCache.get(bill.id) ?? bill.committee,
+      }))
+    );
+  };
 
   const fetchBills = async () => {
     try {
@@ -147,6 +269,7 @@ export default function BillsScreen() {
             return {
               id: bill.bill_id,
               billNumber: bill.number,
+              committee: extractCommitteeName(bill as unknown as Record<string, unknown>),
               title: bill.title || 'Untitled',
               description: bill.description || '',
               status: LegiscanAPI.getStatusLabel(bill.status),
@@ -162,6 +285,8 @@ export default function BillsScreen() {
         .filter((bill): bill is Bill => bill !== null);
 
       setBills(transformedBills);
+      const requestId = ++committeeHydrationRequestId.current;
+      void hydrateBillCommittees(transformedBills, requestId);
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Unknown error';
       setError(errorMessage);
@@ -186,6 +311,7 @@ export default function BillsScreen() {
       const matchesSearch =
         !searchQuery ||
         bill.billNumber.toLowerCase().includes(searchLower) ||
+        bill.committee.toLowerCase().includes(searchLower) ||
         bill.title.toLowerCase().includes(searchLower) ||
         bill.description.toLowerCase().includes(searchLower);
 
@@ -218,24 +344,6 @@ export default function BillsScreen() {
     });
   };
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'Passed':
-      case 'Chaptered':
-        return '#adc323';
-      case 'Introduced':
-      case 'Engrossed':
-        return '#a9cd34';
-      case 'Enrolled':
-        return '#0097b2';
-      case 'Vetoed':
-      case 'Failed':
-        return '#fa3332';
-      default:
-        return mutedText;
-    }
-  };
-
   const renderBillItem = ({ item }: { item: Bill }) => (
     <ContentContainer style={styles.listItemContainer}>
       <Pressable
@@ -248,43 +356,35 @@ export default function BillsScreen() {
         onPress={() => handleBillPress(item)}
       >
         <View style={styles.billHeader}>
-          <View style={styles.billNumberContainer}>
-            <ThemedText type="defaultSemiBold" style={[styles.billNumber, { color: tint }]}>
-              {item.billNumber}
-            </ThemedText>
-            <View style={[styles.chamberChip, { backgroundColor: border }]}>
-              <ThemedText type="caption" style={{ color: mutedText }}>
-                {item.chamber}
-              </ThemedText>
-            </View>
-          </View>
-          <View style={[styles.statusBadge, { backgroundColor: getStatusColor(item.status) + '14' }]}>
-            <ThemedText style={[styles.statusText, { color: getStatusColor(item.status) }]}>
+          <ThemedText
+            type="defaultSemiBold"
+            style={[styles.billTitle, { color: tint }]}
+            numberOfLines={1}
+          >
+            {`${item.billNumber} • ${item.committee}`}
+          </ThemedText>
+          <View style={[styles.statusBadge, { backgroundColor: border }]}>
+            <ThemedText style={[styles.statusText, { color: mutedText }]}>
               {item.status}
             </ThemedText>
           </View>
         </View>
 
-        <ThemedText type="defaultSemiBold" style={styles.billTitle} numberOfLines={2}>
-          {item.title}
+        <ThemedText style={[styles.billDescription, { color: mutedText }]} numberOfLines={2}>
+          {item.description || item.title}
         </ThemedText>
-
-        {item.description ? (
-          <ThemedText style={[styles.billDescription, { color: mutedText }]} numberOfLines={2}>
-            {item.description}
-          </ThemedText>
-        ) : null}
 
         <View style={[styles.cardDivider, { backgroundColor: border }]} />
 
         <View style={styles.lastActionRow}>
           <MaterialIcons name="history" size={14} color={mutedText} />
           <ThemedText type="caption" style={{ color: mutedText, flex: 1 }} numberOfLines={2}>
-            {item.lastAction} •{' '}
             {new Date(item.lastActionDate).toLocaleDateString('en-US', {
               month: 'short',
               day: 'numeric',
             })}
+            {' • '}
+            {formatLastActionForCard(item.lastAction)}
           </ThemedText>
         </View>
       </Pressable>
@@ -655,8 +755,8 @@ const styles = StyleSheet.create({
   billHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    marginBottom: Spacing.sm,
+    alignItems: 'center',
+    marginBottom: Spacing.xs,
   },
   billNumberContainer: {
     flexDirection: 'row',
@@ -681,8 +781,10 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   billTitle: {
+    flex: 1,
     fontSize: 16,
-    marginBottom: Spacing.xs,
+    marginRight: Spacing.sm,
+    marginBottom: 0,
     lineHeight: 22,
   },
   billDescription: {
