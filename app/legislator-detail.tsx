@@ -94,19 +94,18 @@ export default function LegislatorDetailScreen() {
     committeesLoaded.current = true;
     setCommitteesLoading(true);
     try {
-      const legUrl = legislator.legislatureLinks.find((l) =>
-        l.url.includes('kslegislature.gov'),
-      )?.url;
-      if (legUrl) {
-        const result = await getCommitteeAssignments(legUrl);
-        setCommittees(result);
-      }
+      const result = await getCommitteeAssignments(legislator.id);
+      setCommittees(result);
     } catch {
       /* handled gracefully */
     } finally {
       setCommitteesLoading(false);
     }
   }, [legislator]);
+
+  useEffect(() => {
+    if (legislator) loadCommittees();
+  }, [legislator, loadCommittees]);
 
   const loadBills = useCallback(async () => {
     if (billsLoaded.current || !legislator) return;
@@ -142,7 +141,6 @@ export default function LegislatorDetailScreen() {
 
   const handleTabChange = (tab: ProfileTab) => {
     setActiveTab(tab);
-    if (tab === 'committees') loadCommittees();
     if (tab === 'bills') loadBills();
     if (tab === 'votes') loadVotes();
   };
@@ -323,6 +321,7 @@ export default function LegislatorDetailScreen() {
               surface={surface}
               border={border}
               inputBackground={inputBackground}
+              router={router}
             />
           )}
           {activeTab === 'bills' && (
@@ -497,6 +496,7 @@ function CommitteesTab({
   surface,
   border,
   inputBackground,
+  router,
 }: {
   committees: CommitteeAssignment[];
   loading: boolean;
@@ -505,6 +505,7 @@ function CommitteesTab({
   surface: string;
   border: string;
   inputBackground: string;
+  router: ReturnType<typeof useRouter>;
 }) {
   if (loading) {
     return (
@@ -528,55 +529,58 @@ function CommitteesTab({
     );
   }
 
+  const isLeadership = (role: string) => {
+    const lower = role.toLowerCase();
+    return lower.includes('chair') || lower.includes('vice');
+  };
+
   return (
     <>
-      {committees.map((committee, i) => (
-        <Pressable
-          key={i}
-          style={({ pressed }) => [
-            styles.card,
-            { backgroundColor: surface, borderColor: border },
-            Shadows.sm,
-            pressed && styles.pressed,
-          ]}
-          onPress={() => WebBrowser.openBrowserAsync(committee.url)}
-        >
-          <View style={styles.committeeHeader}>
-            <ThemedText type="defaultSemiBold" style={styles.committeeName}>
-              {committee.name}
-            </ThemedText>
-            <IconSymbol name="arrow.up.right" size={14} color={tint} />
-          </View>
-          {(committee.day || committee.time || committee.room) && (
+      {committees.map((committee) => {
+        const leadership = isLeadership(committee.role);
+        const roleColor = leadership ? tint : mutedText;
+        const roleBackground = leadership ? tint + '14' : inputBackground;
+
+        return (
+          <Pressable
+            key={committee.id}
+            style={({ pressed }) => [
+              styles.card,
+              { backgroundColor: surface, borderColor: border },
+              Shadows.sm,
+              pressed && styles.pressed,
+            ]}
+            onPress={() =>
+              router.push({
+                pathname: '/committee-detail',
+                params: { id: committee.id },
+              })
+            }
+          >
+            <View style={styles.committeeHeader}>
+              <ThemedText type="defaultSemiBold" style={styles.committeeName}>
+                {committee.name}
+              </ThemedText>
+              <MaterialIcons name="chevron-right" size={20} color={mutedText} />
+            </View>
             <View style={styles.committeeDetails}>
-              {committee.day ? (
+              <View style={[styles.roleBadge, { backgroundColor: roleBackground }]}>
+                <ThemedText style={[styles.roleBadgeText, { color: roleColor }]}>
+                  {committee.role}
+                </ThemedText>
+              </View>
+              {committee.chamber ? (
                 <View style={styles.committeeDetail}>
-                  <MaterialIcons name="event" size={14} color={mutedText} />
+                  <MaterialIcons name="account-balance" size={14} color={mutedText} />
                   <ThemedText type="caption" style={{ color: mutedText }}>
-                    {committee.day}
-                  </ThemedText>
-                </View>
-              ) : null}
-              {committee.time ? (
-                <View style={styles.committeeDetail}>
-                  <MaterialIcons name="schedule" size={14} color={mutedText} />
-                  <ThemedText type="caption" style={{ color: mutedText }}>
-                    {committee.time}
-                  </ThemedText>
-                </View>
-              ) : null}
-              {committee.room ? (
-                <View style={styles.committeeDetail}>
-                  <MaterialIcons name="room" size={14} color={mutedText} />
-                  <ThemedText type="caption" style={{ color: mutedText }}>
-                    Room {committee.room}
+                    {committee.chamber}
                   </ThemedText>
                 </View>
               ) : null}
             </View>
-          )}
-        </Pressable>
-      ))}
+          </Pressable>
+        );
+      })}
     </>
   );
 }
@@ -992,6 +996,15 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
+  },
+  roleBadge: {
+    paddingHorizontal: Spacing.sm,
+    paddingVertical: 3,
+    borderRadius: Radius.sm,
+  },
+  roleBadgeText: {
+    fontSize: 12,
+    fontWeight: '700',
   },
 
   billNumber: {

@@ -4,6 +4,7 @@ import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
 import 'react-native-reanimated';
 
+import { DesktopWebShell } from '@/components/desktop-web-shell';
 import { AchievementCelebration } from '@/components/gamification/achievement-celebration';
 import { AuthProvider, useAuth } from '@/contexts/auth-context';
 import { GamificationProvider } from '@/contexts/gamification-context';
@@ -26,15 +27,18 @@ function RootNavigator() {
   }, [user, isLoading, segments]);
 
   return (
-    <Stack>
-      <Stack.Screen name="index" options={{ headerShown: false }} />
-      <Stack.Screen name="lookup" options={{ headerShown: false }} />
-      <Stack.Screen name="(auth)" options={{ headerShown: false }} />
-      <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-      <Stack.Screen name="bill-detail" options={{ headerShown: false }} />
-      <Stack.Screen name="quiz" options={{ headerShown: false }} />
-      <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
-    </Stack>
+    <DesktopWebShell>
+      <Stack>
+        <Stack.Screen name="index" options={{ headerShown: false }} />
+        <Stack.Screen name="lookup" options={{ headerShown: false }} />
+        <Stack.Screen name="(auth)" options={{ headerShown: false }} />
+        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+        <Stack.Screen name="bill-detail" options={{ headerShown: false }} />
+        <Stack.Screen name="committee-detail" options={{ headerShown: false }} />
+        <Stack.Screen name="quiz" options={{ headerShown: false }} />
+        <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
+      </Stack>
+    </DesktopWebShell>
   );
 }
 

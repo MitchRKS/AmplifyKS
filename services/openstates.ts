@@ -1,7 +1,70 @@
-import { Platform } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+
+import {
+  getCommitteeAssignmentsLocal,
+  getCommitteeByIdLocal,
+  getKansasCommitteesLocal,
+  getKansasLegislatorsLocal,
+  getOfficialDetailLocal,
+  isLocalLegislatorId,
+} from './kansas-legislators';
 
 const OPENSTATES_BASE_URL = 'https://v3.openstates.org';
 const OPENSTATES_API_KEY = process.env.EXPO_PUBLIC_OPENSTATES_API_KEY ?? '';
+
+const RATE_LIMIT_COOLDOWN_MS = 60 * 1000;
+const MIN_REQUEST_SPACING_MS = 1100;
+
+interface PersistentCacheEntry<T> {
+  timestamp: number;
+  data: T;
+}
+
+const sleep = (ms: number): Promise<void> =>
+  new Promise((resolve) => setTimeout(resolve, ms));
+
+let queueTail: Promise<unknown> = Promise.resolve();
+let lastRequestAt = 0;
+
+const queuedFetch = (input: string, init?: RequestInit): Promise<Response> => {
+  const run = async (): Promise<Response> => {
+    const wait = MIN_REQUEST_SPACING_MS - (Date.now() - lastRequestAt);
+    if (wait > 0) await sleep(wait);
+    lastRequestAt = Date.now();
+    return fetch(input, init);
+  };
+  const next = queueTail.then(run, run);
+  queueTail = next.catch(() => undefined);
+  return next;
+};
+
+const openStatesHeaders = (): Record<string, string> => ({
+  'X-API-KEY': OPENSTATES_API_KEY,
+});
+
+const readPersistentCache = async <T>(
+  key: string,
+  ttlMs: number,
+): Promise<{ data: T; isFresh: boolean } | null> => {
+  try {
+    const raw = await AsyncStorage.getItem(key);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as PersistentCacheEntry<T>;
+    const age = Date.now() - parsed.timestamp;
+    return { data: parsed.data, isFresh: age <= ttlMs };
+  } catch {
+    return null;
+  }
+};
+
+const writePersistentCache = async <T>(key: string, data: T): Promise<void> => {
+  try {
+    const payload: PersistentCacheEntry<T> = { timestamp: Date.now(), data };
+    await AsyncStorage.setItem(key, JSON.stringify(payload));
+  } catch {
+    /* network path still works */
+  }
+};
 
 interface OpenStatesContactDetail {
   note: string;
@@ -102,9 +165,7 @@ export const getOfficialsByLocation = async (
   lng: number,
 ): Promise<Official[]> => {
   const url = `${OPENSTATES_BASE_URL}/people.geo?lat=${lat}&lng=${lng}`;
-  const response = await fetch(url, {
-    headers: { 'X-API-KEY': OPENSTATES_API_KEY },
-  });
+  const response = await queuedFetch(url, { headers: openStatesHeaders() });
 
   if (!response.ok) {
     const text = await response.text();
@@ -135,11 +196,9 @@ export interface OfficialDetail extends Official {
   legislatureLinks: OpenStatesLink[];
 }
 
-export const getOfficialDetail = async (id: string): Promise<OfficialDetail> => {
+const fetchOfficialDetailRemote = async (id: string): Promise<OfficialDetail> => {
   const url = `${OPENSTATES_BASE_URL}/people?id=${encodeURIComponent(id)}&include=links&include=sources&include=offices`;
-  const response = await fetch(url, {
-    headers: { 'X-API-KEY': OPENSTATES_API_KEY },
-  });
+  const response = await queuedFetch(url, { headers: openStatesHeaders() });
 
   if (!response.ok) {
     const text = await response.text();
@@ -165,110 +224,75 @@ export const getOfficialDetail = async (id: string): Promise<OfficialDetail> => 
   };
 };
 
+export const getOfficialDetail = async (id: string): Promise<OfficialDetail> => {
+  if (isLocalLegislatorId(id)) {
+    const local = getOfficialDetailLocal(id);
+    if (!local) throw new Error('Legislator not found');
+    return local;
+  }
+  return fetchOfficialDetailRemote(id);
+};
+
 export interface CommitteeAssignment {
+  id: string;
   name: string;
-  day: string;
-  time: string;
-  room: string;
+  role: string;
+  chamber: string;
   url: string;
 }
 
-const parseCommitteesFromHtml = (html: string): CommitteeAssignment[] => {
-  const startMarker = '<!-- begin committee memberships -->';
-  const endMarker = '<!-- end committee memberships -->';
-  const start = html.indexOf(startMarker);
-  const end = html.indexOf(endMarker);
-  if (start < 0 || end < 0) return [];
-
-  const section = html.slice(start, end);
-  const linkPattern =
-    /<a[^>]*href="(\/li\/[^"]*committees\/[^"]+)"[^>]*>([^<]+)<\/a>/g;
-  const assignments: CommitteeAssignment[] = [];
-  let match: RegExpExecArray | null;
-
-  while ((match = linkPattern.exec(section)) !== null) {
-    const url = `https://www.kslegislature.gov${match[1]}`;
-    const raw = match[2].trim();
-
-    const parts = raw.match(
-      /^(.+?)\s*-\s*Day:\s*(.+?)\s*-\s*Time:\s*(.+?)\s*-\s*Room:\s*(.+)$/,
-    );
-    if (parts) {
-      assignments.push({
-        name: parts[1].trim(),
-        day: parts[2].trim(),
-        time: parts[3].trim(),
-        room: parts[4].trim(),
-        url,
-      });
-    } else {
-      assignments.push({ name: raw, day: '', time: '', room: '', url });
-    }
-  }
-
-  return assignments;
-};
-
-export const getCommitteeAssignments = async (
-  legislatureUrl: string,
-): Promise<CommitteeAssignment[]> => {
-  try {
-    if (Platform.OS === 'web') {
-      const fnUrl = `/.netlify/functions/ksleg-committees?url=${encodeURIComponent(legislatureUrl)}`;
-      const response = await fetch(fnUrl);
-      if (!response.ok) return [];
-      const data = await response.json();
-      return data.committees ?? [];
-    }
-
-    const response = await fetch(legislatureUrl, {
-      headers: {
-        'User-Agent':
-          'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15',
-      },
-    });
-    if (!response.ok) return [];
-    return parseCommitteesFromHtml(await response.text());
-  } catch {
-    return [];
-  }
-};
-
-interface PeopleListResponse {
-  results: OpenStatesPerson[];
-  pagination: { max_page: number; page: number };
+export interface KansasCommitteeMember {
+  personId: string;
+  name: string;
+  role: string;
 }
 
-const isKansasLegislator = (person: OpenStatesPerson): boolean => {
-  if (person.jurisdiction?.name !== 'Kansas') return false;
-  const roleClass = person.current_role?.org_classification;
-  return roleClass === 'upper' || roleClass === 'lower';
-};
+export interface KansasCommittee {
+  id: string;
+  name: string;
+  chamber: string;
+  classification: string;
+  parentId: string | null;
+  url: string;
+  members: KansasCommitteeMember[];
+}
 
-export const getKansasLegislators = async (): Promise<Official[]> => {
-  const all: Official[] = [];
-  let page = 1;
+let nextRetryAllowedAt = 0;
 
-  while (true) {
-    const url = `${OPENSTATES_BASE_URL}/people?jurisdiction=Kansas&per_page=50&page=${page}`;
-    const response = await fetch(url, {
-      headers: { 'X-API-KEY': OPENSTATES_API_KEY },
-    });
-
-    if (!response.ok) {
-      const text = await response.text();
-      throw new Error(`OpenStates API error (${response.status}): ${text}`);
-    }
-
-    const data: PeopleListResponse = await response.json();
-    all.push(...data.results.filter(isKansasLegislator).map(transformPerson));
-
-    if (page >= data.pagination.max_page) break;
-    page++;
+class RateLimitedError extends Error {
+  retryAfterMs: number;
+  constructor(retryAfterMs: number) {
+    super(`OpenStates rate limit hit; retry after ${retryAfterMs}ms`);
+    this.name = 'RateLimitedError';
+    this.retryAfterMs = retryAfterMs;
   }
+}
 
-  return all;
+const parseRetryAfter = (header: string | null): number => {
+  if (!header) return RATE_LIMIT_COOLDOWN_MS;
+  const seconds = Number(header);
+  if (Number.isFinite(seconds) && seconds > 0) return Math.ceil(seconds * 1000);
+  const dateMs = Date.parse(header);
+  if (Number.isFinite(dateMs)) {
+    const diff = dateMs - Date.now();
+    if (diff > 0) return diff;
+  }
+  return RATE_LIMIT_COOLDOWN_MS;
 };
+
+export const getKansasLegislators = (): Promise<Official[]> =>
+  Promise.resolve(getKansasLegislatorsLocal());
+
+export const getKansasCommittees = (): Promise<KansasCommittee[]> =>
+  Promise.resolve(getKansasCommitteesLocal());
+
+export const getCommitteeById = (id: string): Promise<KansasCommittee | null> =>
+  Promise.resolve(getCommitteeByIdLocal(id));
+
+export const getCommitteeAssignments = (
+  personId: string,
+): Promise<CommitteeAssignment[]> =>
+  Promise.resolve(getCommitteeAssignmentsLocal(personId));
 
 const KS_CONGRESSIONAL_COORDS = [
   { lat: 38.84, lng: -99.33 },
@@ -277,28 +301,86 @@ const KS_CONGRESSIONAL_COORDS = [
   { lat: 37.69, lng: -97.34 },
 ];
 
-export const getKansasFederalDelegation = async (): Promise<Official[]> => {
-  const calls = KS_CONGRESSIONAL_COORDS.map(async ({ lat, lng }) => {
-    try {
-      const url = `${OPENSTATES_BASE_URL}/people.geo?lat=${lat}&lng=${lng}`;
-      const response = await fetch(url, {
-        headers: { 'X-API-KEY': OPENSTATES_API_KEY },
-      });
-      if (!response.ok) return [];
-      const data: PeopleResponse = await response.json();
-      return data.results
-        .filter((p) => p.jurisdiction?.name === 'United States')
-        .map(transformPerson);
-    } catch {
-      return [];
-    }
-  });
+const KANSAS_FEDERAL_CACHE_KEY = 'openstates:kansas-federal:v1';
+const KANSAS_FEDERAL_TTL_MS = 24 * 60 * 60 * 1000;
 
-  const results = await Promise.all(calls);
+let kansasFederalPromise: Promise<Official[]> | null = null;
+let kansasFederalMemoryCache: Official[] | null = null;
+
+const fetchKansasFederalRaw = async (): Promise<Official[]> => {
+  const all: Official[] = [];
+  for (const { lat, lng } of KS_CONGRESSIONAL_COORDS) {
+    const url = `${OPENSTATES_BASE_URL}/people.geo?lat=${lat}&lng=${lng}`;
+    const response = await queuedFetch(url, { headers: openStatesHeaders() });
+
+    if (response.status === 429) {
+      throw new RateLimitedError(parseRetryAfter(response.headers.get('retry-after')));
+    }
+    if (!response.ok) continue;
+
+    const data: PeopleResponse = await response.json();
+    all.push(
+      ...data.results
+        .filter((p) => p.jurisdiction?.name === 'United States')
+        .map(transformPerson),
+    );
+  }
+
   const seen = new Set<string>();
-  return results.flat().filter((official) => {
+  return all.filter((official) => {
     if (seen.has(official.id)) return false;
     seen.add(official.id);
     return true;
   });
+};
+
+const fetchAndCacheKansasFederal = async (): Promise<Official[]> => {
+  const cached = await readPersistentCache<Official[]>(
+    KANSAS_FEDERAL_CACHE_KEY,
+    KANSAS_FEDERAL_TTL_MS,
+  );
+
+  if (cached?.isFresh) {
+    kansasFederalMemoryCache = cached.data;
+    return cached.data;
+  }
+
+  if (Date.now() < nextRetryAllowedAt) {
+    if (cached) {
+      kansasFederalMemoryCache = cached.data;
+      return cached.data;
+    }
+    const waitMs = nextRetryAllowedAt - Date.now();
+    throw new Error(
+      `OpenStates rate limit active; retry in ${Math.ceil(waitMs / 1000)}s`,
+    );
+  }
+
+  try {
+    const fresh = await fetchKansasFederalRaw();
+    kansasFederalMemoryCache = fresh;
+    nextRetryAllowedAt = 0;
+    void writePersistentCache(KANSAS_FEDERAL_CACHE_KEY, fresh);
+    return fresh;
+  } catch (err) {
+    if (err instanceof RateLimitedError) {
+      nextRetryAllowedAt = Date.now() + err.retryAfterMs;
+    }
+    if (cached) {
+      kansasFederalMemoryCache = cached.data;
+      return cached.data;
+    }
+    throw err;
+  }
+};
+
+export const getKansasFederalDelegation = (): Promise<Official[]> => {
+  if (kansasFederalMemoryCache) return Promise.resolve(kansasFederalMemoryCache);
+  if (!kansasFederalPromise) {
+    kansasFederalPromise = fetchAndCacheKansasFederal().catch((err) => {
+      kansasFederalPromise = null;
+      throw err;
+    });
+  }
+  return kansasFederalPromise;
 };

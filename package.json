@@ -8,6 +8,7 @@
     "android": "expo start --android",
     "ios": "expo start --ios",
     "web": "expo start --web",
+    "web:netlify": "netlify dev --command \"env CI=1 expo start --web --port 8082\" --target-port 8082 --port 8888",
     "lint": "expo lint"
   },
   "dependencies": {
@@ -48,6 +49,7 @@
     "@types/react": "~19.1.0",
     "eslint": "^9.25.0",
     "eslint-config-expo": "~10.0.0",
+    "globals": "^17.5.0",
     "netlify-cli": "^24.3.0",
     "typescript": "~5.9.2"
   },

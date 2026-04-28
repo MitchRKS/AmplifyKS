@@ -38,6 +38,16 @@ LEGISCAN_API_KEY=your_api_key_here
 npx expo start
 ```
 
+For web development that needs Netlify Functions (for example committee API proxying), use:
+
+```bash
+npm run web:netlify
+```
+
+Then open `http://localhost:8888` (not `http://localhost:8081`).
+This command runs Expo web on port `8082` behind Netlify's proxy.
+Because it runs in `CI` mode for compatibility, hot reload is disabled; refresh the browser after changes.
+
 In the output, you'll find options to open the app in a
 
 - [development build](https://docs.expo.dev/develop/development-builds/introduction/)
@@ -61,7 +71,11 @@ app/
 └── _layout.tsx          # Root layout
 
 services/
-└── legiscan.ts          # LegiScan API service
+├── legiscan.ts                  # LegiScan API service
+├── openstates.ts                # OpenStates API (federal delegation + address lookup)
+├── kansas-legislators.ts        # Local Kansas state-legislator + committee data API
+└── data/
+    └── kansas-legislators.ts    # Generated dataset (run `node scripts/parse-kansas-legislators.js` to regenerate from Swift source)
 
 components/
 ├── themed-text.tsx      # Themed text component

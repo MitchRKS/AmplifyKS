@@ -11,6 +11,7 @@ const SUBTABS = [
   { path: '/officials/lookup', label: 'Lookup' },
   { path: '/officials/state', label: 'State' },
   { path: '/officials/federal', label: 'Federal' },
+  { path: '/officials/committees', label: 'Committees' },
 ];
 
 export default function OfficialsLayout() {

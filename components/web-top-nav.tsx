@@ -19,8 +19,15 @@ interface NavItem {
   label: string;
   icon: IconName;
   children?: SubNavItem[];
-  activePrefix?: string;
+  matchesPath?: (pathname: string) => boolean;
 }
+
+const ELECTEDS_SUB_ROUTES = [
+  '/officials',
+  '/officials/lookup',
+  '/officials/state',
+  '/officials/federal',
+] as const;
 
 const NAV_ITEMS: NavItem[] = [
   { route: '/profile', label: 'Profile', icon: 'person' },
@@ -30,15 +37,24 @@ const NAV_ITEMS: NavItem[] = [
     route: '/officials/lookup',
     label: 'Electeds',
     icon: 'how-to-vote',
-    activePrefix: '/officials',
+    matchesPath: (pathname) =>
+      ELECTEDS_SUB_ROUTES.some((p) => pathname === p || pathname.startsWith(p + '/')),
     children: [
       { route: '/officials/lookup', label: 'Lookup' },
       { route: '/officials/state', label: 'State' },
       { route: '/officials/federal', label: 'Federal' },
     ],
   },
+  {
+    route: '/officials/committees',
+    label: 'Committees',
+    icon: 'groups',
+    matchesPath: (pathname) =>
+      pathname === '/officials/committees' ||
+      pathname.startsWith('/officials/committees/'),
+  },
   { route: '/bills', label: 'Bills', icon: 'description' },
-  { route: '/organizations', label: 'Organizations', icon: 'groups' },
+  { route: '/organizations', label: 'Organizations', icon: 'people' },
 ];
 
 const ACTIVE_BG = 'rgba(0, 151, 178, 0.12)';
@@ -53,7 +69,7 @@ const HOVER_CLEAR_MS = 180;
 export function WebTopNav() {
   const router = useRouter();
   const pathname = usePathname();
-  const { logout } = useAuth();
+  const { user, logout } = useAuth();
   const [hoveredGroup, setHoveredGroup] = useState<string | null>(null);
   const hoverClearRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -75,11 +91,11 @@ export function WebTopNav() {
   useEffect(() => () => cancelHoverClear(), []);
 
   const isActive = (route: string) => pathname === route || pathname.startsWith(route + '/');
+  const isItemActive = (item: NavItem) =>
+    item.matchesPath ? item.matchesPath(pathname) : isActive(item.route);
 
   const officialsItem = NAV_ITEMS.find((i) => i.children);
-  const officialsPrefix = officialsItem?.activePrefix ?? '';
-  const onOfficialsSection =
-    officialsPrefix.length > 0 && pathname.startsWith(officialsPrefix);
+  const onOfficialsSection = officialsItem ? isItemActive(officialsItem) : false;
   const showOfficialsSub =
     officialsItem &&
     (hoveredGroup === officialsItem.route || onOfficialsSection);
@@ -104,9 +120,7 @@ export function WebTopNav() {
           contentContainerStyle={styles.navScrollContent}>
           {NAV_ITEMS.map((item) => {
             if (item.children) {
-              const groupActive = item.activePrefix
-                ? pathname.startsWith(item.activePrefix)
-                : isActive(item.route);
+              const groupActive = isItemActive(item);
               const showChildren = hoveredGroup === item.route || groupActive;
 
               return (
@@ -147,7 +161,7 @@ export function WebTopNav() {
               );
             }
 
-            const active = isActive(item.route);
+            const active = isItemActive(item);
             return (
               <Pressable
                 key={item.route}
@@ -176,15 +190,17 @@ export function WebTopNav() {
           })}
         </ScrollView>
 
-        <Pressable
-          style={({ pressed }) => [
-            styles.logoutButton,
-            pressed && { backgroundColor: HOVER_BG },
-          ]}
-          onPress={logout}>
-          <MaterialIcons name="logout" size={18} color={INACTIVE_COLOR} />
-          <ThemedText style={styles.logoutText}>Sign Out</ThemedText>
-        </Pressable>
+        {user ? (
+          <Pressable
+            style={({ pressed }) => [
+              styles.logoutButton,
+              pressed && { backgroundColor: HOVER_BG },
+            ]}
+            onPress={logout}>
+            <MaterialIcons name="logout" size={18} color={INACTIVE_COLOR} />
+            <ThemedText style={styles.logoutText}>Sign Out</ThemedText>
+          </Pressable>
+        ) : null}
       </View>
 
       {showOfficialsSub && officialsItem?.children && (
