@@ -1,5 +1,3 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
-
 import {
   getCommitteeAssignmentsLocal,
   getCommitteeByIdLocal,
@@ -8,17 +6,16 @@ import {
   getOfficialDetailLocal,
   isLocalLegislatorId,
 } from './kansas-legislators';
+import {
+  readPersistentCache,
+  writePersistentCache,
+} from './persistent-cache';
 
 const OPENSTATES_BASE_URL = 'https://v3.openstates.org';
 const OPENSTATES_API_KEY = process.env.EXPO_PUBLIC_OPENSTATES_API_KEY ?? '';
 
 const RATE_LIMIT_COOLDOWN_MS = 60 * 1000;
 const MIN_REQUEST_SPACING_MS = 1100;
-
-interface PersistentCacheEntry<T> {
-  timestamp: number;
-  data: T;
-}
 
 const sleep = (ms: number): Promise<void> =>
   new Promise((resolve) => setTimeout(resolve, ms));
@@ -41,30 +38,6 @@ const queuedFetch = (input: string, init?: RequestInit): Promise<Response> => {
 const openStatesHeaders = (): Record<string, string> => ({
   'X-API-KEY': OPENSTATES_API_KEY,
 });
-
-const readPersistentCache = async <T>(
-  key: string,
-  ttlMs: number,
-): Promise<{ data: T; isFresh: boolean } | null> => {
-  try {
-    const raw = await AsyncStorage.getItem(key);
-    if (!raw) return null;
-    const parsed = JSON.parse(raw) as PersistentCacheEntry<T>;
-    const age = Date.now() - parsed.timestamp;
-    return { data: parsed.data, isFresh: age <= ttlMs };
-  } catch {
-    return null;
-  }
-};
-
-const writePersistentCache = async <T>(key: string, data: T): Promise<void> => {
-  try {
-    const payload: PersistentCacheEntry<T> = { timestamp: Date.now(), data };
-    await AsyncStorage.setItem(key, JSON.stringify(payload));
-  } catch {
-    /* network path still works */
-  }
-};
 
 interface OpenStatesContactDetail {
   note: string;

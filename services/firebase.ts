@@ -3,6 +3,8 @@ import { initializeApp, getApps, getApp } from 'firebase/app';
 import {
   initializeAuth,
   getAuth as getFirebaseAuth,
+  // @ts-expect-error — exported by the react-native build at runtime but
+  // missing from firebase v12's web type declarations.
   getReactNativePersistence,
   type Auth,
 } from 'firebase/auth';

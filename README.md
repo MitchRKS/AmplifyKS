@@ -22,6 +22,9 @@ npm install
 
 This app uses the [LegiScan API](https://legiscan.com/legiscan) to fetch Kansas Legislature data.
 
+The API key stays server-side: requests go through the Netlify Function proxy at
+`netlify/functions/legiscan.mts`, so the key is never shipped in the client bundle.
+
 1. Get your free API key from [LegiScan](https://legiscan.com/legiscan)
 2. Copy `.env.example` to `.env`
 3. Add your API key to the `.env` file:
@@ -30,7 +33,15 @@ This app uses the [LegiScan API](https://legiscan.com/legiscan) to fetch Kansas 
 LEGISCAN_API_KEY=your_api_key_here
 ```
 
+4. For production, set `LEGISCAN_API_KEY` in the Netlify UI (Site settings → Environment variables).
+
 **Note**: The `.env` file is already in `.gitignore` to keep your API key secure.
+
+Where each platform gets LegiScan data:
+
+- **Web**: calls the relative path `/.netlify/functions/legiscan`, so use `npm run web:netlify` (below) for local web dev with bill data.
+- **iOS/Android**: set `EXPO_PUBLIC_LEGISCAN_PROXY_URL` in `.env` to your deployed Netlify site URL.
+- **Dev-only fallback**: set `EXPO_PUBLIC_LEGISCAN_API_KEY` to call LegiScan directly, bypassing the proxy. This embeds the key in the JS bundle — never set it for production builds.
 
 ### 3. Start the app
 
@@ -38,7 +49,7 @@ LEGISCAN_API_KEY=your_api_key_here
 npx expo start
 ```
 
-For web development that needs Netlify Functions (for example committee API proxying), use:
+For web development that needs Netlify Functions (bill data via the LegiScan proxy), use:
 
 ```bash
 npm run web:netlify
@@ -47,6 +58,10 @@ npm run web:netlify
 Then open `http://localhost:8888` (not `http://localhost:8081`).
 This command runs Expo web on port `8082` behind Netlify's proxy.
 Because it runs in `CI` mode for compatibility, hot reload is disabled; refresh the browser after changes.
+
+**Note**: the command deletes `dist/` before starting. A leftover `dist/` from a previous
+`expo export` makes `netlify dev` apply the SPA redirect against the stale folder, which
+rewrites every request (including the JS bundle) to `/index.html` and the app never loads.
 
 In the output, you'll find options to open the app in a
 

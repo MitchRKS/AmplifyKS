@@ -24,11 +24,6 @@ service cloud.firestore {
              getUserRole(request.auth.uid) == 'super_admin';
     }
     
-    // Helper function to check if user owns the document
-    function isOwner(userId) {
-      return isAuthenticated() && request.auth.uid == userId;
-    }
-    
     // Users collection
     match /users/{userId} {
       // Allow users to read and write their own document
@@ -47,12 +42,6 @@ service cloud.firestore {
                     request.resource.data.id == userId &&
                     request.resource.data.role == 'user';
       
-      // TEMPORARY: Allow any user to promote themselves to admin if updating only the role field
-      // TODO: Remove this after initial admin setup!
-      allow update: if isAuthenticated() && 
-                    request.auth.uid == userId &&
-                    request.resource.data.diff(resource.data).affectedKeys().hasOnly(['role']);
-      
       // Surveys subcollection - Users can read and write their own surveys
       match /surveys/{surveyId} {
         allow read, write: if isAuthenticated() && request.auth.uid == userId;
@@ -70,6 +59,11 @@ service cloud.firestore {
       match /quizs/{docId} {
         allow read, write: if isAuthenticated() && request.auth.uid == userId;
       }
+
+      // Action History subcollection - Gamification action records
+      match /actionHistory/{recordId} {
+        allow read, write: if isAuthenticated() && request.auth.uid == userId;
+      }
     }
     
     // Open Bills collection - Read by all authenticated users, Write by admins only
@@ -84,10 +78,16 @@ service cloud.firestore {
       allow write: if isAdmin();
     }
     
-    // Bills collection - Public read, authenticated write
+    // Bills collection - Public read, admin write
     match /bills/{billId} {
       allow read: if true;
-      allow write: if isAuthenticated();
+      allow write: if isAdmin();
+    }
+
+    // Bill Category Tags - admin-curated overrides for the match engine
+    match /billCategoryTags/{billNumber} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin();
     }
     
     // Testimonies collection
@@ -155,13 +155,12 @@ service cloud.firestore {
                     resource.data.userId == request.auth.uid;
     }
     
-    // Legislator Rating Stats collection - Read by all, Write by authenticated users
+    // Legislator Rating Stats collection - Read by all, Write by admins
+    // (no client code writes these today; recompute from legislatorRatings
+    // server-side or in an admin tool if aggregates are needed)
     match /legislatorRatingStats/{legislatorId} {
-      // Anyone can read rating statistics
       allow read: if true;
-      
-      // Only authenticated users can update stats (managed by the app)
-      allow write: if isAuthenticated();
+      allow write: if isAdmin();
     }
     
     // Default deny all other collections

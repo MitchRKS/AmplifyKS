@@ -1,21 +1,21 @@
 // LegiScan API Service
 // API Documentation: https://legiscan.com/gaits/documentation/legiscan
 
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Platform } from 'react-native';
 
-const LEGISCAN_API_KEY = '18cf0e63a5cb8e7b5cd0e5102f664e2a';
-const LEGISCAN_BASE_URL = 'https://api.legiscan.com';
+import {
+  readFreshPersistentCache,
+  writePersistentCache,
+} from '@/services/persistent-cache';
+
+const LEGISCAN_DIRECT_URL = 'https://api.legiscan.com';
+const LEGISCAN_PROXY_PATH = '/.netlify/functions/legiscan';
 const SPONSORED_BILLS_CACHE_TTL_MS = 1000 * 60 * 60 * 12; // 12 hours
 const VOTING_RECORD_CACHE_TTL_MS = 1000 * 60 * 60 * 24; // 24 hours
 
 interface LegiscanResponse {
   status: string;
   [key: string]: any;
-}
-
-interface PersistentCacheEntry<T> {
-  timestamp: number;
-  data: T;
 }
 
 interface SessionListResponse extends LegiscanResponse {
@@ -119,16 +119,44 @@ interface BillDetailResponse extends LegiscanResponse {
 }
 
 /**
- * Make a request to the LegiScan API
+ * Build the request URL for a LegiScan operation.
+ *
+ * The API key lives server-side in the Netlify Function proxy
+ * (netlify/functions/legiscan.mts). EXPO_PUBLIC_LEGISCAN_API_KEY is a
+ * dev-only escape hatch that calls the API directly and embeds the key in
+ * the bundle — never set it for production builds.
  */
-async function makeApiRequest(operation: string, params: Record<string, string | number> = {}): Promise<any> {
-  const queryParams = new URLSearchParams({
-    key: LEGISCAN_API_KEY,
+function buildRequestUrl(operation: string, params: Record<string, string | number>): string {
+  const query = new URLSearchParams({
     op: operation,
     ...Object.fromEntries(Object.entries(params).map(([k, v]) => [k, String(v)])),
   });
 
-  const url = `${LEGISCAN_BASE_URL}/?${queryParams.toString()}`;
+  const devKey = process.env.EXPO_PUBLIC_LEGISCAN_API_KEY;
+  if (devKey) {
+    query.set('key', devKey);
+    return `${LEGISCAN_DIRECT_URL}/?${query.toString()}`;
+  }
+
+  if (Platform.OS === 'web') {
+    return `${LEGISCAN_PROXY_PATH}?${query.toString()}`;
+  }
+
+  const proxyBase = process.env.EXPO_PUBLIC_LEGISCAN_PROXY_URL;
+  if (proxyBase) {
+    return `${proxyBase.replace(/\/+$/, '')}${LEGISCAN_PROXY_PATH}?${query.toString()}`;
+  }
+
+  throw new Error(
+    'LegiScan is not configured. Set EXPO_PUBLIC_LEGISCAN_PROXY_URL (deployed site URL) or EXPO_PUBLIC_LEGISCAN_API_KEY (dev only) in .env.',
+  );
+}
+
+/**
+ * Make a request to the LegiScan API
+ */
+async function makeApiRequest(operation: string, params: Record<string, string | number> = {}): Promise<any> {
+  const url = buildRequestUrl(operation, params);
 
   console.log('LegiScan API Request:', operation, params);
 
@@ -296,33 +324,6 @@ const rollCallCache = new Map<number, RollCall>();
 const votingRecordCache = new Map<string, LegislatorVoteRecord[]>();
 const sponsoredBillsCache = new Map<string, SponsoredBillSummary[]>();
 
-const readPersistentCache = async <T>(
-  key: string,
-  ttlMs: number,
-): Promise<T | null> => {
-  try {
-    const raw = await AsyncStorage.getItem(key);
-    if (!raw) return null;
-    const parsed = JSON.parse(raw) as PersistentCacheEntry<T>;
-    if (Date.now() - parsed.timestamp > ttlMs) {
-      await AsyncStorage.removeItem(key);
-      return null;
-    }
-    return parsed.data;
-  } catch {
-    return null;
-  }
-};
-
-const writePersistentCache = async <T>(key: string, data: T): Promise<void> => {
-  try {
-    const payload: PersistentCacheEntry<T> = { timestamp: Date.now(), data };
-    await AsyncStorage.setItem(key, JSON.stringify(payload));
-  } catch {
-    // Ignore cache write failures; network path still works.
-  }
-};
-
 async function getSessionPeople(sessionId: number): Promise<SessionPerson[]> {
   if (sessionPeopleCache.has(sessionId)) return sessionPeopleCache.get(sessionId)!;
 
@@ -391,7 +392,7 @@ export async function fetchVotingRecord(
   const persistentKey = `legiscan:voting-record:${cacheKey}`;
 
   if (votingRecordCache.has(cacheKey)) return votingRecordCache.get(cacheKey)!;
-  const persisted = await readPersistentCache<LegislatorVoteRecord[]>(
+  const persisted = await readFreshPersistentCache<LegislatorVoteRecord[]>(
     persistentKey,
     VOTING_RECORD_CACHE_TTL_MS,
   );
@@ -451,7 +452,7 @@ export async function searchSponsoredBills(
   if (sponsoredBillsCache.has(cacheKey)) {
     return sponsoredBillsCache.get(cacheKey)!;
   }
-  const persisted = await readPersistentCache<SponsoredBillSummary[]>(
+  const persisted = await readFreshPersistentCache<SponsoredBillSummary[]>(
     cacheKey,
     SPONSORED_BILLS_CACHE_TTL_MS,
   );
