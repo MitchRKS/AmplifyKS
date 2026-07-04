@@ -237,7 +237,7 @@ export default function FederalDelegationScreen() {
           <View style={styles.header}>
             <ThemedText type="title">Federal Delegation</ThemedText>
             <ThemedText style={[styles.subtitle, { color: mutedText }]}>
-              Kansas's representatives in the U.S. Congress
+              Kansas&apos;s representatives in the U.S. Congress
             </ThemedText>
           </View>
           <View style={styles.searchRow}>

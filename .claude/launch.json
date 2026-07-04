@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "web-netlify",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "web:netlify"],
+      "port": 8888
+    }
+  ]
+}

@@ -702,7 +702,7 @@ function VotesTab({
           Voting Record
         </ThemedText>
         <ThemedText style={[styles.votesBody, { color: mutedText }]}>
-          View {legislator.givenName || legislator.name}'s full voting record on these external platforms.
+          View {legislator.givenName || legislator.name}&apos;s full voting record on these external platforms.
         </ThemedText>
       </View>
 

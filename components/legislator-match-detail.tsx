@@ -52,7 +52,7 @@ function BT50MatchView({ match }: { match: ResolvedMatchResult }) {
       </View>
 
       <ThemedText style={[styles.footerNote, { color: mutedText }]}>
-        Based on how this legislator's voting record aligns with your quiz positions.
+        Based on how this legislator&apos;s voting record aligns with your quiz positions.
       </ThemedText>
     </View>
   );
@@ -100,7 +100,7 @@ function VotingRecordMatchView({ matchScore }: { matchScore: LegislatorMatchScor
       </View>
 
       <ThemedText style={[styles.footerNote, { color: mutedText }]}>
-        Scores are based on voting record analysis and may not capture every nuance of a legislator's position.
+        Scores are based on voting record analysis and may not capture every nuance of a legislator&apos;s position.
       </ThemedText>
     </View>
   );

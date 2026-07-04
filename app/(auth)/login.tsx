@@ -143,7 +143,7 @@ export default function LoginScreen() {
 
             <View style={styles.footer}>
               <ThemedText style={[styles.footerText, { color: mutedText }]}>
-                Don't have an account?
+                Don&apos;t have an account?
               </ThemedText>
               <Pressable accessibilityRole="link" onPress={() => router.replace('/(auth)/register')}>
                 <ThemedText style={[styles.linkText, { color: tint }]}>Create Account</ThemedText>

@@ -287,7 +287,7 @@ function ResultsView({
               Quiz Complete!
             </ThemedText>
             <ThemedText type="caption" style={[styles.resultSubtitle, { color: mutedText }]}>
-              Your positions have been recorded. Visit a legislator's profile to see how you match.
+              Your positions have been recorded. Visit a legislator&apos;s profile to see how you match.
             </ThemedText>
           </View>
 

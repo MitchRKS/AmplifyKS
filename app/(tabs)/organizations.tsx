@@ -33,7 +33,7 @@ export default function OrganizationsScreen() {
             Coming Soon
           </ThemedText>
           <ThemedText style={[styles.body, { color: mutedText }]}>
-            We're building a directory of Kansas advocacy organizations.
+            We&apos;re building a directory of Kansas advocacy organizations.
             Check back soon to discover groups aligned with the issues you
             care about.
           </ThemedText>
