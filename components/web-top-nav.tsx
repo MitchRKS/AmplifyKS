@@ -23,7 +23,6 @@ interface NavItem {
 }
 
 const ELECTEDS_SUB_ROUTES = [
-  '/officials',
   '/officials/lookup',
   '/officials/state',
   '/officials/federal',
@@ -38,6 +37,8 @@ const NAV_ITEMS: NavItem[] = [
     label: 'Electeds',
     icon: 'how-to-vote',
     matchesPath: (pathname) =>
+      pathname === '/officials' ||
+      pathname === '/officials/' ||
       ELECTEDS_SUB_ROUTES.some((p) => pathname === p || pathname.startsWith(p + '/')),
     children: [
       { route: '/officials/lookup', label: 'Lookup' },

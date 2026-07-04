@@ -21,7 +21,7 @@ export const COMMITTEE_EMAILS: Record<string, string> = {
     "S.Fed.State.Affairs@senate.ks.gov",
   "Senate Committee on Financial Institutions and Insurance":
     "S.Financial.Insurance@senate.ks.gov",
-  "Senate Committee on Government Efficiency": " kansascoge@senate.ks.gov",
+  "Senate Committee on Government Efficiency": "kansascoge@senate.ks.gov",
   "Senate Committee on Judiciary": "S.Judiciary@senate.ks.gov",
   "Senate Committee on Local Government, Transparency and Ethics":
     "Transparency@senate.ks.gov",

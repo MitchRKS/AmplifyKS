@@ -13,6 +13,7 @@ import { ContentContainer } from '@/components/content-container';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { IconSymbol } from '@/components/ui/icon-symbol';
+import { getCommitteeMeeting } from '@/constants/committee-meetings';
 import { Radius, Shadows, Spacing } from '@/constants/theme';
 import { useThemeColor } from '@/hooks/use-theme-color';
 import {
@@ -157,6 +158,39 @@ export default function CommitteeDetailScreen() {
                   </ThemedText>
                 </View>
               </View>
+
+              {(() => {
+                const meeting = getCommitteeMeeting(committee.name, committee.chamber);
+                if (!meeting) return null;
+                return (
+                  <View style={[styles.meetingInfo, { borderTopColor: border }]}>
+                    {meeting.day ? (
+                      <View style={styles.meetingRow}>
+                        <IconSymbol name="calendar" size={15} color={mutedText} />
+                        <ThemedText style={[styles.meetingText, { color: mutedText }]}>
+                          {meeting.day}
+                        </ThemedText>
+                      </View>
+                    ) : null}
+                    {meeting.time ? (
+                      <View style={styles.meetingRow}>
+                        <IconSymbol name="clock" size={15} color={mutedText} />
+                        <ThemedText style={[styles.meetingText, { color: mutedText }]}>
+                          {meeting.time}
+                        </ThemedText>
+                      </View>
+                    ) : null}
+                    {meeting.room ? (
+                      <View style={styles.meetingRow}>
+                        <IconSymbol name="mappin" size={15} color={mutedText} />
+                        <ThemedText style={[styles.meetingText, { color: mutedText }]}>
+                          {meeting.room}
+                        </ThemedText>
+                      </View>
+                    ) : null}
+                  </View>
+                );
+              })()}
             </View>
 
             {sections.length === 0 ? (
@@ -238,6 +272,19 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: Spacing.sm,
+  },
+  meetingInfo: {
+    borderTopWidth: StyleSheet.hairlineWidth,
+    paddingTop: Spacing.md,
+    gap: Spacing.sm,
+  },
+  meetingRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.sm,
+  },
+  meetingText: {
+    fontSize: 14,
   },
   badge: {
     paddingHorizontal: Spacing.md,

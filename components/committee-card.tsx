@@ -2,6 +2,7 @@ import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { Pressable, StyleSheet, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
+import { getCommitteeMeeting } from '@/constants/committee-meetings';
 import { Radius, Shadows, Spacing } from '@/constants/theme';
 import { useThemeColor } from '@/hooks/use-theme-color';
 import type { KansasCommittee } from '@/services/openstates';
@@ -17,7 +18,7 @@ export function CommitteeCard({ committee, onPress }: CommitteeCardProps) {
   const mutedText = useThemeColor({ light: '#5E6368', dark: '#9CA3AF' }, 'text');
   const tint = useThemeColor({ light: '#0097b2', dark: '#33C4DB' }, 'tint');
 
-  const memberCount = committee.members.length;
+  const meeting = getCommitteeMeeting(committee.name, committee.chamber);
 
   return (
     <Pressable
@@ -29,28 +30,54 @@ export function CommitteeCard({ committee, onPress }: CommitteeCardProps) {
         pressed && styles.pressed,
       ]}
     >
-      <View style={styles.headerRow}>
-        <ThemedText type="defaultSemiBold" style={styles.name} numberOfLines={2}>
-          {committee.name}
+      <View style={styles.header}>
+        <ThemedText
+          type="defaultSemiBold"
+          style={[styles.name, { color: tint }]}
+          numberOfLines={2}
+        >
+          {`${committee.chamber} • ${committee.name}`}
         </ThemedText>
         <MaterialIcons name="chevron-right" size={20} color={mutedText} />
       </View>
 
-      <View style={styles.metaRow}>
-        {committee.chamber ? (
-          <View style={[styles.chip, { backgroundColor: border }]}>
-            <ThemedText type="caption" style={{ color: mutedText }}>
-              {committee.chamber}
-            </ThemedText>
+      {meeting ? (
+        <>
+          <View style={[styles.divider, { backgroundColor: border }]} />
+          <View style={styles.metaRow}>
+            {meeting.day ? (
+              <>
+                <MaterialIcons name="calendar-today" size={13} color={mutedText} />
+                <ThemedText type="caption" style={{ color: mutedText }}>
+                  {meeting.day}
+                </ThemedText>
+              </>
+            ) : null}
+            {meeting.day && meeting.time ? (
+              <ThemedText type="caption" style={{ color: mutedText }}> • </ThemedText>
+            ) : null}
+            {meeting.time ? (
+              <>
+                <MaterialIcons name="access-time" size={13} color={mutedText} />
+                <ThemedText type="caption" style={{ color: mutedText }}>
+                  {meeting.time}
+                </ThemedText>
+              </>
+            ) : null}
+            {(meeting.day || meeting.time) && meeting.room ? (
+              <ThemedText type="caption" style={{ color: mutedText }}> • </ThemedText>
+            ) : null}
+            {meeting.room ? (
+              <>
+                <MaterialIcons name="place" size={13} color={mutedText} />
+                <ThemedText type="caption" style={{ color: mutedText }}>
+                  {meeting.room}
+                </ThemedText>
+              </>
+            ) : null}
           </View>
-        ) : null}
-        <View style={styles.memberCount}>
-          <MaterialIcons name="people" size={14} color={tint} />
-          <ThemedText type="caption" style={{ color: tint, fontWeight: '700' }}>
-            {memberCount} member{memberCount !== 1 ? 's' : ''}
-          </ThemedText>
-        </View>
-      </View>
+        </>
+      ) : null}
     </Pressable>
   );
 }
@@ -60,13 +87,13 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderRadius: Radius.lg,
     padding: Spacing.lg,
-    gap: Spacing.md,
+    gap: Spacing.sm,
   },
   pressed: {
     opacity: 0.75,
     transform: [{ scale: 0.98 }],
   },
-  headerRow: {
+  header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
@@ -75,21 +102,15 @@ const styles = StyleSheet.create({
   name: {
     fontSize: 16,
     flex: 1,
+    lineHeight: 22,
+  },
+  divider: {
+    height: 1,
   },
   metaRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    flexWrap: 'wrap',
-    gap: Spacing.md,
-  },
-  chip: {
-    paddingHorizontal: Spacing.sm,
-    paddingVertical: 3,
-    borderRadius: Radius.sm,
-  },
-  memberCount: {
-    flexDirection: 'row',
-    alignItems: 'center',
     gap: 4,
+    flexWrap: 'wrap',
   },
 });

@@ -19,14 +19,13 @@ import { Radius, Shadows, Spacing } from '@/constants/theme';
 import { useThemeColor } from '@/hooks/use-theme-color';
 import { getKansasCommittees, type KansasCommittee } from '@/services/openstates';
 
-type ChamberFilter = 'All' | 'Senate' | 'House' | 'Joint';
+type ChamberFilter = 'All' | 'Senate' | 'House';
 
-const CHAMBER_FILTERS: ChamberFilter[] = ['All', 'Senate', 'House', 'Joint'];
+const CHAMBER_FILTERS: ChamberFilter[] = ['All', 'Senate', 'House'];
 
 const SECTION_ORDER: { key: string; label: string }[] = [
   { key: 'Senate', label: 'Senate' },
   { key: 'House', label: 'House' },
-  { key: 'Joint', label: 'Joint' },
   { key: 'Other', label: 'Other' },
 ];
 

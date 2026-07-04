@@ -1181,7 +1181,7 @@ export const KANSAS_LEGISLATORS: KSLegislatorRecord[] = [
         role: "Member",
       },
       {
-        name: "Local Government",
+        name: "Veterans & Military",
         role: "Member",
       },
       {
@@ -3011,7 +3011,7 @@ export const KANSAS_LEGISLATORS: KSLegislatorRecord[] = [
     lastName: "Wilson",
     party: "Republican",
     city: "DK",
-    email: "Scott.Hill@house.ks.gov",
+    email: "Greg.Wilson@house.ks.gov",
     officePhone: "785-296-7674",
     committees: [
       {
@@ -4327,7 +4327,7 @@ export const KANSAS_LEGISLATORS: KSLegislatorRecord[] = [
     lastName: "Storm",
     party: "Republican",
     city: "JoCo",
-    email: "John.Resman@house.ks.gov",
+    email: "Mike.Storm@house.ks.gov",
     officePhone: "785-296-7636",
     committees: [],
     isLeadership: false,
