@@ -14,6 +14,11 @@ const SPONSORED_BILLS_CACHE_TTL_MS = 1000 * 60 * 60 * 12; // 12 hours
 const VOTING_RECORD_CACHE_TTL_MS = 1000 * 60 * 60 * 24; // 24 hours
 const SESSION_LIST_CACHE_TTL_MS = 1000 * 60 * 60 * 12; // 12 hours
 const MASTER_LIST_CACHE_TTL_MS = 1000 * 60 * 30; // 30 minutes
+const BILL_DETAIL_CACHE_TTL_MS = 1000 * 60 * 30; // 30 minutes
+// Roll call votes are an immutable historical record once cast, so they can
+// be cached far longer than in-progress bill data.
+const ROLL_CALL_CACHE_TTL_MS = 1000 * 60 * 60 * 24 * 30; // 30 days
+const VOTE_SCAN_CONCURRENCY = 4;
 
 interface LegiscanResponse {
   status: string;
@@ -266,12 +271,33 @@ export async function getKansasBills(forceRefresh: boolean = false): Promise<Bil
   return getMasterList(sessionId, forceRefresh);
 }
 
+// Shared across every caller (bill-detail screen, bills list committee
+// hydration, and voting-record scans for every legislator) since they
+// frequently request the same bills — most legislators' most recent votes
+// land on the same set of recently-active bills.
+const billDetailCache = new Map<number, BillDetailResponse['bill']>();
+
 /**
  * Get detailed information about a specific bill
  * @param billId - Bill ID from master list
  */
 export async function getBillDetail(billId: number): Promise<BillDetailResponse['bill']> {
+  const cached = billDetailCache.get(billId);
+  if (cached) return cached;
+
+  const persistentKey = `legiscan:bill-detail:${billId}`;
+  const persisted = await readFreshPersistentCache<BillDetailResponse['bill']>(
+    persistentKey,
+    BILL_DETAIL_CACHE_TTL_MS,
+  );
+  if (persisted) {
+    billDetailCache.set(billId, persisted);
+    return persisted;
+  }
+
   const data: BillDetailResponse = await makeApiRequest('getBill', { id: billId });
+  billDetailCache.set(billId, data.bill);
+  await writePersistentCache(persistentKey, data.bill);
   return data.bill;
 }
 
@@ -363,9 +389,17 @@ async function getSessionPeople(sessionId: number): Promise<SessionPerson[]> {
 async function getRollCall(rollCallId: number): Promise<RollCall> {
   if (rollCallCache.has(rollCallId)) return rollCallCache.get(rollCallId)!;
 
+  const persistentKey = `legiscan:roll-call:${rollCallId}`;
+  const persisted = await readFreshPersistentCache<RollCall>(persistentKey, ROLL_CALL_CACHE_TTL_MS);
+  if (persisted) {
+    rollCallCache.set(rollCallId, persisted);
+    return persisted;
+  }
+
   const data = await makeApiRequest('getRollCall', { id: rollCallId });
   const rollCall: RollCall = data.roll_call;
   rollCallCache.set(rollCallId, rollCall);
+  await writePersistentCache(persistentKey, rollCall);
   return rollCall;
 }
 
@@ -439,20 +473,22 @@ export async function fetchVotingRecord(
   const records: LegislatorVoteRecord[] = [];
   const seenRollCalls = new Set<number>();
 
-  for (const bill of sorted) {
+  const processBill = async (bill: BillSummary): Promise<void> => {
     try {
       const detail = await getBillDetail(bill.bill_id);
-      if (!detail.votes || detail.votes.length === 0) continue;
+      if (!detail.votes || detail.votes.length === 0) return;
 
       for (const voteSummary of detail.votes) {
         const rollCallId = voteSummary.roll_call_id;
         if (!rollCallId || seenRollCalls.has(rollCallId)) continue;
+        // Marked synchronously (no await yet) so concurrent workers can't
+        // both pass this check for the same roll call.
+        seenRollCalls.add(rollCallId);
 
         const rollCall = await getRollCall(rollCallId);
         const legislatorVote = rollCall.votes.find((v) => v.people_id === peopleId);
         if (!legislatorVote) continue;
 
-        seenRollCalls.add(rollCallId);
         records.push({
           billNumber: detail.bill_number ?? bill.number,
           billTitle: detail.title ?? bill.title,
@@ -461,9 +497,21 @@ export async function fetchVotingRecord(
         });
       }
     } catch {
-      continue;
+      // Network/API failures for one bill should not abort the rest of the scan.
     }
-  }
+  };
+
+  let cursor = 0;
+  const worker = async (): Promise<void> => {
+    while (cursor < sorted.length) {
+      const bill = sorted[cursor];
+      cursor += 1;
+      await processBill(bill);
+    }
+  };
+
+  const workerCount = Math.min(VOTE_SCAN_CONCURRENCY, sorted.length);
+  await Promise.all(Array.from({ length: workerCount }, () => worker()));
 
   records.sort((a, b) => (b.voteDate ?? '').localeCompare(a.voteDate ?? ''));
   votingRecordCache.set(cacheKey, records);
