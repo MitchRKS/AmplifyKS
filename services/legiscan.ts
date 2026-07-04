@@ -12,6 +12,8 @@ const LEGISCAN_DIRECT_URL = 'https://api.legiscan.com';
 const LEGISCAN_PROXY_PATH = '/.netlify/functions/legiscan';
 const SPONSORED_BILLS_CACHE_TTL_MS = 1000 * 60 * 60 * 12; // 12 hours
 const VOTING_RECORD_CACHE_TTL_MS = 1000 * 60 * 60 * 24; // 24 hours
+const SESSION_LIST_CACHE_TTL_MS = 1000 * 60 * 60 * 12; // 12 hours
+const MASTER_LIST_CACHE_TTL_MS = 1000 * 60 * 30; // 30 minutes
 
 interface LegiscanResponse {
   status: string;
@@ -187,10 +189,26 @@ async function makeApiRequest(operation: string, params: Record<string, string |
 /**
  * Get list of sessions for a state
  * @param state - Two letter state abbreviation (e.g., 'KS' for Kansas)
+ * @param forceRefresh - Bypass the persistent cache (e.g. pull-to-refresh)
  */
-export async function getSessionList(state: string = 'KS'): Promise<SessionListResponse['sessions']> {
+export async function getSessionList(
+  state: string = 'KS',
+  forceRefresh: boolean = false,
+): Promise<SessionListResponse['sessions']> {
+  const cacheKey = `legiscan:sessions:${state}`;
+
+  if (!forceRefresh) {
+    const cached = await readFreshPersistentCache<SessionListResponse['sessions']>(
+      cacheKey,
+      SESSION_LIST_CACHE_TTL_MS,
+    );
+    if (cached && cached.length > 0) return cached;
+  }
+
   const data: SessionListResponse = await makeApiRequest('getSessionList', { state });
-  return data.sessions || [];
+  const sessions = data.sessions || [];
+  if (sessions.length > 0) await writePersistentCache(cacheKey, sessions);
+  return sessions;
 }
 
 /**
@@ -198,28 +216,36 @@ export async function getSessionList(state: string = 'KS'): Promise<SessionListR
  */
 export async function getCurrentSession(): Promise<number> {
   const sessions = await getSessionList('KS');
-  
-  console.log('Available sessions:', sessions);
-  
+
   if (!sessions || sessions.length === 0) {
     throw new Error('No sessions found for Kansas');
   }
 
   // The API returns sessions in order with most recent first, so just take the first one
-  const currentSession = sessions[0];
-  console.log('Current session selected:', currentSession);
-  return currentSession.session_id;
+  return sessions[0].session_id;
 }
 
 /**
  * Get master list of bills for a session
  * @param sessionId - Session ID from getSessionList
+ * @param forceRefresh - Bypass the persistent cache (e.g. pull-to-refresh)
  */
-export async function getMasterList(sessionId: number): Promise<BillSummary[]> {
+export async function getMasterList(
+  sessionId: number,
+  forceRefresh: boolean = false,
+): Promise<BillSummary[]> {
+  const cacheKey = `legiscan:masterlist:${sessionId}`;
+
+  if (!forceRefresh) {
+    const cached = await readFreshPersistentCache<BillSummary[]>(
+      cacheKey,
+      MASTER_LIST_CACHE_TTL_MS,
+    );
+    if (cached && cached.length > 0) return cached;
+  }
+
   const data: MasterListResponse = await makeApiRequest('getMasterList', { id: sessionId });
-  
-  console.log('Master list data:', data);
-  
+
   if (!data.masterlist) {
     console.log('No masterlist in response');
     return [];
@@ -227,16 +253,17 @@ export async function getMasterList(sessionId: number): Promise<BillSummary[]> {
 
   // Convert object to array
   const bills = Object.values(data.masterlist);
-  console.log(`Fetched ${bills.length} bills`);
+  if (bills.length > 0) await writePersistentCache(cacheKey, bills);
   return bills;
 }
 
 /**
  * Get bills for the current Kansas session
+ * @param forceRefresh - Refetch the master list even if a fresh cache exists
  */
-export async function getKansasBills(): Promise<BillSummary[]> {
+export async function getKansasBills(forceRefresh: boolean = false): Promise<BillSummary[]> {
   const sessionId = await getCurrentSession();
-  return getMasterList(sessionId);
+  return getMasterList(sessionId, forceRefresh);
 }
 
 /**

@@ -20,6 +20,10 @@ import { ThemedView } from '@/components/themed-view';
 import { Radius, Shadows, Spacing } from '@/constants/theme';
 import { useThemeColor } from '@/hooks/use-theme-color';
 import * as LegiscanAPI from '@/services/legiscan';
+import {
+  readFreshPersistentCache,
+  writePersistentCache,
+} from '@/services/persistent-cache';
 
 type ChamberFilter = 'All' | 'House' | 'Senate';
 type SortOption = 'dateDesc' | 'dateAsc' | 'numberAsc' | 'numberDesc' | 'titleAsc' | 'statusAsc';
@@ -37,8 +41,33 @@ interface Bill {
   url: string;
 }
 
-const BILL_DETAIL_FETCH_CONCURRENCY = 4;
+const BILL_DETAIL_FETCH_CONCURRENCY = 3;
+
+// Committee names come from per-bill getBill calls, which are expensive
+// against the LegiScan quota. They are resolved lazily for visible cards only
+// and persisted for a week so each bill is fetched at most once per device.
+const COMMITTEE_NAME_CACHE_KEY = 'legiscan:committee-names';
+const COMMITTEE_NAME_CACHE_TTL_MS = 1000 * 60 * 60 * 24 * 7; // 7 days
 const committeeNameCache = new Map<number, string>();
+let committeeCacheLoad: Promise<void> | null = null;
+
+const loadCommitteeNameCache = (): Promise<void> => {
+  committeeCacheLoad ??= (async () => {
+    const persisted = await readFreshPersistentCache<Record<string, string>>(
+      COMMITTEE_NAME_CACHE_KEY,
+      COMMITTEE_NAME_CACHE_TTL_MS,
+    );
+    if (!persisted) return;
+    for (const [id, name] of Object.entries(persisted)) {
+      const numericId = Number(id);
+      if (Number.isFinite(numericId) && name) committeeNameCache.set(numericId, name);
+    }
+  })();
+  return committeeCacheLoad;
+};
+
+const persistCommitteeNameCache = (): Promise<void> =>
+  writePersistentCache(COMMITTEE_NAME_CACHE_KEY, Object.fromEntries(committeeNameCache));
 
 const SORT_OPTIONS: { value: SortOption; label: string }[] = [
   { value: 'dateDesc', label: 'Last action (newest)' },
@@ -171,7 +200,9 @@ export default function BillsScreen() {
   const [bills, setBills] = useState<Bill[]>([]);
   const [sessionName, setSessionName] = useState('Loading...');
   const [error, setError] = useState<string | null>(null);
-  const committeeHydrationRequestId = useRef(0);
+  const hydrationQueue = useRef<{ id: number; lastAction: string }[]>([]);
+  const hydrationInFlight = useRef<Set<number>>(new Set());
+  const activeHydrationWorkers = useRef(0);
   const isMountedRef = useRef(true);
 
   const inputBackground = useThemeColor({ light: '#F0F2F5', dark: '#1C1F26' }, 'background');
@@ -186,52 +217,12 @@ export default function BillsScreen() {
   useEffect(() => {
     return () => {
       isMountedRef.current = false;
-      committeeHydrationRequestId.current += 1;
+      hydrationQueue.current = [];
     };
   }, []);
 
-  const hydrateBillCommittees = async (billList: Bill[], requestId: number): Promise<void> => {
-    const missingCommitteeBillIds = billList
-      .filter((bill) => bill.committee === 'Committee unavailable' && !committeeNameCache.has(bill.id))
-      .map((bill) => bill.id);
-
-    if (missingCommitteeBillIds.length > 0) {
-      let cursor = 0;
-      const worker = async () => {
-        while (cursor < missingCommitteeBillIds.length) {
-          const currentIndex = cursor;
-          cursor += 1;
-          const billId = missingCommitteeBillIds[currentIndex];
-
-          try {
-            const billDetail = await LegiscanAPI.getBillDetail(billId);
-            const historyCommitteeAction =
-              billDetail.history?.find((entry) => extractCommitteeFromAction(entry.action))?.action;
-            const fallbackAction = historyCommitteeAction || billList.find((bill) => bill.id === billId)?.lastAction;
-            const fallbackChamber = billDetail.committee?.chamber || LegiscanAPI.getChamber(billDetail.bill_number);
-            const committeeName = getCommitteeName(
-              billDetail.committee,
-              fallbackAction,
-              fallbackChamber
-            );
-            if (committeeName !== 'Committee unavailable') {
-              committeeNameCache.set(billId, committeeName);
-            }
-          } catch {
-            // Network/API failures should not poison the cache.
-            continue;
-          }
-        }
-      };
-
-      const workerCount = Math.min(BILL_DETAIL_FETCH_CONCURRENCY, missingCommitteeBillIds.length);
-      await Promise.all(Array.from({ length: workerCount }, () => worker()));
-    }
-
-    if (!isMountedRef.current || requestId !== committeeHydrationRequestId.current) {
-      return;
-    }
-
+  const applyCommitteeNames = () => {
+    if (!isMountedRef.current) return;
     setBills((previousBills) =>
       previousBills.map((bill) => ({
         ...bill,
@@ -240,12 +231,74 @@ export default function BillsScreen() {
     );
   };
 
-  const fetchBills = async () => {
+  const pumpCommitteeHydration = () => {
+    while (
+      activeHydrationWorkers.current < BILL_DETAIL_FETCH_CONCURRENCY &&
+      hydrationQueue.current.length > 0
+    ) {
+      const { id: billId, lastAction } = hydrationQueue.current.shift()!;
+      activeHydrationWorkers.current += 1;
+
+      void (async () => {
+        try {
+          const billDetail = await LegiscanAPI.getBillDetail(billId);
+          const historyCommitteeAction =
+            billDetail.history?.find((entry) => extractCommitteeFromAction(entry.action))?.action;
+          const fallbackAction = historyCommitteeAction || lastAction;
+          const fallbackChamber =
+            billDetail.committee?.chamber || LegiscanAPI.getChamber(billDetail.bill_number);
+          const committeeName = getCommitteeName(
+            billDetail.committee,
+            fallbackAction,
+            fallbackChamber
+          );
+          if (committeeName !== 'Committee unavailable') {
+            committeeNameCache.set(billId, committeeName);
+          }
+        } catch {
+          // Network/API failures should not poison the cache.
+        } finally {
+          hydrationInFlight.current.delete(billId);
+          activeHydrationWorkers.current -= 1;
+          if (hydrationQueue.current.length > 0) {
+            pumpCommitteeHydration();
+          } else if (activeHydrationWorkers.current === 0) {
+            applyCommitteeNames();
+            void persistCommitteeNameCache();
+          }
+        }
+      })();
+    }
+  };
+
+  // Queues committee lookups only for cards that are actually on screen.
+  // Kept in a ref because FlatList requires a stable onViewableItemsChanged.
+  const handleViewableBills = useRef(
+    ({ viewableItems }: { viewableItems: { item: Bill }[] }) => {
+      let queued = false;
+      for (const viewable of viewableItems) {
+        const bill = viewable.item;
+        if (bill.committee !== 'Committee unavailable') continue;
+        if (committeeNameCache.has(bill.id)) continue;
+        if (hydrationInFlight.current.has(bill.id)) continue;
+        hydrationInFlight.current.add(bill.id);
+        hydrationQueue.current.push({ id: bill.id, lastAction: bill.lastAction });
+        queued = true;
+      }
+      if (queued) pumpCommitteeHydration();
+    }
+  ).current;
+
+  const viewabilityConfig = useRef({ itemVisiblePercentThreshold: 25 }).current;
+
+  const fetchBills = async (forceRefresh: boolean = false) => {
     try {
       setLoading(true);
       setError(null);
 
-      const sessions = await LegiscanAPI.getSessionList('KS');
+      await loadCommitteeNameCache();
+
+      const sessions = await LegiscanAPI.getSessionList('KS', forceRefresh);
       if (!sessions || sessions.length === 0) {
         throw new Error('No sessions available for Kansas');
       }
@@ -253,7 +306,9 @@ export default function BillsScreen() {
       const currentSession = sessions[0];
       setSessionName(currentSession.session_name);
 
-      const billData = await LegiscanAPI.getKansasBills();
+      // getKansasBills reuses the session list cache written just above, so a
+      // forced refresh costs exactly one session fetch and one master list fetch.
+      const billData = await LegiscanAPI.getKansasBills(forceRefresh);
       if (!billData || billData.length === 0) {
         setError('No bills available for the current session');
         setBills([]);
@@ -269,7 +324,9 @@ export default function BillsScreen() {
             return {
               id: bill.bill_id,
               billNumber: bill.number,
-              committee: extractCommitteeName(bill as unknown as Record<string, unknown>),
+              committee:
+                committeeNameCache.get(bill.bill_id) ??
+                extractCommitteeName(bill as unknown as Record<string, unknown>),
               title: bill.title || 'Untitled',
               description: bill.description || '',
               status: LegiscanAPI.getStatusLabel(bill.status),
@@ -285,8 +342,6 @@ export default function BillsScreen() {
         .filter((bill): bill is Bill => bill !== null);
 
       setBills(transformedBills);
-      const requestId = ++committeeHydrationRequestId.current;
-      void hydrateBillCommittees(transformedBills, requestId);
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Unknown error';
       setError(errorMessage);
@@ -328,7 +383,7 @@ export default function BillsScreen() {
 
   const onRefresh = async () => {
     setRefreshing(true);
-    await fetchBills();
+    await fetchBills(true);
     setRefreshing(false);
   };
 
@@ -589,6 +644,8 @@ export default function BillsScreen() {
         keyExtractor={(item) => String(item.id)}
         contentContainerStyle={styles.listContent}
         showsVerticalScrollIndicator={false}
+        onViewableItemsChanged={handleViewableBills}
+        viewabilityConfig={viewabilityConfig}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={tint} />
         }
@@ -604,7 +661,7 @@ export default function BillsScreen() {
             {error && (
               <Pressable
                 style={[styles.retryButton, { backgroundColor: tint }]}
-                onPress={fetchBills}
+                onPress={() => fetchBills(true)}
               >
                 <ThemedText style={styles.retryButtonText}>Retry</ThemedText>
               </Pressable>
