@@ -282,6 +282,7 @@ export function GamificationProvider({ children }: { children: ReactNode }) {
           quizCount: newCounts['Quiz Completed'] ?? 0,
           viewCount: newCounts['View Legislation'] ?? 0,
           shareCount: newCounts['Share Content'] ?? 0,
+          rateCount: newCounts['Rate Legislator'] ?? 0,
           maxStreak: streak.longestStreak,
         };
 
@@ -356,6 +357,9 @@ export function GamificationProvider({ children }: { children: ReactNode }) {
           break;
         case 'shareContent':
           current = state.actionCounts['Share Content'] ?? 0;
+          break;
+        case 'rateLegislator':
+          current = state.actionCounts['Rate Legislator'] ?? 0;
           break;
         case 'daysActive':
           current = state.longestStreak;

@@ -35,6 +35,7 @@ export type RequirementType =
   | 'quizCompleted'
   | 'viewLegislation'
   | 'shareContent'
+  | 'rateLegislator'
   | 'daysActive';
 
 export type AchievementColor =
@@ -88,6 +89,10 @@ export const ALL_ACHIEVEMENTS: Achievement[] = [
   // Share content
   { id: 'share_5', name: 'Influencer', description: 'Share content 5 times', iconName: 'share', iconColor: 'blue', requirement: 5, requirementType: 'shareContent' },
   { id: 'share_25', name: 'Community Builder', description: 'Share content 25 times', iconName: 'groups', iconColor: 'purple', requirement: 25, requirementType: 'shareContent' },
+
+  // Rate legislators
+  { id: 'rate_1', name: 'First Opinion', description: 'Rate a legislator for the first time', iconName: 'star-rate', iconColor: 'yellow', requirement: 1, requirementType: 'rateLegislator' },
+  { id: 'rate_10', name: 'Vocal Constituent', description: 'Rate 10 legislators', iconName: 'reviews', iconColor: 'orange', requirement: 10, requirementType: 'rateLegislator' },
 
   // Streak-based
   { id: 'streak_3', name: 'Getting Started', description: 'Maintain a 3-day streak', iconName: 'local-fire-department', iconColor: 'orange', requirement: 3, requirementType: 'daysActive' },
@@ -144,6 +149,7 @@ export function getUnlockedAchievements(stats: {
   quizCount: number;
   viewCount: number;
   shareCount: number;
+  rateCount: number;
   maxStreak: number;
 }): Achievement[] {
   return ALL_ACHIEVEMENTS.filter((a) => {
@@ -158,6 +164,8 @@ export function getUnlockedAchievements(stats: {
         return stats.viewCount >= a.requirement;
       case 'shareContent':
         return stats.shareCount >= a.requirement;
+      case 'rateLegislator':
+        return stats.rateCount >= a.requirement;
       case 'daysActive':
         return stats.maxStreak >= a.requirement;
     }

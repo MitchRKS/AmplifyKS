@@ -14,6 +14,7 @@ const NO_STATS = {
   quizCount: 0,
   viewCount: 0,
   shareCount: 0,
+  rateCount: 0,
   maxStreak: 0,
 };
 
@@ -73,6 +74,9 @@ describe('getUnlockedAchievements', () => {
     expect(ids({ quizCount: 1 })).toEqual(['quiz_1']);
     expect(ids({ viewCount: 25 })).toEqual(['view_25']);
     expect(ids({ shareCount: 5 })).toEqual(['share_5']);
+    expect(ids({ rateCount: 10 })).toEqual(
+      expect.arrayContaining(['rate_1', 'rate_10']),
+    );
     expect(ids({ maxStreak: 7 })).toEqual(
       expect.arrayContaining(['streak_3', 'streak_7']),
     );
@@ -85,6 +89,7 @@ describe('getUnlockedAchievements', () => {
       quizCount: 5,
       viewCount: 500,
       shareCount: 100,
+      rateCount: 100,
       maxStreak: 60,
     });
     expect(all).toHaveLength(ALL_ACHIEVEMENTS.length);
