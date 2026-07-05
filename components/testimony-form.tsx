@@ -4,6 +4,7 @@ import * as Sharing from 'expo-sharing';
 import { addDoc, collection, Timestamp } from 'firebase/firestore';
 import { useRef, useState } from 'react';
 import {
+  Linking,
   Platform,
   Pressable,
   StyleSheet,
@@ -516,8 +517,18 @@ export function TestimonyForm({ billNumber, billTitle, committee }: TestimonyFor
         <>
           <View style={[styles.infoBox, { backgroundColor: inputBackground, borderColor: border }]}>
             <ThemedText type="caption" style={[styles.infoBoxText, { color: mutedText }]}>
-              No email address configured for &quot;{committee}&quot;. Use Preview to save your testimony and submit it
-              manually.
+              We don&apos;t have a direct email on file for &quot;{committee}&quot;. Use Preview to
+              save your testimony, then look up the committee&apos;s current contact info on the{' '}
+              <ThemedText
+                type="caption"
+                style={[styles.infoBoxLink, { color: tint }]}
+                onPress={() =>
+                  Linking.openURL('https://www.kslegislature.gov/li/b2025_26/committees/')
+                }
+              >
+                Kansas Legislature committee directory
+              </ThemedText>
+              .
             </ThemedText>
           </View>
 
@@ -675,5 +686,9 @@ const styles = StyleSheet.create({
   infoBoxText: {
     textAlign: 'center',
     lineHeight: 20,
+  },
+  infoBoxLink: {
+    fontWeight: '700',
+    textDecorationLine: 'underline',
   },
 });

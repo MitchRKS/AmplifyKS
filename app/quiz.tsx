@@ -63,8 +63,13 @@ export default function QuizScreen() {
 
   const handleSubmit = async () => {
     await quiz.submitQuiz();
-    recordAction('Quiz Completed', 'Completed the political alignment quiz');
+    // Show results first — recording the action can unlock achievement
+    // modals that would otherwise pop up in front of the results the user
+    // is expecting to see immediately after submitting.
     setShowResults(true);
+    setTimeout(() => {
+      recordAction('Quiz Completed', 'Completed the political alignment quiz');
+    }, 700);
   };
 
   const handleRetake = () => {
@@ -466,7 +471,7 @@ const styles = StyleSheet.create({
     paddingBottom: Spacing.md,
   },
   backButton: {
-    padding: Spacing.xs,
+    padding: Spacing.md,
   },
   headerTitle: {
     fontSize: 17,

@@ -52,7 +52,9 @@ function BT50MatchView({ match }: { match: ResolvedMatchResult }) {
       </View>
 
       <ThemedText style={[styles.footerNote, { color: mutedText }]}>
-        Based on how this legislator&apos;s voting record aligns with your quiz positions.
+        This legislator is covered by the {SCORECARD_NAME}, a third-party scorecard that reports
+        one overall rating rather than a per-issue breakdown — that&apos;s why this view looks
+        different from legislators scored from direct vote analysis.
       </ThemedText>
     </View>
   );
@@ -100,7 +102,8 @@ function VotingRecordMatchView({ matchScore }: { matchScore: LegislatorMatchScor
       </View>
 
       <ThemedText style={[styles.footerNote, { color: mutedText }]}>
-        Scores are based on voting record analysis and may not capture every nuance of a legislator&apos;s position.
+        Calculated directly from this legislator&apos;s recorded votes on bills tagged by issue
+        category — it may not capture every nuance of their position.
       </ThemedText>
     </View>
   );
