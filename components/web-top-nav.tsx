@@ -55,7 +55,8 @@ const NAV_ITEMS: NavItem[] = [
       pathname.startsWith('/officials/committees/'),
   },
   { route: '/bills', label: 'Bills', icon: 'description' },
-  { route: '/organizations', label: 'Organizations', icon: 'people' },
+  // Organizations is a placeholder screen with no content yet — hidden from
+  // nav until the feature ships, matching how the mobile tab bar hides it.
 ];
 
 const ACTIVE_BG = 'rgba(0, 151, 178, 0.12)';

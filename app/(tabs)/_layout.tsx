@@ -118,11 +118,13 @@ function MobileLayout() {
           href: null,
         }}
       />
+      {/* Not linked from any nav yet — the screen is a placeholder until the
+          feature ships. Matches the `points` pattern above. */}
       <Tabs.Screen
         name="organizations"
         options={{
-          title: 'Orgs',
-          tabBarIcon: ({ color }) => <MaterialIcons size={24} name="groups" color={color} />,
+          title: 'Organizations',
+          href: null,
         }}
       />
     </Tabs>
