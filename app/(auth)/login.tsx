@@ -22,11 +22,12 @@ import { useThemeColor } from '@/hooks/use-theme-color';
 
 export default function LoginScreen() {
   const router = useRouter();
-  const { login } = useAuth();
+  const { login, resetPassword } = useAuth();
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isResettingPassword, setIsResettingPassword] = useState(false);
 
   const passwordRef = useRef<TextInput>(null);
 
@@ -55,6 +56,35 @@ export default function LoginScreen() {
       AppAlert.alert('Error', 'An unexpected error occurred. Please try again.');
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const handleForgotPassword = async () => {
+    if (isResettingPassword) return;
+
+    if (!email.trim()) {
+      AppAlert.alert(
+        'Enter Your Email',
+        'Type your email address in the field above, then tap "Forgot password?" again.',
+      );
+      return;
+    }
+
+    setIsResettingPassword(true);
+    try {
+      const result = await resetPassword(email);
+      if (result.success) {
+        AppAlert.alert(
+          'Check Your Email',
+          `If an account exists for ${email.trim()}, we've sent instructions to reset your password.`,
+        );
+      } else {
+        AppAlert.alert('Error', result.error ?? 'Please try again.');
+      }
+    } catch {
+      AppAlert.alert('Error', 'An unexpected error occurred. Please try again.');
+    } finally {
+      setIsResettingPassword(false);
     }
   };
 
@@ -121,6 +151,17 @@ export default function LoginScreen() {
                     onSubmitEditing={handleLogin}
                   />
                 </View>
+
+                <Pressable
+                  accessibilityRole="button"
+                  style={styles.forgotPasswordLink}
+                  onPress={handleForgotPassword}
+                  disabled={isResettingPassword}
+                >
+                  <ThemedText style={[styles.forgotPasswordText, { color: tint }]}>
+                    {isResettingPassword ? 'Sending…' : 'Forgot password?'}
+                  </ThemedText>
+                </Pressable>
 
                 <Pressable
                   accessibilityRole="button"
@@ -214,6 +255,14 @@ const styles = StyleSheet.create({
   },
   form: {
     gap: Spacing.lg,
+  },
+  forgotPasswordLink: {
+    alignSelf: 'flex-end',
+    marginTop: -Spacing.sm,
+  },
+  forgotPasswordText: {
+    fontSize: 14,
+    fontWeight: '600',
   },
   field: {
     gap: Spacing.sm,

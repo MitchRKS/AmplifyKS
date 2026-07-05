@@ -1,6 +1,7 @@
 import {
   createUserWithEmailAndPassword,
   onAuthStateChanged,
+  sendPasswordResetEmail,
   signInWithEmailAndPassword,
   signOut,
   updateProfile,
@@ -38,6 +39,7 @@ interface AuthContextValue {
     email: string;
     password: string;
   }) => Promise<{ success: boolean; error?: string }>;
+  resetPassword: (email: string) => Promise<{ success: boolean; error?: string }>;
   logout: () => Promise<void>;
 }
 
@@ -128,22 +130,34 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return { success: true };
       } catch (error: any) {
         console.error('Firebase login error:', error.code, error.message);
-        return {
-          success: false,
-          error: `${firebaseErrorMessage(error.code)} (${error.code ?? 'unknown'})`,
-        };
+        return { success: false, error: firebaseErrorMessage(error.code) };
       }
     },
     [],
   );
+
+  const resetPassword = useCallback(async (email: string) => {
+    try {
+      await sendPasswordResetEmail(getAuth(), email.trim());
+      return { success: true };
+    } catch (error: any) {
+      // Don't reveal whether the email is registered — treat "not found" as
+      // success so this can't be used to enumerate accounts.
+      if (error.code === 'auth/user-not-found') {
+        return { success: true };
+      }
+      console.error('Firebase password reset error:', error.code, error.message);
+      return { success: false, error: firebaseErrorMessage(error.code) };
+    }
+  }, []);
 
   const logout = useCallback(async () => {
     await signOut(getAuth());
   }, []);
 
   const value = useMemo(
-    () => ({ user, isLoading, register, login, logout }),
-    [user, isLoading, register, login, logout],
+    () => ({ user, isLoading, register, login, resetPassword, logout }),
+    [user, isLoading, register, login, resetPassword, logout],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
