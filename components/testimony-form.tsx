@@ -1,6 +1,7 @@
 import * as MailComposer from 'expo-mail-composer';
 import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
+import { addDoc, collection, Timestamp } from 'firebase/firestore';
 import { useRef, useState } from 'react';
 import {
   Platform,
@@ -14,7 +15,35 @@ import { AppAlert } from '@/components/app-alert';
 import { ThemedText } from '@/components/themed-text';
 import { getCommitteeEmail, hasCommitteeEmail } from '@/constants/committee-emails';
 import { Radius, Shadows, Spacing } from '@/constants/theme';
+import { useAuth } from '@/contexts/auth-context';
 import { useThemeColor } from '@/hooks/use-theme-color';
+import { getFirestoreDb } from '@/services/firebase';
+
+// Messaging per expo-mail-composer's MailComposerResult status. On web,
+// composeAsync just opens a mailto: link and can never report more than
+// 'undetermined' — there's no way for the app to know if the user actually
+// hit send in their external mail client, so that case is worded as
+// uncertain rather than claiming a false success.
+const STATUS_MESSAGES: Record<string, { title: string; message: string }> = {
+  sent: {
+    title: 'Testimony Sent',
+    message: 'Your testimony was sent to the committee. Thank you for participating!',
+  },
+  saved: {
+    title: 'Draft Saved',
+    message:
+      "Your testimony was saved as a draft but hasn't been sent yet. Open your mail app to finish sending it.",
+  },
+  cancelled: {
+    title: 'Cancelled',
+    message: "You cancelled without sending. Your testimony wasn't submitted.",
+  },
+  undetermined: {
+    title: 'Email App Opened',
+    message:
+      "Your email app should now be open with your testimony ready to send. Please review it and hit send — we can't confirm delivery from within AmplifyKS.",
+  },
+};
 
 type Position = 'support' | 'neutral' | 'oppose';
 
@@ -35,6 +64,7 @@ interface TestimonyFormProps {
 }
 
 export function TestimonyForm({ billNumber, billTitle, committee }: TestimonyFormProps) {
+  const { user } = useAuth();
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [email, setEmail] = useState('');
@@ -165,15 +195,45 @@ export function TestimonyForm({ billNumber, billTitle, committee }: TestimonyFor
         day: 'numeric',
       });
 
+      let result: MailComposer.MailComposerResult;
       if (Platform.OS === 'web') {
         const body = `${positionText} Testimony on ${billNumber}\n${formattedDate}\n${committee}\n\n${generateTestimonyText()}`;
-        await MailComposer.composeAsync({ recipients: [committeeEmail], subject, body });
+        result = await MailComposer.composeAsync({ recipients: [committeeEmail], subject, body });
       } else {
         const html = generateTestimonyHTML();
         const { uri } = await Print.printToFileAsync({ html, base64: false });
         const body = `Please find attached my ${positionText.toLowerCase()} testimony on ${billNumber}.\n\n${fullName}\n${city || ''}`;
-        await MailComposer.composeAsync({ recipients: [committeeEmail], subject, body, attachments: [uri] });
+        result = await MailComposer.composeAsync({ recipients: [committeeEmail], subject, body, attachments: [uri] });
       }
+
+      if (user) {
+        try {
+          await addDoc(collection(getFirestoreDb(), 'testimonies'), {
+            userId: user.uid,
+            billNumber,
+            billTitle,
+            committee,
+            committeeEmail,
+            position,
+            firstName,
+            lastName,
+            email,
+            streetAddress,
+            city,
+            state,
+            zipCode,
+            testimony,
+            status: result.status,
+            submittedAt: Timestamp.now(),
+          });
+        } catch (firestoreError) {
+          // Don't let a record-keeping failure mask whether the email itself went out.
+          console.error('Error saving testimony record:', firestoreError);
+        }
+      }
+
+      const feedback = STATUS_MESSAGES[result.status] ?? STATUS_MESSAGES.undetermined;
+      AppAlert.alert(feedback.title, feedback.message);
     } catch (error) {
       console.error('Error opening email composer:', error);
       AppAlert.alert('Error', 'Unable to open email composer. Please try again.');

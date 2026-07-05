@@ -90,11 +90,17 @@ service cloud.firestore {
       allow write: if isAdmin();
     }
     
-    // Testimonies collection
+    // Testimonies collection - contains submitters' contact info (email,
+    // address), so read/write are restricted to the owner or an admin.
+    // `resource.data` doesn't exist yet on create, so create is checked
+    // against the incoming `request.resource.data` instead.
     match /testimonies/{testimonyId} {
-      allow read: if isAuthenticated();
-      allow write: if isAuthenticated() && 
-                   (request.auth.uid == resource.data.userId || isAdmin());
+      allow read: if isAuthenticated() &&
+                  (request.auth.uid == resource.data.userId || isAdmin());
+      allow create: if isAuthenticated() &&
+                    request.resource.data.userId == request.auth.uid;
+      allow update, delete: if isAuthenticated() &&
+                            (request.auth.uid == resource.data.userId || isAdmin());
     }
     
     // Notes collection - User can only access their own notes
