@@ -133,6 +133,9 @@ export function WebTopNav() {
                   }}
                   onPointerLeave={scheduleHoverClear}>
                   <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel={`${item.label} menu`}
+                    accessibilityState={{ selected: groupActive, expanded: showChildren }}
                     style={({ pressed }) => [
                       styles.navItem,
                       groupActive && { backgroundColor: ACTIVE_BG },
@@ -166,6 +169,9 @@ export function WebTopNav() {
             return (
               <Pressable
                 key={item.route}
+                accessibilityRole="button"
+                accessibilityLabel={item.label}
+                accessibilityState={{ selected: active }}
                 style={({ pressed }) => [
                   styles.navItem,
                   active && { backgroundColor: ACTIVE_BG },
@@ -193,6 +199,8 @@ export function WebTopNav() {
 
         {user ? (
           <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Sign out"
             style={({ pressed }) => [
               styles.logoutButton,
               pressed && { backgroundColor: HOVER_BG },
@@ -219,6 +227,9 @@ export function WebTopNav() {
             return (
               <Pressable
                 key={child.route}
+                accessibilityRole="button"
+                accessibilityLabel={child.label}
+                accessibilityState={{ selected: childActive }}
                 style={({ pressed }) => [
                   styles.subNavItem,
                   childActive && { backgroundColor: ACTIVE_BG },

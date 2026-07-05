@@ -215,6 +215,8 @@ export default function LookupScreen() {
       <View style={[styles.topBar, { backgroundColor: surface, borderBottomColor: border }]}>
         <ContentContainer style={styles.topBarInner}>
           <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="AmplifyKS home"
             style={styles.logoRow}
             onPress={() => router.navigate('/')}
           >
@@ -225,6 +227,8 @@ export default function LookupScreen() {
           </Pressable>
           <View style={styles.topBarActions}>
             <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Sign in"
               style={({ pressed }) => [pressed && styles.pressed]}
               onPress={() => router.navigate('/(auth)/login')}
             >
@@ -232,6 +236,8 @@ export default function LookupScreen() {
             </Pressable>
             {!isMobile && (
               <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Create account"
                 style={({ pressed }) => [
                   styles.createAccountButton,
                   { backgroundColor: tint },
