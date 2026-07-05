@@ -2,8 +2,9 @@ import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import * as WebBrowser from 'expo-web-browser';
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Switch, View } from 'react-native';
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Switch, View } from 'react-native';
 
+import { AppAlert } from '@/components/app-alert';
 import { ContentContainer } from '@/components/content-container';
 import { TestimonyForm } from '@/components/testimony-form';
 import { ThemedText } from '@/components/themed-text';
@@ -96,7 +97,7 @@ export default function BillDetailScreen() {
         recordAction('View Legislation', transformedBill.billNumber);
       } catch (error) {
         console.error('Error fetching bill detail:', error);
-        Alert.alert(
+        AppAlert.alert(
           'Error Loading Bill',
           'Unable to load bill details. Please try again later.',
           [

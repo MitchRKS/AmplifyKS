@@ -4,7 +4,6 @@ import { useRouter } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
-  Alert,
   Modal,
   Pressable,
   RefreshControl,
@@ -14,6 +13,7 @@ import {
   View,
 } from 'react-native';
 
+import { AppAlert } from '@/components/app-alert';
 import { MatchScoreBadge } from '@/components/legislator-match-detail';
 import { ContentContainer } from '@/components/content-container';
 import { ThemedText } from '@/components/themed-text';
@@ -101,7 +101,7 @@ export default function StateLegislatorsScreen() {
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Unknown error';
       setError(message);
-      Alert.alert('Error', `Unable to load Kansas legislators.\n\n${message}`);
+      AppAlert.alert('Error', `Unable to load Kansas legislators.\n\n${message}`);
       setLegislators([]);
     } finally {
       setLoading(false);

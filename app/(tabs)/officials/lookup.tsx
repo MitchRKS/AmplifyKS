@@ -5,7 +5,6 @@ import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import {
   ActivityIndicator,
-  Alert,
   KeyboardAvoidingView,
   Modal,
   Platform,
@@ -16,6 +15,7 @@ import {
   View,
 } from 'react-native';
 
+import { AppAlert } from '@/components/app-alert';
 import { MatchScoreBadge } from '@/components/legislator-match-detail';
 import { ContentContainer } from '@/components/content-container';
 import { ThemedText } from '@/components/themed-text';
@@ -59,7 +59,7 @@ export default function LookupScreen() {
       const results = await getOfficialsByLocation(lat, lng);
       setSearchResults(results);
       if (results.length === 0) {
-        Alert.alert('No Results', 'No elected officials found for this location.');
+        AppAlert.alert('No Results', 'No elected officials found for this location.');
       } else {
         // Capture which officials are unsaved RIGHT NOW, before the Firestore snapshot
         // may arrive and change isSaved's return values (race condition on web).
@@ -70,7 +70,7 @@ export default function LookupScreen() {
       }
     } catch (error) {
       console.error('Error fetching officials:', error);
-      Alert.alert('Error', 'Unable to look up officials. Please try again.');
+      AppAlert.alert('Error', 'Unable to look up officials. Please try again.');
       setSearchResults([]);
     } finally {
       setLoading(false);
@@ -81,7 +81,7 @@ export default function LookupScreen() {
     try {
       const { status } = await Location.requestForegroundPermissionsAsync();
       if (status !== 'granted') {
-        Alert.alert(
+        AppAlert.alert(
           'Permission Denied',
           'Location access is needed to find your elected officials. You can also enter an address instead.',
         );
@@ -95,7 +95,7 @@ export default function LookupScreen() {
     } catch (error) {
       console.error('Error getting location:', error);
       setLoading(false);
-      Alert.alert('Location Error', 'Unable to determine your location. Try entering an address instead.');
+      AppAlert.alert('Location Error', 'Unable to determine your location. Try entering an address instead.');
     }
   };
 
@@ -116,7 +116,7 @@ export default function LookupScreen() {
     try {
       const coords = await geocodeAddress(address.trim());
       if (!coords) {
-        Alert.alert('Address Not Found', 'Could not find that address. Please try a more specific address.');
+        AppAlert.alert('Address Not Found', 'Could not find that address. Please try a more specific address.');
         setLoading(false);
         return;
       }
@@ -124,7 +124,7 @@ export default function LookupScreen() {
     } catch (error) {
       console.error('Error geocoding address:', error);
       setLoading(false);
-      Alert.alert('Error', 'Unable to look up that address. Please try again.');
+      AppAlert.alert('Error', 'Unable to look up that address. Please try again.');
     }
   };
 
@@ -140,7 +140,7 @@ export default function LookupScreen() {
   };
 
   const promptLoginToSave = () => {
-    Alert.alert('Sign in required', 'Please sign in or create an account to save elected officials.', [
+    AppAlert.alert('Sign in required', 'Please sign in or create an account to save elected officials.', [
       { text: 'Not Now', style: 'cancel' },
       { text: 'Sign In', onPress: () => router.navigate('/(auth)/login') },
       { text: 'Create Account', onPress: () => router.navigate('/(auth)/register') },
@@ -149,7 +149,7 @@ export default function LookupScreen() {
 
   const toggleSave = async (official: Official) => {
     if (authLoading) {
-      Alert.alert('Please wait', 'Checking your sign-in status...');
+      AppAlert.alert('Please wait', 'Checking your sign-in status...');
       return;
     }
     if (!user) {
@@ -166,7 +166,7 @@ export default function LookupScreen() {
     } catch (error) {
       console.error('Error saving official:', error);
       const message = error instanceof Error ? error.message : 'Unable to update saved officials. Please try again.';
-      Alert.alert('Error', message);
+      AppAlert.alert('Error', message);
     }
   };
 
@@ -176,7 +176,7 @@ export default function LookupScreen() {
       return;
     }
     if (authLoading) {
-      Alert.alert('Please wait', 'Checking your sign-in status...');
+      AppAlert.alert('Please wait', 'Checking your sign-in status...');
       return;
     }
     if (!user) {
@@ -195,7 +195,7 @@ export default function LookupScreen() {
       const message = error instanceof Error ? error.message : 'Unable to save officials. Please try again.';
       setSaving(false);
       setPendingOfficials([]);
-      Alert.alert('Error', message);
+      AppAlert.alert('Error', message);
     }
   };
 

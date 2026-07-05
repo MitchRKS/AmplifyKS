@@ -3,7 +3,6 @@ import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
 import { useRef, useState } from 'react';
 import {
-  Alert,
   Platform,
   Pressable,
   StyleSheet,
@@ -11,6 +10,7 @@ import {
   View,
 } from 'react-native';
 
+import { AppAlert } from '@/components/app-alert';
 import { ThemedText } from '@/components/themed-text';
 import { getCommitteeEmail, hasCommitteeEmail } from '@/constants/committee-emails';
 import { Radius, Shadows, Spacing } from '@/constants/theme';
@@ -125,7 +125,7 @@ export function TestimonyForm({ billNumber, billTitle, committee }: TestimonyFor
 
   const handleSubmitEmail = async () => {
     if (!canSubmit) {
-      Alert.alert(
+      AppAlert.alert(
         'Missing required info',
         'Please fill in your first name, last name, email, bill number, and testimony.',
       );
@@ -133,13 +133,13 @@ export function TestimonyForm({ billNumber, billTitle, committee }: TestimonyFor
     }
 
     if (!committee.trim()) {
-      Alert.alert('Committee Required', 'Please specify which committee should receive this testimony.');
+      AppAlert.alert('Committee Required', 'Please specify which committee should receive this testimony.');
       return;
     }
 
     const committeeEmail = getCommitteeEmail(committee.trim());
     if (!committeeEmail) {
-      Alert.alert(
+      AppAlert.alert(
         'Committee Email Not Found',
         `No email address is configured for "${committee}". Please check the committee name or contact support.`,
       );
@@ -149,7 +149,7 @@ export function TestimonyForm({ billNumber, billTitle, committee }: TestimonyFor
     try {
       const isAvailable = await MailComposer.isAvailableAsync();
       if (!isAvailable) {
-        Alert.alert(
+        AppAlert.alert(
           'Email Not Available',
           'Email functionality is not available on this device. Please use the Preview option.',
         );
@@ -176,13 +176,13 @@ export function TestimonyForm({ billNumber, billTitle, committee }: TestimonyFor
       }
     } catch (error) {
       console.error('Error opening email composer:', error);
-      Alert.alert('Error', 'Unable to open email composer. Please try again.');
+      AppAlert.alert('Error', 'Unable to open email composer. Please try again.');
     }
   };
 
   const handlePreview = async () => {
     if (!canSubmit) {
-      Alert.alert(
+      AppAlert.alert(
         'Missing required info',
         'Please fill in your first name, last name, email, bill number, and testimony.',
       );
@@ -197,7 +197,7 @@ export function TestimonyForm({ billNumber, billTitle, committee }: TestimonyFor
           newWindow.document.write(html);
           newWindow.document.close();
         } else {
-          Alert.alert('Popup Blocked', 'Please allow popups to preview your testimony.');
+          AppAlert.alert('Popup Blocked', 'Please allow popups to preview your testimony.');
         }
       } else {
         const { uri } = await Print.printToFileAsync({ html });
@@ -205,12 +205,12 @@ export function TestimonyForm({ billNumber, billTitle, committee }: TestimonyFor
         if (isAvailable) {
           await Sharing.shareAsync(uri);
         } else {
-          Alert.alert('PDF Generated', `Your testimony has been generated as a PDF at: ${uri}`);
+          AppAlert.alert('PDF Generated', `Your testimony has been generated as a PDF at: ${uri}`);
         }
       }
     } catch (error) {
       console.error('Error generating PDF:', error);
-      Alert.alert('Error', 'Unable to generate PDF preview. Please try again.');
+      AppAlert.alert('Error', 'Unable to generate PDF preview. Please try again.');
     }
   };
 

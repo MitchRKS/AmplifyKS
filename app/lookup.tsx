@@ -5,7 +5,6 @@ import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import {
   ActivityIndicator,
-  Alert,
   Linking,
   Modal,
   Pressable,
@@ -15,6 +14,7 @@ import {
   View,
 } from 'react-native';
 
+import { AppAlert } from '@/components/app-alert';
 import { ContentContainer } from '@/components/content-container';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
@@ -50,13 +50,13 @@ export default function LookupScreen() {
       const results = await getOfficialsByLocation(lat, lng);
       setSearchResults(results);
       if (results.length === 0) {
-        Alert.alert('No Results', 'No elected officials found for this location.');
+        AppAlert.alert('No Results', 'No elected officials found for this location.');
       } else {
         setTimeout(() => setShowPrompt(true), 1200);
       }
     } catch (error) {
       console.error('Error fetching officials:', error);
-      Alert.alert('Error', 'Unable to look up officials. Please try again.');
+      AppAlert.alert('Error', 'Unable to look up officials. Please try again.');
       setSearchResults([]);
     } finally {
       setLoading(false);
@@ -67,7 +67,7 @@ export default function LookupScreen() {
     try {
       const { status } = await Location.requestForegroundPermissionsAsync();
       if (status !== 'granted') {
-        Alert.alert(
+        AppAlert.alert(
           'Permission Denied',
           'Location access is needed to find your elected officials. You can also enter an address instead.',
         );
@@ -82,7 +82,7 @@ export default function LookupScreen() {
     } catch (error) {
       console.error('Error getting location:', error);
       setLoading(false);
-      Alert.alert('Location Error', 'Unable to determine your location. Try entering an address instead.');
+      AppAlert.alert('Location Error', 'Unable to determine your location. Try entering an address instead.');
     }
   };
 
@@ -104,7 +104,7 @@ export default function LookupScreen() {
     try {
       const coords = await geocodeAddress(address.trim());
       if (!coords) {
-        Alert.alert('Address Not Found', 'Could not find that address. Please try a more specific address.');
+        AppAlert.alert('Address Not Found', 'Could not find that address. Please try a more specific address.');
         setLoading(false);
         return;
       }
@@ -112,7 +112,7 @@ export default function LookupScreen() {
     } catch (error) {
       console.error('Error geocoding address:', error);
       setLoading(false);
-      Alert.alert('Error', 'Unable to look up that address. Please try again.');
+      AppAlert.alert('Error', 'Unable to look up that address. Please try again.');
     }
   };
 
@@ -149,11 +149,11 @@ export default function LookupScreen() {
     }
 
     if (options.length === 0) {
-      Alert.alert('No Contact Info', 'No contact information is available for this official.');
+      AppAlert.alert('No Contact Info', 'No contact information is available for this official.');
       return;
     }
 
-    Alert.alert(
+    AppAlert.alert(
       official.name,
       `${official.party} — ${official.chamber} District ${official.district}`,
       [...options.map((o) => ({ text: o.text, onPress: o.onPress })), { text: 'Cancel', style: 'cancel' as const }],

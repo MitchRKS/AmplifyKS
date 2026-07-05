@@ -3,7 +3,6 @@ import { useRouter } from 'expo-router';
 import { useRef, useState } from 'react';
 import {
   ActivityIndicator,
-  Alert,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -13,6 +12,7 @@ import {
   View,
 } from 'react-native';
 
+import { AppAlert } from '@/components/app-alert';
 import { ContentContainer } from '@/components/content-container';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
@@ -49,10 +49,10 @@ export default function LoginScreen() {
     try {
       const result = await login({ email, password });
       if (!result.success) {
-        Alert.alert('Login Failed', result.error ?? 'Please try again.');
+        AppAlert.alert('Login Failed', result.error ?? 'Please try again.');
       }
     } catch {
-      Alert.alert('Error', 'An unexpected error occurred. Please try again.');
+      AppAlert.alert('Error', 'An unexpected error occurred. Please try again.');
     } finally {
       setIsSubmitting(false);
     }

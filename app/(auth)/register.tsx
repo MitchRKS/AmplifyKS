@@ -3,7 +3,6 @@ import { useRouter } from 'expo-router';
 import { useRef, useState } from 'react';
 import {
   ActivityIndicator,
-  Alert,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -13,6 +12,7 @@ import {
   View,
 } from 'react-native';
 
+import { AppAlert } from '@/components/app-alert';
 import { ContentContainer } from '@/components/content-container';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
@@ -58,12 +58,12 @@ export default function RegisterScreen() {
     if (!canSubmit || isSubmitting) return;
 
     if (password.length < 6) {
-      Alert.alert('Weak Password', 'Password must be at least 6 characters.');
+      AppAlert.alert('Weak Password', 'Password must be at least 6 characters.');
       return;
     }
 
     if (password !== confirmPassword) {
-      Alert.alert('Passwords Don\'t Match', 'Please make sure your passwords match.');
+      AppAlert.alert('Passwords Don\'t Match', 'Please make sure your passwords match.');
       return;
     }
 
@@ -71,10 +71,10 @@ export default function RegisterScreen() {
     try {
       const result = await register({ email, firstName, lastName, password });
       if (!result.success) {
-        Alert.alert('Registration Failed', result.error ?? 'Please try again.');
+        AppAlert.alert('Registration Failed', result.error ?? 'Please try again.');
       }
     } catch {
-      Alert.alert('Error', 'An unexpected error occurred. Please try again.');
+      AppAlert.alert('Error', 'An unexpected error occurred. Please try again.');
     } finally {
       setIsSubmitting(false);
     }
