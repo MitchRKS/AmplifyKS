@@ -47,12 +47,11 @@ const NAV_ITEMS: NavItem[] = [
     ],
   },
   {
-    route: '/officials/committees',
+    route: '/committees',
     label: 'Committees',
     icon: 'groups',
     matchesPath: (pathname) =>
-      pathname === '/officials/committees' ||
-      pathname.startsWith('/officials/committees/'),
+      pathname === '/committees' || pathname.startsWith('/committees/'),
   },
   { route: '/bills', label: 'Bills', icon: 'description' },
   // Organizations is a placeholder screen with no content yet — hidden from

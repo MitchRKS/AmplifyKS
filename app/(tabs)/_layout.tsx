@@ -102,6 +102,16 @@ function MobileLayout() {
           tabBarIcon: ({ color }) => <MaterialIcons size={24} name="how-to-vote" color={color} />,
         }}
       />
+      {/* Top-level like on desktop's WebTopNav, not just a sub-tab buried
+          under Electeds — Committees used to be a lot harder to find on
+          mobile than on desktop for the same feature. */}
+      <Tabs.Screen
+        name="committees"
+        options={{
+          title: 'Committees',
+          tabBarIcon: ({ color }) => <MaterialIcons size={24} name="groups" color={color} />,
+        }}
+      />
       <Tabs.Screen
         name="bills"
         options={{
