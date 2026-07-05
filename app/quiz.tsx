@@ -34,6 +34,7 @@ export default function QuizScreen() {
   const { recordAction } = useGamification();
   const [currentIndex, setCurrentIndex] = useState(0);
   const [showResults, setShowResults] = useState(false);
+  const [showIntro, setShowIntro] = useState(true);
 
   const tint = useThemeColor({ light: '#0097b2', dark: '#33C4DB' }, 'tint');
   const mutedText = useThemeColor({ light: '#5E6368', dark: '#9CA3AF' }, 'text');
@@ -70,6 +71,7 @@ export default function QuizScreen() {
     quiz.resetQuiz();
     setCurrentIndex(0);
     setShowResults(false);
+    setShowIntro(true);
   };
 
   if (quiz.isLoading) {
@@ -92,6 +94,20 @@ export default function QuizScreen() {
           router.back();
           setTimeout(() => router.push('/(tabs)/officials'), 100);
         }}
+        tint={tint}
+        mutedText={mutedText}
+        surface={surface}
+        border={border}
+      />
+    );
+  }
+
+  if (showIntro) {
+    return (
+      <IntroView
+        totalQuestions={quiz.questions.length}
+        onStart={() => setShowIntro(false)}
+        onBack={() => router.back()}
         tint={tint}
         mutedText={mutedText}
         surface={surface}
@@ -227,6 +243,77 @@ export default function QuizScreen() {
           </Pressable>
         </View>
       </ContentContainer>
+    </ThemedView>
+  );
+}
+
+function IntroView({
+  totalQuestions,
+  onStart,
+  onBack,
+  tint,
+  mutedText,
+  surface,
+  border,
+}: {
+  totalQuestions: number;
+  onStart: () => void;
+  onBack: () => void;
+  tint: string;
+  mutedText: string;
+  surface: string;
+  border: string;
+}) {
+  return (
+    <ThemedView style={styles.container}>
+      <ContentContainer>
+        <View style={styles.header}>
+          <Pressable onPress={onBack} style={styles.backButton}>
+            <IconSymbol name="chevron.left" size={24} color={tint} />
+          </Pressable>
+          <ThemedText type="defaultSemiBold" style={styles.headerTitle}>
+            Quiz
+          </ThemedText>
+          <View style={styles.backButton} />
+        </View>
+      </ContentContainer>
+
+      <ScrollView
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
+        <ContentContainer style={styles.contentPadding}>
+          <View style={[styles.card, { backgroundColor: surface, borderColor: border }, Shadows.sm]}>
+            <MaterialIcons name="quiz" size={44} color={tint} style={styles.resultIcon} />
+            <ThemedText type="title" style={styles.resultTitle}>
+              Find Your Match
+            </ThemedText>
+            <ThemedText style={[styles.introBody, { color: mutedText }]}>
+              Answer {totalQuestions} questions about where you stand on issues before the Kansas
+              Legislature — education, healthcare, religious freedom, LGBTQ+ rights, and
+              reproductive rights. We compare your answers to how legislators have actually voted,
+              so you can see who aligns with you.
+            </ThemedText>
+            <ThemedText style={[styles.introBody, { color: mutedText }]}>
+              Your answers are saved to your account and are never shown to anyone else. If
+              you&apos;d rather not answer a question, choose &quot;Not Sure&quot; — that topic
+              will simply be left out of your results instead of guessing for you.
+            </ThemedText>
+          </View>
+
+          <Pressable
+            style={({ pressed }) => [
+              styles.resultButton,
+              { backgroundColor: tint },
+              pressed && styles.pressed,
+            ]}
+            onPress={onStart}
+          >
+            <ThemedText style={styles.resultButtonText}>Start Quiz</ThemedText>
+            <MaterialIcons name="arrow-forward" size={20} color="#fff" />
+          </Pressable>
+        </ContentContainer>
+      </ScrollView>
     </ThemedView>
   );
 }
@@ -477,6 +564,11 @@ const styles = StyleSheet.create({
   resultSubtitle: {
     textAlign: 'center',
     marginTop: Spacing.xs,
+  },
+  introBody: {
+    fontSize: 15,
+    lineHeight: 22,
+    marginTop: Spacing.md,
   },
   sectionTitle: {
     marginBottom: Spacing.lg,
