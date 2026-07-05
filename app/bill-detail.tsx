@@ -16,6 +16,7 @@ import { useThemeColor } from '@/hooks/use-theme-color';
 import { useUserProfile } from '@/hooks/use-user-profile';
 import { useGamification } from '@/contexts/gamification-context';
 import * as LegiscanAPI from '@/services/legiscan';
+import { shareContent } from '@/services/share';
 
 interface BillDetail {
   billNumber: string;
@@ -118,6 +119,21 @@ export default function BillDetailScreen() {
   const border = useThemeColor({ light: '#d5d5d5', dark: '#2D3139' }, 'background');
   const inputBackground = useThemeColor({ light: '#F0F2F5', dark: '#1C1F26' }, 'background');
 
+  const handleShare = async () => {
+    if (!bill) return;
+    const outcome = await shareContent({
+      title: bill.billNumber,
+      message: `${bill.billNumber}: ${bill.title}`,
+      url: bill.stateLink || bill.url || undefined,
+    });
+    if (outcome === 'shared' || outcome === 'copied') {
+      recordAction('Share Content', `Shared ${bill.billNumber}`);
+      if (outcome === 'copied') {
+        AppAlert.alert('Link Copied', 'A link to this bill was copied to your clipboard.');
+      }
+    }
+  };
+
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'Passed':
@@ -173,7 +189,14 @@ export default function BillDetailScreen() {
           <ThemedText type="defaultSemiBold" style={styles.headerTitle}>
             Bill Details
           </ThemedText>
-          <View style={styles.headerSpacer} />
+          <Pressable
+            onPress={handleShare}
+            accessibilityRole="button"
+            accessibilityLabel="Share bill"
+            style={styles.backButton}
+          >
+            <MaterialIcons name="share" size={22} color={mutedText} />
+          </Pressable>
         </View>
       </ContentContainer>
 

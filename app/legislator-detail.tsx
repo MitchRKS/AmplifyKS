@@ -5,6 +5,8 @@ import * as WebBrowser from 'expo-web-browser';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Linking, Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
+import { AppAlert } from '@/components/app-alert';
+import { LegislatorRating } from '@/components/legislator-rating';
 import { MatchScoreBadge } from '@/components/legislator-match-detail';
 import { ContentContainer } from '@/components/content-container';
 import { ThemedText } from '@/components/themed-text';
@@ -27,6 +29,7 @@ import {
   type LegislatorVoteRecord,
   type SponsoredBillSummary,
 } from '@/services/legiscan';
+import { shareContent } from '@/services/share';
 
 type ProfileTab = 'contact' | 'committees' | 'bills' | 'votes';
 
@@ -163,6 +166,21 @@ export default function LegislatorDetailScreen() {
     }
   };
 
+  const handleShare = async () => {
+    if (!legislator) return;
+    const outcome = await shareContent({
+      title: legislator.name,
+      message: `${legislator.name} (${legislator.party} — ${legislator.chamber} District ${legislator.district})`,
+      url: legislator.openstatesUrl || undefined,
+    });
+    if (outcome === 'shared' || outcome === 'copied') {
+      recordAction('Share Content', `Shared ${legislator.name}`);
+      if (outcome === 'copied') {
+        AppAlert.alert('Link Copied', 'A link to this legislator was copied to your clipboard.');
+      }
+    }
+  };
+
   if (loading || !legislator) {
     return (
       <ThemedView style={styles.container}>
@@ -200,13 +218,28 @@ export default function LegislatorDetailScreen() {
           <ThemedText type="defaultSemiBold" style={styles.navTitle}>
             Legislator
           </ThemedText>
-          <Pressable onPress={toggleSave} style={styles.backButton}>
-            <MaterialIcons
-              name={saved ? 'bookmark' : 'bookmark-border'}
-              size={24}
-              color={saved ? tint : mutedText}
-            />
-          </Pressable>
+          <View style={styles.navActions}>
+            <Pressable
+              onPress={handleShare}
+              accessibilityRole="button"
+              accessibilityLabel="Share legislator"
+              style={styles.backButton}
+            >
+              <MaterialIcons name="share" size={22} color={mutedText} />
+            </Pressable>
+            <Pressable
+              onPress={toggleSave}
+              accessibilityRole="button"
+              accessibilityLabel={saved ? 'Remove from saved officials' : 'Save official'}
+              style={styles.backButton}
+            >
+              <MaterialIcons
+                name={saved ? 'bookmark' : 'bookmark-border'}
+                size={24}
+                color={saved ? tint : mutedText}
+              />
+            </Pressable>
+          </View>
         </View>
       </ContentContainer>
 
@@ -266,6 +299,8 @@ export default function LegislatorDetailScreen() {
               })()}
             </View>
           </View>
+
+          <LegislatorRating legislatorId={legislator.id} />
 
           {/* Tab Bar */}
           <View style={[styles.tabBar, { borderColor: border }]}>
@@ -826,6 +861,10 @@ const styles = StyleSheet.create({
   },
   backButton: {
     padding: Spacing.xs,
+  },
+  navActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   navTitle: {
     fontSize: 17,
