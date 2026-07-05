@@ -19,6 +19,11 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Radius, Shadows, Spacing } from '@/constants/theme';
 import { useThemeColor } from '@/hooks/use-theme-color';
+import {
+  findCommitteeActionFromHistory,
+  resolveCommitteeName,
+  COMMITTEE_UNAVAILABLE,
+} from '@/services/bill-committee';
 import * as LegiscanAPI from '@/services/legiscan';
 import {
   readFreshPersistentCache,
@@ -130,48 +135,6 @@ function sortBills(bills: Bill[], sortBy: SortOption): Bill[] {
   }
 }
 
-function extractCommitteeFromAction(action?: string): string | null {
-  if (!action?.trim()) {
-    return null;
-  }
-
-  const patterns = [
-    /(?:Referred|Rereferred)\s+to\s+Committee\s+on\s+([^;,.]+)/i,
-    /Withdrawn\s+from\s+Committee\s+on\s+([^;,.]+)/i,
-    /by\s+Committee\s+on\s+([^;,.]+)/i,
-    /Committee\s+on\s+([^;,.]+)/i,
-  ];
-
-  for (const pattern of patterns) {
-    const match = action.match(pattern);
-    const committeeName = match?.[1]?.trim();
-    if (committeeName) {
-      return committeeName;
-    }
-  }
-
-  return null;
-}
-
-function getCommitteeName(
-  committee?: { chamber?: string; name?: string } | null,
-  fallbackAction?: string,
-  fallbackChamber?: string
-): string {
-  const committeeName = committee?.name?.trim();
-  if (!committeeName) {
-    const parsedFromAction = extractCommitteeFromAction(fallbackAction);
-    if (!parsedFromAction) {
-      return 'Committee unavailable';
-    }
-    return LegiscanAPI.formatCommitteeName(fallbackChamber || 'Unknown', parsedFromAction);
-  }
-  if (committee?.chamber?.trim()) {
-    return LegiscanAPI.formatCommitteeName(committee.chamber, committeeName);
-  }
-  return committeeName;
-}
-
 function extractCommitteeName(rawBill: Record<string, unknown>): string {
   const committee = rawBill.committee;
   const fallbackAction = typeof rawBill.last_action === 'string' ? rawBill.last_action : undefined;
@@ -179,9 +142,9 @@ function extractCommitteeName(rawBill: Record<string, unknown>): string {
   const fallbackChamber = LegiscanAPI.getChamber(fallbackBillNumber);
   if (committee && typeof committee === 'object') {
     const committeeObj = committee as { chamber?: string; name?: string };
-    return getCommitteeName(committeeObj, fallbackAction, fallbackChamber);
+    return resolveCommitteeName(committeeObj, fallbackAction, fallbackChamber);
   }
-  return getCommitteeName(undefined, fallbackAction, fallbackChamber);
+  return resolveCommitteeName(undefined, fallbackAction, fallbackChamber);
 }
 
 function formatLastActionForCard(lastAction: string): string {
@@ -242,17 +205,16 @@ export default function BillsScreen() {
       void (async () => {
         try {
           const billDetail = await LegiscanAPI.getBillDetail(billId);
-          const historyCommitteeAction =
-            billDetail.history?.find((entry) => extractCommitteeFromAction(entry.action))?.action;
+          const historyCommitteeAction = findCommitteeActionFromHistory(billDetail.history);
           const fallbackAction = historyCommitteeAction || lastAction;
           const fallbackChamber =
             billDetail.committee?.chamber || LegiscanAPI.getChamber(billDetail.bill_number);
-          const committeeName = getCommitteeName(
+          const committeeName = resolveCommitteeName(
             billDetail.committee,
             fallbackAction,
             fallbackChamber
           );
-          if (committeeName !== 'Committee unavailable') {
+          if (committeeName !== COMMITTEE_UNAVAILABLE) {
             committeeNameCache.set(billId, committeeName);
           }
         } catch {
@@ -278,7 +240,7 @@ export default function BillsScreen() {
       let queued = false;
       for (const viewable of viewableItems) {
         const bill = viewable.item;
-        if (bill.committee !== 'Committee unavailable') continue;
+        if (bill.committee !== COMMITTEE_UNAVAILABLE) continue;
         if (committeeNameCache.has(bill.id)) continue;
         if (hydrationInFlight.current.has(bill.id)) continue;
         hydrationInFlight.current.add(bill.id);
@@ -488,10 +450,21 @@ export default function BillsScreen() {
               onChangeText={setSearchQuery}
               autoCapitalize="none"
               autoCorrect={false}
-              clearButtonMode="while-editing"
             />
+            {searchQuery.length > 0 && (
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Clear search"
+                onPress={() => setSearchQuery('')}
+                hitSlop={8}
+              >
+                <MaterialIcons name="close" size={18} color={placeholder} />
+              </Pressable>
+            )}
           </View>
           <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Filter and sort bills"
             style={({ pressed }) => [
               styles.filterButton,
               { backgroundColor: surface, borderColor: inputBorder },

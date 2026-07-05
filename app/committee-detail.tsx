@@ -243,9 +243,9 @@ const styles = StyleSheet.create({
     paddingTop: 60,
     paddingBottom: Spacing.md,
   },
-  backButton: { padding: Spacing.xs },
+  backButton: { padding: Spacing.md },
   navTitle: { fontSize: 17 },
-  navSpacer: { width: 32 },
+  navSpacer: { width: 48 },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',

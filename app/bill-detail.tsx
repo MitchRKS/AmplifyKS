@@ -15,6 +15,7 @@ import { useBillTestimonyStatus } from '@/hooks/use-bill-testimony-status';
 import { useThemeColor } from '@/hooks/use-theme-color';
 import { useUserProfile } from '@/hooks/use-user-profile';
 import { useGamification } from '@/contexts/gamification-context';
+import { findCommitteeActionFromHistory, resolveCommitteeName } from '@/services/bill-committee';
 import * as LegiscanAPI from '@/services/legiscan';
 import { shareContent } from '@/services/share';
 
@@ -29,7 +30,7 @@ interface BillDetail {
   status: string;
   chamber: string;
   sessionName: string;
-  committee?: string;
+  committee: string;
   url: string;
   stateLink: string;
   history: Array<{
@@ -77,9 +78,11 @@ export default function BillDetailScreen() {
           status: LegiscanAPI.getStatusLabel(billData.status),
           chamber: LegiscanAPI.getChamber(billData.bill_number),
           sessionName: billData.session.session_name,
-          committee: billData.committee?.chamber && billData.committee?.name 
-            ? LegiscanAPI.formatCommitteeName(billData.committee.chamber, billData.committee.name)
-            : billData.committee?.name,
+          committee: resolveCommitteeName(
+            billData.committee,
+            findCommitteeActionFromHistory(billData.history),
+            billData.committee?.chamber || LegiscanAPI.getChamber(billData.bill_number),
+          ),
           url: billData.url,
           stateLink: billData.state_link,
           history: billData.history.map(h => ({
@@ -256,12 +259,10 @@ export default function BillDetailScreen() {
               </View>
             )}
 
-            {bill.committee && (
-              <View style={styles.infoRow}>
-                <ThemedText type="caption" style={[styles.infoLabel, { color: mutedText }]}>Committee</ThemedText>
-                <ThemedText style={styles.infoValue}>{bill.committee}</ThemedText>
-              </View>
-            )}
+            <View style={styles.infoRow}>
+              <ThemedText type="caption" style={[styles.infoLabel, { color: mutedText }]}>Committee</ThemedText>
+              <ThemedText style={styles.infoValue}>{bill.committee}</ThemedText>
+            </View>
           </View>
 
           <View style={[styles.card, { backgroundColor: surface, borderColor: border }, Shadows.sm]}>
@@ -400,7 +401,7 @@ export default function BillDetailScreen() {
                   <TestimonyForm
                     billNumber={bill.billNumber}
                     billTitle={bill.title}
-                    committee={bill.committee || ''}
+                    committee={bill.committee}
                   />
                 </>
               ) : (
@@ -448,13 +449,13 @@ const styles = StyleSheet.create({
     paddingBottom: Spacing.md,
   },
   backButton: {
-    padding: Spacing.xs,
+    padding: Spacing.md,
   },
   headerTitle: {
     fontSize: 17,
   },
   headerSpacer: {
-    width: 32,
+    width: 48,
   },
   content: {
     paddingBottom: Spacing['4xl'],

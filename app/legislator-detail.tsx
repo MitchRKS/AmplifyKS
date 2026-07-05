@@ -860,7 +860,7 @@ const styles = StyleSheet.create({
     paddingBottom: Spacing.md,
   },
   backButton: {
-    padding: Spacing.xs,
+    padding: Spacing.md,
   },
   navActions: {
     flexDirection: 'row',
@@ -870,7 +870,7 @@ const styles = StyleSheet.create({
     fontSize: 17,
   },
   navSpacer: {
-    width: 32,
+    width: 48,
   },
   loadingContainer: {
     flex: 1,
