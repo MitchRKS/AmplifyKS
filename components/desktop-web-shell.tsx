@@ -1,3 +1,4 @@
+import { useSegments } from 'expo-router';
 import type { ReactNode } from 'react';
 import { Platform, StyleSheet, View, type ViewStyle } from 'react-native';
 
@@ -14,9 +15,17 @@ const STICKY_HEADER_STYLE: ViewStyle = Platform.select({
   default: {},
 }) as ViewStyle;
 
+// Only the authenticated part of the app gets the persistent top nav — index,
+// lookup, and (auth) already have their own header, and rendering WebTopNav
+// there too showed a confusing double header advertising Profile/Dashboard/etc.
+// before the user had signed in.
+const AUTHENTICATED_SEGMENTS = new Set(['(tabs)', 'bill-detail', 'committee-detail', 'quiz']);
+
 export function DesktopWebShell({ children }: DesktopWebShellProps) {
   const { showSidebar } = useResponsiveLayout();
-  const showShell = Platform.OS === 'web' && showSidebar;
+  const segments = useSegments();
+  const isAuthenticatedRoute = Boolean(segments[0] && AUTHENTICATED_SEGMENTS.has(segments[0]));
+  const showShell = Platform.OS === 'web' && showSidebar && isAuthenticatedRoute;
 
   if (!showShell) return <>{children}</>;
 
