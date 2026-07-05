@@ -1,4 +1,5 @@
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
+import { useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
@@ -12,10 +13,9 @@ import {
 } from 'react-native';
 
 import { ContentContainer } from '@/components/content-container';
-import { AchievementBadge } from '@/components/gamification/achievement-badge';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { ACTION_POINTS, ALL_ACHIEVEMENTS, ALL_ACTIONS } from '@/constants/gamification';
+import { ALL_ACHIEVEMENTS } from '@/constants/gamification';
 import { Radius, Shadows, Spacing } from '@/constants/theme';
 import { useAuth } from '@/contexts/auth-context';
 import { useGamification } from '@/contexts/gamification-context';
@@ -23,10 +23,10 @@ import { useUserProfile, type UserProfile } from '@/hooks/use-user-profile';
 import { useThemeColor } from '@/hooks/use-theme-color';
 
 export default function ProfileScreen() {
+  const router = useRouter();
   const { user } = useAuth();
   const { profile, isLoaded, isSaving, updateProfile } = useUserProfile();
   const gamification = useGamification();
-  const [pointsExpanded, setPointsExpanded] = useState(false);
   const [form, setForm] = useState<UserProfile>({
     phone: '',
     streetAddress: '',
@@ -139,7 +139,7 @@ export default function ProfileScreen() {
             </View>
           )}
 
-          <View style={styles.statsRow}>
+          <View style={[styles.statsRow, { borderTopColor: border }]}>
             <View style={styles.statItem}>
               <MaterialIcons name="local-fire-department" size={16} color="#FF9800" />
               <ThemedText style={[styles.statValue, { color: mutedText }]}>
@@ -162,106 +162,11 @@ export default function ProfileScreen() {
 
           <Pressable
             style={[styles.expandButton, { borderColor: border }]}
-            onPress={() => setPointsExpanded((v) => !v)}
+            onPress={() => router.push('/(tabs)/points')}
           >
-            <ThemedText style={[styles.expandText, { color: tint }]}>
-              {pointsExpanded ? 'Show Less' : 'View Details'}
-            </ThemedText>
-            <MaterialIcons
-              name={pointsExpanded ? 'expand-less' : 'expand-more'}
-              size={20}
-              color={tint}
-            />
+            <ThemedText style={[styles.expandText, { color: tint }]}>View Details</ThemedText>
+            <MaterialIcons name="chevron-right" size={20} color={tint} />
           </Pressable>
-
-          {pointsExpanded && (
-            <View style={styles.expandedContent}>
-              {/* Achievements */}
-              <View style={styles.expandedSection}>
-                <View style={styles.expandedSectionHeader}>
-                  <ThemedText type="defaultSemiBold">Achievements</ThemedText>
-                  <ThemedText style={[styles.smallMuted, { color: mutedText }]}>
-                    {gamification.getUnlocked().length}/{ALL_ACHIEVEMENTS.length}
-                  </ThemedText>
-                </View>
-
-                {gamification.getUnlocked().length > 0 && (
-                  <>
-                    <ThemedText style={[styles.groupLabel, { color: mutedText }]}>Unlocked</ThemedText>
-                    <View style={styles.badgeGrid}>
-                      {gamification.getUnlocked().map((a) => (
-                        <AchievementBadge key={a.id} achievement={a} isUnlocked />
-                      ))}
-                    </View>
-                  </>
-                )}
-
-                {ALL_ACHIEVEMENTS.filter((a) => !gamification.unlockedAchievements.has(a.id)).length > 0 && (
-                  <>
-                    <ThemedText style={[styles.groupLabel, { color: mutedText, marginTop: Spacing.lg }]}>
-                      In Progress
-                    </ThemedText>
-                    <View style={styles.badgeGrid}>
-                      {ALL_ACHIEVEMENTS.filter((a) => !gamification.unlockedAchievements.has(a.id)).map((a) => (
-                        <AchievementBadge
-                          key={a.id}
-                          achievement={a}
-                          isUnlocked={false}
-                          progress={gamification.progressForAchievement(a)}
-                        />
-                      ))}
-                    </View>
-                  </>
-                )}
-              </View>
-
-              {/* Ways to Earn */}
-              <View style={[styles.expandedSection, { borderTopWidth: 1, borderTopColor: border }]}>
-                <ThemedText type="defaultSemiBold" style={styles.expandedSectionTitle}>
-                  Ways to Earn Points
-                </ThemedText>
-                {ALL_ACTIONS.map((action) => (
-                  <View key={action} style={[styles.earnRow, { borderBottomColor: border }]}>
-                    <View style={styles.earnLeft}>
-                      <ThemedText style={styles.earnAction}>{action}</ThemedText>
-                      <ThemedText style={[styles.smallMuted, { color: mutedText }]}>
-                        Completed {gamification.countOfAction(action)} times
-                      </ThemedText>
-                    </View>
-                    <View style={styles.earnRight}>
-                      <ThemedText style={[styles.earnPoints, { color: tint }]}>
-                        +{ACTION_POINTS[action]}
-                      </ThemedText>
-                      <ThemedText style={[styles.smallMuted, { color: mutedText }]}>pts</ThemedText>
-                    </View>
-                  </View>
-                ))}
-              </View>
-
-              {/* Recent Activity */}
-              {gamification.recentActions(5).length > 0 && (
-                <View style={[styles.expandedSection, { borderTopWidth: 1, borderTopColor: border }]}>
-                  <ThemedText type="defaultSemiBold" style={styles.expandedSectionTitle}>
-                    Recent Activity
-                  </ThemedText>
-                  {gamification.recentActions(5).reverse().map((r) => (
-                    <View key={r.id} style={[styles.activityRow, { borderBottomColor: border }]}>
-                      <View style={styles.activityLeft}>
-                        <ThemedText style={styles.activityAction}>{r.action}</ThemedText>
-                        <ThemedText style={[styles.smallMuted, { color: mutedText }]} numberOfLines={1}>
-                          {r.description}
-                        </ThemedText>
-                        <ThemedText style={[styles.tinyMuted, { color: mutedText }]}>
-                          {new Date(r.timestamp).toLocaleDateString()}
-                        </ThemedText>
-                      </View>
-                      <ThemedText style={styles.activityPoints}>+{r.points}</ThemedText>
-                    </View>
-                  ))}
-                </View>
-              )}
-            </View>
-          )}
         </View>
 
         <View style={[styles.card, { backgroundColor: surface, borderColor: border }, Shadows.sm]}>
@@ -496,7 +401,6 @@ const styles = StyleSheet.create({
     marginTop: Spacing.lg,
     paddingTop: Spacing.md,
     borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: '#E5E7EB',
   },
   statItem: {
     flexDirection: 'row',
@@ -519,83 +423,6 @@ const styles = StyleSheet.create({
   expandText: {
     fontSize: 14,
     fontWeight: '600',
-  },
-  expandedContent: {
-    marginTop: Spacing.md,
-  },
-  expandedSection: {
-    paddingTop: Spacing.lg,
-    marginTop: Spacing.md,
-  },
-  expandedSectionHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: Spacing.md,
-  },
-  expandedSectionTitle: {
-    fontSize: 16,
-    marginBottom: Spacing.md,
-  },
-  groupLabel: {
-    fontSize: 12,
-    fontWeight: '600',
-    marginBottom: Spacing.sm,
-    textTransform: 'uppercase' as const,
-  },
-  badgeGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: Spacing.md,
-  },
-  earnRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: Spacing.md,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-  },
-  earnLeft: {
-    flex: 1,
-    gap: 2,
-  },
-  earnAction: {
-    fontSize: 15,
-  },
-  earnRight: {
-    flexDirection: 'row',
-    alignItems: 'baseline',
-    gap: 3,
-  },
-  earnPoints: {
-    fontSize: 17,
-    fontWeight: '700',
-  },
-  activityRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: Spacing.md,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-  },
-  activityLeft: {
-    flex: 1,
-    gap: 2,
-  },
-  activityAction: {
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  activityPoints: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: '#4CAF50',
-  },
-  smallMuted: {
-    fontSize: 13,
-  },
-  tinyMuted: {
-    fontSize: 11,
   },
   cardTitle: {
     marginBottom: Spacing.xs,

@@ -5,13 +5,7 @@ import { ContentContainer } from '@/components/content-container';
 import { AchievementBadge } from '@/components/gamification/achievement-badge';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import {
-  ACHIEVEMENT_COLORS,
-  ACTION_POINTS,
-  ALL_ACHIEVEMENTS,
-  ALL_ACTIONS,
-  type AdvocacyAction,
-} from '@/constants/gamification';
+import { ACTION_POINTS, ALL_ACHIEVEMENTS, ALL_ACTIONS } from '@/constants/gamification';
 import { Radius, Shadows, Spacing } from '@/constants/theme';
 import { useGamification } from '@/contexts/gamification-context';
 import { useThemeColor } from '@/hooks/use-theme-color';

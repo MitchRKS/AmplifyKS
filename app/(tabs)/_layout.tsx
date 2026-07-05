@@ -114,6 +114,7 @@ function MobileLayout() {
       <Tabs.Screen
         name="points"
         options={{
+          title: 'Points & Achievements',
           href: null,
         }}
       />
