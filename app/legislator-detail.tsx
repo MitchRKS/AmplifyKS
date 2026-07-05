@@ -94,7 +94,7 @@ export default function LegislatorDetailScreen() {
     committeesLoaded.current = true;
     setCommitteesLoading(true);
     try {
-      const result = await getCommitteeAssignments(legislator.id);
+      const result = await getCommitteeAssignments(legislator);
       setCommittees(result);
     } catch {
       /* handled gracefully */

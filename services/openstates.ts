@@ -1,4 +1,5 @@
 import {
+  buildLegislatorId,
   getCommitteeAssignmentsLocal,
   getCommitteeByIdLocal,
   getKansasCommitteesLocal,
@@ -262,10 +263,32 @@ export const getKansasCommittees = (): Promise<KansasCommittee[]> =>
 export const getCommitteeById = (id: string): Promise<KansasCommittee | null> =>
   Promise.resolve(getCommitteeByIdLocal(id));
 
+// Committee assignments are only known for the local KANSAS_LEGISLATORS
+// dataset, keyed by the synthetic ks-state-{chamber}-{district} ID. Officials
+// found via the "Find Officials" address/location lookup (getOfficialsByLocation)
+// come back with a raw OpenStates ID instead, which never matches — so a
+// Kansas state legislator found that way always showed "no committees" even
+// when they actually serve on several. Resolve to the equivalent local ID by
+// chamber + district before falling back to "unknown."
+const resolveLocalLegislatorId = (
+  official: Pick<Official, 'id' | 'chamber' | 'district' | 'jurisdiction'>,
+): string | null => {
+  if (isLocalLegislatorId(official.id)) return official.id;
+  if (official.jurisdiction !== 'Kansas') return null;
+  if (official.chamber !== 'Senate' && official.chamber !== 'House') return null;
+
+  const district = parseInt(official.district, 10);
+  if (!Number.isFinite(district)) return null;
+
+  return buildLegislatorId(official.chamber, district);
+};
+
 export const getCommitteeAssignments = (
-  personId: string,
-): Promise<CommitteeAssignment[]> =>
-  Promise.resolve(getCommitteeAssignmentsLocal(personId));
+  official: Pick<Official, 'id' | 'chamber' | 'district' | 'jurisdiction'>,
+): Promise<CommitteeAssignment[]> => {
+  const localId = resolveLocalLegislatorId(official);
+  return Promise.resolve(localId ? getCommitteeAssignmentsLocal(localId) : []);
+};
 
 const KS_CONGRESSIONAL_COORDS = [
   { lat: 38.84, lng: -99.33 },
