@@ -20,15 +20,39 @@ service cloud.firestore {
     
     // Helper function to check if user is super admin
     function isSuperAdmin() {
-      return isAuthenticated() && 
+      return isAuthenticated() &&
              getUserRole(request.auth.uid) == 'super_admin';
     }
-    
+
+    // Gamification's totalPoints is otherwise fully client-writable, so
+    // without this a user can set it to any value from the browser console.
+    // Bounds: never decreases, and a single write can't jump by more than
+    // 200 (the largest real action's point value, see constants/gamification.ts
+    // ACTION_POINTS). Deliberately NOT an exact-match-per-action check —
+    // that would reject legitimate writes if a user's local state drifts
+    // from Firestore's current value (e.g. the app open on two devices),
+    // and there's no rules emulator/test rig in this repo to safely verify
+    // anything stricter. Exempted on create (resource == null) since account
+    // creation always starts totalPoints at 0 in the app's own code.
+    // NOTE: unlockedAchievements and actionCounts remain unvalidated —
+    // deliberately out of scope, see CODEBASE_FINDINGS.md.
+    function isValidPointsWrite() {
+      return request.method == 'create' ||
+             !request.resource.data.diff(resource.data).affectedKeys().hasAny(['totalPoints']) ||
+             (request.resource.data.totalPoints is int &&
+              request.resource.data.totalPoints >= resource.data.get('totalPoints', 0) &&
+              request.resource.data.totalPoints <= resource.data.get('totalPoints', 0) + 200);
+    }
+
     // Users collection
     match /users/{userId} {
-      // Allow users to read and write their own document
-      allow read, write: if isAuthenticated() && request.auth.uid == userId;
-      
+      // Allow users to read their own document in full
+      allow read: if isAuthenticated() && request.auth.uid == userId;
+
+      // Allow users to write their own document, subject to the points bound above
+      allow write: if isAuthenticated() && request.auth.uid == userId &&
+                   isValidPointsWrite();
+
       // Allow admins and super admins to read all user documents
       allow read: if isAdmin();
       
