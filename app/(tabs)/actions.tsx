@@ -17,6 +17,7 @@ import { Radius, Shadows, Spacing } from '@/constants/theme';
 import { useOpenTestimonyBillIds } from '@/hooks/use-open-testimony-bills';
 import { useQuiz } from '@/hooks/use-quiz';
 import { useThemeColor } from '@/hooks/use-theme-color';
+import { getBillStatusColor } from '@/services/bill-status';
 import * as LegiscanAPI from '@/services/legiscan';
 
 interface Bill {
@@ -87,24 +88,6 @@ export default function ActionsScreen() {
 
   const loading = idsLoading || billsLoading;
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'Passed':
-      case 'Chaptered':
-        return '#adc323';
-      case 'Introduced':
-      case 'Engrossed':
-        return '#a9cd34';
-      case 'Enrolled':
-        return '#0097b2';
-      case 'Vetoed':
-      case 'Failed':
-        return '#fa3332';
-      default:
-        return mutedText;
-    }
-  };
-
   const renderBillItem = ({ item }: { item: Bill }) => (
     <ContentContainer style={styles.listItemContainer}>
       <Pressable
@@ -125,8 +108,8 @@ export default function ActionsScreen() {
               <ThemedText type="caption" style={{ color: mutedText }}>{item.chamber}</ThemedText>
             </View>
           </View>
-          <View style={[styles.statusBadge, { backgroundColor: getStatusColor(item.status) + '14' }]}>
-            <ThemedText style={[styles.statusText, { color: getStatusColor(item.status) }]}>
+          <View style={[styles.statusBadge, { backgroundColor: getBillStatusColor(item.status, mutedText) + '14' }]}>
+            <ThemedText style={[styles.statusText, { color: getBillStatusColor(item.status, mutedText) }]}>
               {item.status}
             </ThemedText>
           </View>

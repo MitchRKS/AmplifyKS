@@ -41,6 +41,13 @@ export default function PointsScreen() {
     <ThemedView style={styles.container}>
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
         <ContentContainer>
+          <View style={styles.header}>
+            <ThemedText type="title">Points & Achievements</ThemedText>
+            <ThemedText style={[styles.subtitle, { color: mutedText }]}>
+              Your civic engagement progress
+            </ThemedText>
+          </View>
+
           {/* ── Level & Points ── */}
           <View style={[styles.card, { backgroundColor: surface, borderColor: border }, Shadows.sm]}>
             <View style={styles.levelRow}>
@@ -207,7 +214,9 @@ export default function PointsScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  scroll: { paddingVertical: Spacing.lg, paddingBottom: Spacing['4xl'] },
+  scroll: { paddingBottom: Spacing['4xl'] },
+  header: { paddingHorizontal: Spacing.xl, paddingTop: Spacing.md, paddingBottom: Spacing.md },
+  subtitle: { fontSize: 15, marginTop: Spacing.xs },
   card: {
     borderWidth: 1,
     borderRadius: Radius.lg,

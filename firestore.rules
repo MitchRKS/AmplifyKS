@@ -95,7 +95,20 @@ service cloud.firestore {
       allow read: if isAuthenticated();
       allow write: if isAdmin();
     }
-    
+
+    // Bill Testimony status - which bills are open for testimony submission.
+    // Read must be collection-scoped so both the single-doc listener
+    // (use-bill-testimony-status.ts) and the isOpen==true list query
+    // (use-open-testimony-bills.ts, powering the Actions tab) are permitted.
+    // Write is admin-only: the open/close toggle is admin-gated in the UI.
+    // Without this block the collection hit the default-deny below and the
+    // entire testimony feature was non-functional (feature always "closed",
+    // Actions tab always empty, admin toggle rejected).
+    match /billTestimony/{billId} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin();
+    }
+
     // Committee Emails collection - Read by all authenticated users, Write by admins only
     match /committeeEmails/{document=**} {
       allow read: if isAuthenticated();

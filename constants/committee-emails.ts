@@ -46,7 +46,7 @@ export const COMMITTEE_EMAILS: Record<string, string> = {
   "House Committee on Education": "H.Education@house.ks.gov",
   "House Committee on Elections": "H.Elections@house.ks.gov",
   "House Committee on Energy, Utilities and Telecommunications":
-    "H.Utilitiesm@house.ks.gov",
+    "H.Utilities@house.ks.gov",
   "House Committee on Federal and State Affairs":
     "H.Fed.State.Affairs@house.ks.gov",
   "House Committee on Financial Institutions and Pensions":

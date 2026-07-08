@@ -50,8 +50,17 @@ export function useBillTestimonyStatus(billId: string | number): BillTestimonySt
     const db = getFirestoreDb();
     const ref = doc(db, COLLECTION, docId);
     const next = !isOpen;
-    setIsOpen(next);
-    await setDoc(ref, { isOpen: next }, { merge: true });
+    setIsOpen(next); // optimistic
+    try {
+      await setDoc(ref, { isOpen: next }, { merge: true });
+    } catch (error) {
+      // Revert the optimistic flip so the Switch reflects the real persisted
+      // state instead of silently showing a value that never saved. The
+      // onSnapshot listener will also reconcile, but reverting here avoids a
+      // flicker window where the toggle lies about being on.
+      setIsOpen(!next);
+      console.error('Error toggling testimony status:', error);
+    }
   }, [docId, isOpen]);
 
   return { isOpen, isLoading, toggleOpen };

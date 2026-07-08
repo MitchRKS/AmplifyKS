@@ -2,7 +2,7 @@ import * as MailComposer from 'expo-mail-composer';
 import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
 import { addDoc, collection, Timestamp } from 'firebase/firestore';
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   Linking,
   Platform,
@@ -17,8 +17,15 @@ import { ThemedText } from '@/components/themed-text';
 import { getCommitteeEmail, hasCommitteeEmail } from '@/constants/committee-emails';
 import { Radius, Shadows, Spacing } from '@/constants/theme';
 import { useAuth } from '@/contexts/auth-context';
+import { useGamification } from '@/contexts/gamification-context';
 import { useThemeColor } from '@/hooks/use-theme-color';
+import { useUserProfile } from '@/hooks/use-user-profile';
 import { getFirestoreDb } from '@/services/firebase';
+
+// Deliberately loose: enough to catch obvious junk ("asdf", stray spaces),
+// not a full RFC 5322 validator (those reject valid addresses and give a
+// false sense of rigor). Email is stored on the private record only.
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 // Messaging per expo-mail-composer's MailComposerResult status. On web,
 // composeAsync just opens a mailto: link and can never report more than
@@ -66,15 +73,37 @@ interface TestimonyFormProps {
 
 export function TestimonyForm({ billNumber, billTitle, committee }: TestimonyFormProps) {
   const { user } = useAuth();
+  const { profile, isLoaded: profileLoaded } = useUserProfile();
+  const { recordAction } = useGamification();
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [email, setEmail] = useState('');
   const [streetAddress, setStreetAddress] = useState('');
   const [city, setCity] = useState('');
-  const [state, setState] = useState('');
+  const [state, setState] = useState('KS');
   const [zipCode, setZipCode] = useState('');
   const [position, setPosition] = useState<Position>('support');
   const [testimony, setTestimony] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+
+  // Seed the contact fields once from the signed-in profile so users don't
+  // re-type their name/email/address on every submission. Only fills fields
+  // the user hasn't already edited (functional updater guards against clobber),
+  // and runs once — after the async profile load resolves.
+  const seededRef = useRef(false);
+  useEffect(() => {
+    if (seededRef.current || !profileLoaded) return;
+    seededRef.current = true;
+    if (user) {
+      setFirstName((prev) => prev || user.firstName || '');
+      setLastName((prev) => prev || user.lastName || '');
+      setEmail((prev) => prev || user.email || '');
+    }
+    setStreetAddress((prev) => prev || profile.streetAddress || '');
+    setCity((prev) => prev || profile.city || '');
+    setState((prev) => prev || profile.state || 'KS');
+    setZipCode((prev) => prev || profile.zip || '');
+  }, [profileLoaded, user, profile]);
 
   const lastNameRef = useRef<TextInput>(null);
   const emailRef = useRef<TextInput>(null);
@@ -155,11 +184,18 @@ export function TestimonyForm({ billNumber, billTitle, committee }: TestimonyFor
   };
 
   const handleSubmitEmail = async () => {
+    if (submitting) return;
+
     if (!canSubmit) {
       AppAlert.alert(
         'Missing required info',
         'Please fill in your first name, last name, email, bill number, and testimony.',
       );
+      return;
+    }
+
+    if (!EMAIL_RE.test(email.trim())) {
+      AppAlert.alert('Invalid Email', 'Please enter a valid email address.');
       return;
     }
 
@@ -177,6 +213,7 @@ export function TestimonyForm({ billNumber, billTitle, committee }: TestimonyFor
       return;
     }
 
+    setSubmitting(true);
     try {
       const isAvailable = await MailComposer.isAvailableAsync();
       if (!isAvailable) {
@@ -231,6 +268,16 @@ export function TestimonyForm({ billNumber, billTitle, committee }: TestimonyFor
           // Don't let a record-keeping failure mask whether the email itself went out.
           console.error('Error saving testimony record:', firestoreError);
         }
+
+        // Credit the advocacy action unless the user explicitly bailed out of
+        // the composer. Uses the existing 'Contact Legislator' action (there's
+        // no dedicated testimony action yet); award-on-attempt matches how
+        // Contact Legislator is recorded elsewhere. Note the composer result is
+        // only trustworthy on iOS — web is always 'undetermined', Android always
+        // 'sent' — so 'cancelled' (iOS-only signal) is the one case we skip.
+        if (result.status !== 'cancelled') {
+          recordAction('Contact Legislator', `Testimony on ${billNumber}`);
+        }
       }
 
       const feedback = STATUS_MESSAGES[result.status] ?? STATUS_MESSAGES.undetermined;
@@ -238,6 +285,8 @@ export function TestimonyForm({ billNumber, billTitle, committee }: TestimonyFor
     } catch (error) {
       console.error('Error opening email composer:', error);
       AppAlert.alert('Error', 'Unable to open email composer. Please try again.');
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -311,6 +360,7 @@ export function TestimonyForm({ billNumber, billTitle, committee }: TestimonyFor
         <ThemedText style={styles.label}>Your testimony *</ThemedText>
         <TextInput
           ref={testimonyRef}
+          accessibilityLabel="Your testimony, required"
           style={[styles.input, styles.multiline, { backgroundColor: inputBackground, borderColor: inputBorder, color: inputText }]}
           placeholder="Add detailed testimony..."
           placeholderTextColor={placeholder}
@@ -362,6 +412,7 @@ export function TestimonyForm({ billNumber, billTitle, committee }: TestimonyFor
           <View style={[styles.field, { flex: 1 }]}>
             <ThemedText style={styles.label}>First name *</ThemedText>
             <TextInput
+              accessibilityLabel="First name, required"
               style={[styles.input, { backgroundColor: inputBackground, borderColor: inputBorder, color: inputText }]}
               placeholder="Jane"
               placeholderTextColor={placeholder}
@@ -377,6 +428,7 @@ export function TestimonyForm({ billNumber, billTitle, committee }: TestimonyFor
             <ThemedText style={styles.label}>Last name *</ThemedText>
             <TextInput
               ref={lastNameRef}
+              accessibilityLabel="Last name, required"
               style={[styles.input, { backgroundColor: inputBackground, borderColor: inputBorder, color: inputText }]}
               placeholder="Doe"
               placeholderTextColor={placeholder}
@@ -394,6 +446,7 @@ export function TestimonyForm({ billNumber, billTitle, committee }: TestimonyFor
           <ThemedText style={styles.label}>Email *</ThemedText>
           <TextInput
             ref={emailRef}
+            accessibilityLabel="Email, required"
             style={[styles.input, { backgroundColor: inputBackground, borderColor: inputBorder, color: inputText }]}
             placeholder="jane@example.org"
             placeholderTextColor={placeholder}
@@ -413,6 +466,7 @@ export function TestimonyForm({ billNumber, billTitle, committee }: TestimonyFor
           <ThemedText style={styles.label}>Street Address</ThemedText>
           <TextInput
             ref={streetAddressRef}
+            accessibilityLabel="Street address, optional"
             style={[styles.input, { backgroundColor: inputBackground, borderColor: inputBorder, color: inputText }]}
             placeholder="123 Main Street"
             placeholderTextColor={placeholder}
@@ -431,6 +485,7 @@ export function TestimonyForm({ billNumber, billTitle, committee }: TestimonyFor
             <ThemedText style={styles.label}>City</ThemedText>
             <TextInput
               ref={cityRef}
+              accessibilityLabel="City, optional"
               style={[styles.input, { backgroundColor: inputBackground, borderColor: inputBorder, color: inputText }]}
               placeholder="Topeka"
               placeholderTextColor={placeholder}
@@ -447,6 +502,7 @@ export function TestimonyForm({ billNumber, billTitle, committee }: TestimonyFor
             <ThemedText style={styles.label}>State</ThemedText>
             <TextInput
               ref={stateRef}
+              accessibilityLabel="State, optional"
               style={[styles.input, { backgroundColor: inputBackground, borderColor: inputBorder, color: inputText }]}
               placeholder="KS"
               placeholderTextColor={placeholder}
@@ -463,6 +519,7 @@ export function TestimonyForm({ billNumber, billTitle, committee }: TestimonyFor
             <ThemedText style={styles.label}>Zip</ThemedText>
             <TextInput
               ref={zipCodeRef}
+              accessibilityLabel="Zip code, optional"
               style={[styles.input, { backgroundColor: inputBackground, borderColor: inputBorder, color: inputText }]}
               placeholder="66612"
               placeholderTextColor={placeholder}
@@ -482,19 +539,23 @@ export function TestimonyForm({ billNumber, billTitle, committee }: TestimonyFor
         <>
           <Pressable
             accessibilityRole="button"
+            accessibilityState={{ disabled: !canSubmit || submitting, busy: submitting }}
             style={({ pressed }) => [
               styles.submitButton,
-              { backgroundColor: canSubmit ? tint : inputBorder },
-              pressed && canSubmit && styles.pressed,
+              { backgroundColor: canSubmit && !submitting ? tint : inputBorder },
+              pressed && canSubmit && !submitting && styles.pressed,
             ]}
             onPress={handleSubmitEmail}
-            disabled={!canSubmit}
+            disabled={!canSubmit || submitting}
           >
-            <ThemedText style={styles.submitText}>Submit via Email</ThemedText>
+            <ThemedText style={[styles.submitText, { color: canSubmit ? '#fff' : mutedText }]}>
+              {submitting ? 'Opening Email…' : 'Submit via Email'}
+            </ThemedText>
           </Pressable>
 
           <Pressable
             accessibilityRole="button"
+            accessibilityState={{ disabled: !canSubmit }}
             style={({ pressed }) => [
               styles.submitButton,
               styles.secondaryButton,
@@ -504,7 +565,7 @@ export function TestimonyForm({ billNumber, billTitle, committee }: TestimonyFor
             onPress={handlePreview}
             disabled={!canSubmit}
           >
-            <ThemedText style={[styles.submitText, { color: canSubmit ? tint : inputBorder }]}>
+            <ThemedText style={[styles.submitText, { color: canSubmit ? tint : mutedText }]}>
               Preview Testimony
             </ThemedText>
           </Pressable>
@@ -521,6 +582,7 @@ export function TestimonyForm({ billNumber, billTitle, committee }: TestimonyFor
               save your testimony, then look up the committee&apos;s current contact info on the{' '}
               <ThemedText
                 type="caption"
+                accessibilityRole="link"
                 style={[styles.infoBoxLink, { color: tint }]}
                 onPress={() =>
                   Linking.openURL('https://www.kslegislature.gov/li/b2025_26/committees/')
@@ -534,6 +596,7 @@ export function TestimonyForm({ billNumber, billTitle, committee }: TestimonyFor
 
           <Pressable
             accessibilityRole="button"
+            accessibilityState={{ disabled: !canSubmit }}
             style={({ pressed }) => [
               styles.submitButton,
               { backgroundColor: canSubmit ? tint : inputBorder },
@@ -542,12 +605,15 @@ export function TestimonyForm({ billNumber, billTitle, committee }: TestimonyFor
             onPress={handlePreview}
             disabled={!canSubmit}
           >
-            <ThemedText style={styles.submitText}>Preview Testimony</ThemedText>
+            <ThemedText style={[styles.submitText, { color: canSubmit ? '#fff' : mutedText }]}>
+              Preview Testimony
+            </ThemedText>
           </Pressable>
         </>
       ) : (
         <Pressable
           accessibilityRole="button"
+          accessibilityState={{ disabled: !canSubmit }}
           style={({ pressed }) => [
             styles.submitButton,
             { backgroundColor: canSubmit ? tint : inputBorder },
@@ -556,7 +622,9 @@ export function TestimonyForm({ billNumber, billTitle, committee }: TestimonyFor
           onPress={handlePreview}
           disabled={!canSubmit}
         >
-          <ThemedText style={styles.submitText}>Preview Testimony</ThemedText>
+          <ThemedText style={[styles.submitText, { color: canSubmit ? '#fff' : mutedText }]}>
+            Preview Testimony
+          </ThemedText>
         </Pressable>
       )}
 

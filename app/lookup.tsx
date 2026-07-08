@@ -590,16 +590,16 @@ const styles = StyleSheet.create({
     gap: 14,
   },
   photo: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
   },
   photoPlaceholder: {
     justifyContent: 'center',
     alignItems: 'center',
   },
   photoInitials: {
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: '600',
   },
   cardContent: {

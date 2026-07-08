@@ -16,6 +16,7 @@ import { useThemeColor } from '@/hooks/use-theme-color';
 import { useUserProfile } from '@/hooks/use-user-profile';
 import { useGamification } from '@/contexts/gamification-context';
 import { findCommitteeActionFromHistory, resolveCommitteeName } from '@/services/bill-committee';
+import { getBillStatusColor } from '@/services/bill-status';
 import * as LegiscanAPI from '@/services/legiscan';
 import { shareContent } from '@/services/share';
 
@@ -137,24 +138,6 @@ export default function BillDetailScreen() {
     }
   };
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'Passed':
-      case 'Chaptered':
-        return '#adc323';
-      case 'Introduced':
-      case 'Engrossed':
-        return '#a9cd34';
-      case 'Enrolled':
-        return '#0097b2';
-      case 'Vetoed':
-      case 'Failed':
-        return '#fa3332';
-      default:
-        return mutedText;
-    }
-  };
-
   if (loading || !bill) {
     return (
       <ThemedView style={styles.container}>
@@ -205,6 +188,8 @@ export default function BillDetailScreen() {
 
       <ScrollView
         contentContainerStyle={styles.content}
+        keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="on-drag"
         showsVerticalScrollIndicator={false}>
         <ContentContainer style={styles.contentPadding}>
           <View style={[styles.card, { backgroundColor: surface, borderColor: border }, Shadows.sm]}>
@@ -212,8 +197,8 @@ export default function BillDetailScreen() {
               <ThemedText type="title" style={{ color: tint }}>
                 {bill.billNumber}
               </ThemedText>
-              <View style={[styles.statusBadge, { backgroundColor: getStatusColor(bill.status) + '14' }]}>
-                <ThemedText style={[styles.statusText, { color: getStatusColor(bill.status) }]}>
+              <View style={[styles.statusBadge, { backgroundColor: getBillStatusColor(bill.status, mutedText) + '14' }]}>
+                <ThemedText style={[styles.statusText, { color: getBillStatusColor(bill.status, mutedText) }]}>
                   {bill.status}
                 </ThemedText>
               </View>
