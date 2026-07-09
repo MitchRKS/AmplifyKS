@@ -10,6 +10,7 @@ import { TestimonyForm } from '@/components/testimony-form';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { IconSymbol } from '@/components/ui/icon-symbol';
+import { isAdminRole } from '@/constants/roles';
 import { Radius, Shadows, Spacing } from '@/constants/theme';
 import { useBillTestimonyStatus } from '@/hooks/use-bill-testimony-status';
 import { useThemeColor } from '@/hooks/use-theme-color';
@@ -340,7 +341,7 @@ export default function BillDetailScreen() {
             </Pressable>
           </View>
 
-          {profile.role === 'admin' && (
+          {isAdminRole(profile.role) && (
             <View style={[styles.card, { backgroundColor: surface, borderColor: border }, Shadows.sm]}>
               <View style={styles.adminRow}>
                 <View style={styles.adminLabelGroup}>
@@ -407,7 +408,7 @@ export default function BillDetailScreen() {
             </>
           )}
 
-          {!testimonyStatusLoading && !testimonyOpen && profile.role !== 'admin' && (
+          {!testimonyStatusLoading && !testimonyOpen && !isAdminRole(profile.role) && (
             <View style={[styles.closedBanner, { backgroundColor: inputBackground, borderColor: border }]}>
               <MaterialIcons name="lock" size={20} color={mutedText} />
               <ThemedText style={[styles.closedBannerText, { color: mutedText }]}>

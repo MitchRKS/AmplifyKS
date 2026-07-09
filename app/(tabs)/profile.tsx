@@ -16,6 +16,7 @@ import { ContentContainer } from '@/components/content-container';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { ALL_ACHIEVEMENTS } from '@/constants/gamification';
+import { isAdminRole } from '@/constants/roles';
 import { Radius, Shadows, Spacing } from '@/constants/theme';
 import { useAuth } from '@/contexts/auth-context';
 import { useGamification } from '@/contexts/gamification-context';
@@ -78,7 +79,7 @@ export default function ProfileScreen() {
             <View style={styles.avatarInfo}>
               <View style={styles.nameRow}>
                 <ThemedText type="subtitle">{fullName}</ThemedText>
-                {profile.role === 'admin' && (
+                {isAdminRole(profile.role) && (
                   <View style={[styles.adminBadge, { backgroundColor: tint + '15' }]}>
                     <ThemedText style={[styles.adminBadgeText, { color: tint }]}>Admin</ThemedText>
                   </View>
