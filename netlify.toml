@@ -2,6 +2,12 @@
   command = "npx expo export --platform web"
   publish = "dist"
 
+[functions]
+  node_bundler = "esbuild"
+  # firebase-admin does dynamic requires that esbuild can't statically trace —
+  # ship it from node_modules instead of bundling it.
+  external_node_modules = ["firebase-admin"]
+
 [[redirects]]
   from = "/*"
   to = "/index.html"

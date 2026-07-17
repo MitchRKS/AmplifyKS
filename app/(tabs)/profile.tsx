@@ -23,12 +23,16 @@ import { useAuth } from '@/contexts/auth-context';
 import { useGamification } from '@/contexts/gamification-context';
 import { useUserProfile, type UserProfile } from '@/hooks/use-user-profile';
 import { useThemeColor } from '@/hooks/use-theme-color';
+import { getAuth } from '@/services/firebase';
+import { passkeysSupported, registerPasskey } from '@/services/passkeys';
 
 export default function ProfileScreen() {
   const router = useRouter();
   const { user, logout } = useAuth();
   const { profile, isLoaded, isSaving, updateProfile } = useUserProfile();
   const gamification = useGamification();
+  const [isAddingPasskey, setIsAddingPasskey] = useState(false);
+  const [isDeletingAccount, setIsDeletingAccount] = useState(false);
   const [form, setForm] = useState<UserProfile>({
     phone: '',
     streetAddress: '',
@@ -52,6 +56,61 @@ export default function ProfileScreen() {
   const tint = useThemeColor({ light: '#0097b2', dark: '#33C4DB' }, 'tint');
   const mutedText = useThemeColor({ light: '#5E6368', dark: '#9CA3AF' }, 'text');
   const border = useThemeColor({ light: '#d5d5d5', dark: '#2D3139' }, 'background');
+
+  const handleAddPasskey = async () => {
+    if (isAddingPasskey) return;
+    setIsAddingPasskey(true);
+    try {
+      const result = await registerPasskey();
+      if (!result.cancelled) {
+        AppAlert.alert(
+          'Passkey Added',
+          'You can now sign in with your passkey (Face ID, Touch ID, or your device PIN) instead of a password.',
+        );
+      }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Could not add a passkey.';
+      AppAlert.alert('Passkey Failed', message);
+    } finally {
+      setIsAddingPasskey(false);
+    }
+  };
+
+  const performDeleteAccount = async () => {
+    if (Platform.OS !== 'web') {
+      AppAlert.alert('Not Available', 'Account deletion is not available in this app build yet.');
+      return;
+    }
+    setIsDeletingAccount(true);
+    try {
+      const idToken = await getAuth().currentUser?.getIdToken();
+      if (!idToken) throw new Error('You are not signed in.');
+      const response = await fetch('/.netlify/functions/delete-account', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${idToken}` },
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(data.error ?? 'Account deletion failed. Please try again.');
+      // Server already deleted the Auth user + data; clear local state.
+      await logout();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Account deletion failed.';
+      AppAlert.alert('Error', message);
+    } finally {
+      setIsDeletingAccount(false);
+    }
+  };
+
+  const handleDeleteAccount = () => {
+    AppAlert.alert(
+      'Delete Account',
+      'Are you sure you want to delete your account? This action cannot be undone and all your data will be permanently deleted.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Delete', style: 'destructive', onPress: () => void performDeleteAccount() },
+      ],
+    );
+  };
 
   const fullName = user ? `${user.firstName} ${user.lastName}`.trim() || 'No name set' : '';
   const initials = user
@@ -287,8 +346,40 @@ export default function ProfileScreen() {
           </Pressable>
         </View>
 
-        {/* Sign Out lives at the bottom of Profile (matches iOS), with a
-            confirmation — it's no longer in the tab bar or top nav. */}
+        {/* Passkey enrollment (web only — WebAuthn needs the browser). */}
+        {passkeysSupported() && (
+          <View style={[styles.card, { backgroundColor: surface, borderColor: border }, Shadows.sm]}>
+            <ThemedText type="subtitle" style={styles.cardTitle}>Sign-in & Security</ThemedText>
+            <ThemedText type="caption" style={[styles.cardHint, { color: mutedText }]}>
+              Add a passkey to sign in with Face ID, Touch ID, or your device PIN instead of a
+              password.
+            </ThemedText>
+            <Pressable
+              accessibilityRole="button"
+              style={({ pressed }) => [
+                styles.passkeyButton,
+                { borderColor: tint },
+                pressed && styles.saveButtonPressed,
+              ]}
+              onPress={handleAddPasskey}
+              disabled={isAddingPasskey}
+            >
+              {isAddingPasskey ? (
+                <ActivityIndicator size="small" color={tint} />
+              ) : (
+                <>
+                  <MaterialIcons name="fingerprint" size={20} color={tint} />
+                  <ThemedText style={[styles.passkeyButtonText, { color: tint }]}>
+                    Add a Passkey
+                  </ThemedText>
+                </>
+              )}
+            </Pressable>
+          </View>
+        )}
+
+        {/* Sign Out and Delete Account live at the bottom of Profile
+            (matches iOS), each behind a confirmation. */}
         <Pressable
           accessibilityRole="button"
           accessibilityLabel="Sign out"
@@ -307,6 +398,26 @@ export default function ProfileScreen() {
         >
           <MaterialIcons name="logout" size={20} color="#fa3332" />
           <ThemedText style={styles.signOutText}>Sign Out</ThemedText>
+        </Pressable>
+
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Delete account"
+          style={({ pressed }) => [
+            styles.deleteButton,
+            pressed && styles.saveButtonPressed,
+          ]}
+          onPress={handleDeleteAccount}
+          disabled={isDeletingAccount}
+        >
+          {isDeletingAccount ? (
+            <ActivityIndicator size="small" color="#fa3332" />
+          ) : (
+            <>
+              <MaterialIcons name="delete-outline" size={18} color="#fa3332" />
+              <ThemedText style={styles.deleteText}>Delete Account</ThemedText>
+            </>
+          )}
         </Pressable>
       </ContentContainer>
     </ScrollView>
@@ -354,6 +465,34 @@ const styles = StyleSheet.create({
     color: '#fa3332',
     fontWeight: '700',
     fontSize: 16,
+  },
+  passkeyButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: Spacing.sm,
+    borderWidth: 1,
+    borderRadius: Radius.md,
+    paddingVertical: 12,
+    marginTop: Spacing.sm,
+  },
+  passkeyButtonText: {
+    fontSize: 15,
+    fontWeight: '600',
+  },
+  deleteButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: Spacing.sm,
+    paddingVertical: Spacing.lg,
+    marginHorizontal: Spacing.xl,
+    marginTop: Spacing.sm,
+  },
+  deleteText: {
+    color: '#fa3332',
+    fontWeight: '600',
+    fontSize: 14,
   },
   keyboard: {
     flex: 1,

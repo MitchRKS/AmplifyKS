@@ -15,6 +15,7 @@ import {
 import { AppAlert } from '@/components/app-alert';
 import { ContentContainer } from '@/components/content-container';
 import { SocialAuthButtons } from '@/components/social-auth-buttons';
+import { passkeysSupported, signInWithPasskey } from '@/services/passkeys';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Radius, Shadows, Spacing } from '@/constants/theme';
@@ -29,6 +30,7 @@ export default function LoginScreen() {
   const [password, setPassword] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isResettingPassword, setIsResettingPassword] = useState(false);
+  const [isPasskeySubmitting, setIsPasskeySubmitting] = useState(false);
 
   const passwordRef = useRef<TextInput>(null);
 
@@ -57,6 +59,21 @@ export default function LoginScreen() {
       AppAlert.alert('Error', 'An unexpected error occurred. Please try again.');
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const handlePasskeySignIn = async () => {
+    if (isPasskeySubmitting) return;
+    setIsPasskeySubmitting(true);
+    try {
+      // On success the auth-state listener redirects away from this screen.
+      await signInWithPasskey();
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : 'Passkey sign-in failed. Please try again.';
+      AppAlert.alert('Passkey Sign-in Failed', message);
+    } finally {
+      setIsPasskeySubmitting(false);
     }
   };
 
@@ -182,6 +199,30 @@ export default function LoginScreen() {
                 </Pressable>
 
                 <SocialAuthButtons />
+
+                {passkeysSupported() && (
+                  <Pressable
+                    accessibilityRole="button"
+                    style={({ pressed }) => [
+                      styles.passkeyButton,
+                      { borderColor: border },
+                      pressed && styles.buttonPressed,
+                    ]}
+                    onPress={handlePasskeySignIn}
+                    disabled={isPasskeySubmitting}
+                  >
+                    {isPasskeySubmitting ? (
+                      <ActivityIndicator size="small" color={mutedText} />
+                    ) : (
+                      <>
+                        <MaterialIcons name="fingerprint" size={20} color={tint} />
+                        <ThemedText style={[styles.passkeyButtonText, { color: tint }]}>
+                          Sign in with a passkey
+                        </ThemedText>
+                      </>
+                    )}
+                  </Pressable>
+                )}
               </View>
             </View>
 
@@ -294,6 +335,20 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontWeight: '700',
     fontSize: 16,
+  },
+  passkeyButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: Spacing.sm,
+    borderWidth: 1,
+    borderRadius: Radius.md,
+    paddingVertical: 12,
+    marginTop: Spacing.md,
+  },
+  passkeyButtonText: {
+    fontSize: 15,
+    fontWeight: '600',
   },
   footer: {
     flexDirection: 'row',
