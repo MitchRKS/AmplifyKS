@@ -67,7 +67,7 @@ export default function LegislatorDetailScreen() {
   const surface = useThemeColor({ light: '#FFFFFF', dark: '#1C1F26' }, 'background');
   const inputBackground = useThemeColor({ light: '#F0F2F5', dark: '#252830' }, 'background');
   const border = useThemeColor({ light: '#d5d5d5', dark: '#2D3139' }, 'background');
-  const democrat = useThemeColor({ light: '#1c355e', dark: '#6B8DC2' }, 'tint');
+  const democrat = useThemeColor({ light: '#2563eb', dark: '#7aa7f0' }, 'tint');
   const republican = useThemeColor({ light: '#fa3332', dark: '#FF6B6A' }, 'tint');
 
   useEffect(() => {

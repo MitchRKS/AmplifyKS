@@ -19,7 +19,7 @@ export const Colors = {
     success: '#adc323',
     warning: '#ffc629',
     error: '#fa3332',
-    democrat: '#1c355e',
+    democrat: '#2563eb',
     republican: '#fa3332',
     accent: '#ffc629',
     orange: '#a9cd34',

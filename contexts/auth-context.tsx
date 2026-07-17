@@ -17,6 +17,8 @@ import {
   type ReactNode,
 } from 'react';
 
+import { router } from 'expo-router';
+
 import { getAuth } from '@/services/firebase';
 
 interface AuthUser {
@@ -153,6 +155,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const logout = useCallback(async () => {
     await signOut(getAuth());
+    // Send the user to the sign-in page after signing out (rather than
+    // leaving them on an authenticated screen or the anon lookup landing).
+    router.replace('/(auth)/login');
   }, []);
 
   const value = useMemo(

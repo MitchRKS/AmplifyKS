@@ -90,7 +90,7 @@ export default function StateLegislatorsScreen() {
   const tint = useThemeColor({ light: '#0097b2', dark: '#33C4DB' }, 'tint');
   const mutedText = useThemeColor({ light: '#5E6368', dark: '#9CA3AF' }, 'text');
   const border = useThemeColor({ light: '#d5d5d5', dark: '#2D3139' }, 'background');
-  const democrat = useThemeColor({ light: '#1c355e', dark: '#6B8DC2' }, 'tint');
+  const democrat = useThemeColor({ light: '#2563eb', dark: '#7aa7f0' }, 'tint');
   const republican = useThemeColor({ light: '#fa3332', dark: '#FF6B6A' }, 'tint');
 
   const fetchLegislators = async () => {
