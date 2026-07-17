@@ -19,7 +19,7 @@ import { useThemeColor } from '@/hooks/use-theme-color';
 export default function DashboardScreen() {
   const router = useRouter();
   const { user } = useAuth();
-  const { savedOfficials, removeOfficial } = useSavedOfficials();
+  const { savedOfficials } = useSavedOfficials();
 
   const surface = useThemeColor({ light: '#FFFFFF', dark: '#1C1F26' }, 'background');
   const inputBackground = useThemeColor({ light: '#F0F2F5', dark: '#252830' }, 'background');
@@ -144,18 +144,6 @@ export default function DashboardScreen() {
                       </ThemedText>
                     </View>
 
-                    <Pressable
-                      accessibilityRole="button"
-                      accessibilityLabel="Remove official"
-                      onPress={(e) => {
-                        e.stopPropagation();
-                        removeOfficial(official.id);
-                      }}
-                      hitSlop={8}
-                      style={styles.removeButton}
-                    >
-                      <MaterialIcons name="close" size={18} color={mutedText} />
-                    </Pressable>
                   </View>
                 </Pressable>
               ))

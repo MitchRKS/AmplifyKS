@@ -38,7 +38,7 @@ export default function LookupScreen() {
   const showSaveModal = pendingOfficials.length > 0;
   const [saving, setSaving] = useState(false);
 
-  const { saveOfficial, removeOfficial, saveMultipleOfficials, isSaved } = useSavedOfficials();
+  const { saveOfficial, replaceOfficials, isSaved } = useSavedOfficials();
   const { getMatch } = useLegislatorMatch();
 
   const surface = useThemeColor({ light: '#FFFFFF', dark: '#1C1F26' }, 'background');
@@ -157,15 +157,19 @@ export default function LookupScreen() {
       return;
     }
 
+    if (isSaved(official.id)) {
+      AppAlert.alert(
+        'Set by address',
+        'Your electeds are set from your address. Run a new search by address to change your My Electeds.',
+      );
+      return;
+    }
+
     try {
-      if (isSaved(official.id)) {
-        await removeOfficial(official.id);
-      } else {
-        await saveOfficial(official);
-      }
+      await saveOfficial(official);
     } catch (error) {
       console.error('Error saving official:', error);
-      const message = error instanceof Error ? error.message : 'Unable to update your saved electeds. Please try again.';
+      const message = error instanceof Error ? error.message : 'Unable to save your electeds. Please try again.';
       AppAlert.alert('Error', message);
     }
   };
@@ -186,7 +190,7 @@ export default function LookupScreen() {
     }
     setSaving(true);
     try {
-      await saveMultipleOfficials(pendingOfficials);
+      await replaceOfficials(pendingOfficials);
       setSaving(false);
       setPendingOfficials([]);
       router.navigate('/(tabs)/dashboard');
@@ -231,7 +235,7 @@ export default function LookupScreen() {
               {showSaveButton && (
                 <Pressable
                   accessibilityRole="button"
-                  accessibilityLabel={saved ? 'Remove from saved' : 'Add to My Electeds'}
+                  accessibilityLabel={saved ? 'In My Electeds' : 'Add to My Electeds'}
                   onPress={(e) => {
                     e.stopPropagation();
                     void toggleSave(item);
@@ -273,17 +277,6 @@ export default function LookupScreen() {
             ) : null}
           </View>
         </View>
-        {saved && !showSaveButton && (
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="Remove from saved"
-            onPress={(e) => { e.stopPropagation(); removeOfficial(item.id); }}
-            style={[styles.removeButton, { borderColor: border }]}
-          >
-            <MaterialIcons name="close" size={14} color={mutedText} />
-            <ThemedText type="caption" style={{ color: mutedText }}>Remove</ThemedText>
-          </Pressable>
-        )}
       </Pressable>
     );
   };
@@ -408,11 +401,12 @@ export default function LookupScreen() {
               <MaterialIcons name="bookmark-add" size={28} color={tint} />
             </View>
             <ThemedText type="subtitle" style={styles.modalTitle}>
-              Save as your electeds?
+              Set as your My Electeds?
             </ThemedText>
             <ThemedText style={[styles.modalBody, { color: mutedText }]}>
               We found {pendingOfficials.length} elected{pendingOfficials.length !== 1 ? 's' : ''} for
-              your location. Would you like to save them for quick access?
+              this address. Saving replaces your current My Electeds — running a new
+              search by address is the only way to change them later.
             </ThemedText>
 
             <View style={styles.modalButtons}>

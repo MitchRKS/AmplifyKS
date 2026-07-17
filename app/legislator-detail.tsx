@@ -57,7 +57,7 @@ export default function LegislatorDetailScreen() {
   const [votesLoading, setVotesLoading] = useState(false);
   const votesLoaded = useRef(false);
 
-  const { saveOfficial, removeOfficial, isSaved } = useSavedOfficials();
+  const { saveOfficial, isSaved } = useSavedOfficials();
   const { recordAction } = useGamification();
   const { getMatch, computeScore, isMatchAvailable, bt50Loaded } = useLegislatorMatch();
 
@@ -159,10 +159,13 @@ export default function LegislatorDetailScreen() {
   const toggleSave = () => {
     if (!legislator) return;
     if (saved) {
-      removeOfficial(legislator.id);
-    } else {
-      saveOfficial(legislator);
+      AppAlert.alert(
+        'Set by address',
+        'Your electeds are set from your address. Run a new search by address to change your My Electeds.',
+      );
+      return;
     }
+    saveOfficial(legislator);
   };
 
   const handleShare = async () => {
@@ -229,7 +232,7 @@ export default function LegislatorDetailScreen() {
             <Pressable
               onPress={toggleSave}
               accessibilityRole="button"
-              accessibilityLabel={saved ? 'Remove from My Electeds' : 'Add to My Electeds'}
+              accessibilityLabel={saved ? 'In My Electeds' : 'Add to My Electeds'}
               style={styles.backButton}
             >
               <MaterialIcons

@@ -128,10 +128,58 @@ export function useSavedOfficials() {
     [user],
   );
 
+  // Replace the entire saved set with a new one (used when a new address
+  // search re-derives the user's electeds). This is the only sanctioned way to
+  // remove electeds — individual removal is intentionally not exposed in the UI.
+  const replaceOfficials = useCallback(
+    async (officials: Official[]) => {
+      if (!user) {
+        throw new Error('Please sign in to save officials.');
+      }
+      const validOfficials = officials.filter((official) => official?.id);
+      if (validOfficials.length === 0) {
+        throw new Error('Unable to save officials: no valid official ids.');
+      }
+
+      const previous = savedOfficials;
+      const db = getFirestoreDb();
+      const batch = writeBatch(db);
+
+      const nextIds = new Set(validOfficials.map((official) => toDocId(official.id)));
+      for (const existing of previous) {
+        if (!nextIds.has(toDocId(existing.id))) {
+          batch.delete(doc(db, 'users', user.uid, 'savedOfficials', toDocId(existing.id)));
+        }
+      }
+      for (const official of validOfficials) {
+        const docRef = doc(db, 'users', user.uid, 'savedOfficials', toDocId(official.id));
+        batch.set(docRef, stripUndefined(official as unknown as Record<string, unknown>));
+      }
+
+      setSavedOfficials(validOfficials);
+      try {
+        await batch.commit();
+      } catch (error) {
+        console.error('replaceOfficials failed:', error);
+        setSavedOfficials(previous);
+        throw error;
+      }
+    },
+    [savedOfficials, user],
+  );
+
   const isSaved = useCallback(
     (officialId: string) => savedOfficials.some((o) => o.id === officialId),
     [savedOfficials],
   );
 
-  return { savedOfficials, isLoaded, saveOfficial, removeOfficial, saveMultipleOfficials, isSaved };
+  return {
+    savedOfficials,
+    isLoaded,
+    saveOfficial,
+    removeOfficial,
+    saveMultipleOfficials,
+    replaceOfficials,
+    isSaved,
+  };
 }

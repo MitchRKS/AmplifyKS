@@ -74,7 +74,7 @@ export default function FederalDelegationScreen() {
   const [sortBy, setSortBy] = useState<SortOption>('nameAsc');
   const [filterModalVisible, setFilterModalVisible] = useState(false);
 
-  const { saveOfficial, removeOfficial, isSaved } = useSavedOfficials();
+  const { saveOfficial, isSaved } = useSavedOfficials();
   const { getMatch } = useLegislatorMatch();
 
   const surface = useThemeColor({ light: '#FFFFFF', dark: '#1C1F26' }, 'background');
@@ -152,10 +152,13 @@ export default function FederalDelegationScreen() {
 
   const toggleSave = (official: Official) => {
     if (isSaved(official.id)) {
-      removeOfficial(official.id);
-    } else {
-      saveOfficial(official);
+      AppAlert.alert(
+        'Set by address',
+        'Your electeds are set from your address. Run a new search by address to change your My Electeds.',
+      );
+      return;
     }
+    saveOfficial(official);
   };
 
   const renderCard = (item: Official) => {
@@ -189,7 +192,7 @@ export default function FederalDelegationScreen() {
               </ThemedText>
               <Pressable
                 accessibilityRole="button"
-                accessibilityLabel={saved ? 'Remove from saved' : 'Add to My Electeds'}
+                accessibilityLabel={saved ? 'In My Electeds' : 'Add to My Electeds'}
                 onPress={(e) => { e.stopPropagation(); toggleSave(item); }}
                 hitSlop={8}
                 style={styles.saveButton}
