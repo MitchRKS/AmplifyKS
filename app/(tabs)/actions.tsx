@@ -17,7 +17,6 @@ import { Radius, Shadows, Spacing } from '@/constants/theme';
 import { useOpenTestimonyBillIds } from '@/hooks/use-open-testimony-bills';
 import { useQuiz } from '@/hooks/use-quiz';
 import { useThemeColor } from '@/hooks/use-theme-color';
-import { getBillStatusColor } from '@/services/bill-status';
 import * as LegiscanAPI from '@/services/legiscan';
 
 interface Bill {
@@ -108,8 +107,8 @@ export default function ActionsScreen() {
               <ThemedText type="caption" style={{ color: mutedText }}>{item.chamber}</ThemedText>
             </View>
           </View>
-          <View style={[styles.statusBadge, { backgroundColor: getBillStatusColor(item.status, mutedText) + '14' }]}>
-            <ThemedText style={[styles.statusText, { color: getBillStatusColor(item.status, mutedText) }]}>
+          <View style={[styles.statusBadge, { backgroundColor: mutedText + '14' }]}>
+            <ThemedText style={[styles.statusText, { color: mutedText }]}>
               {item.status}
             </ThemedText>
           </View>

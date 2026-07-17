@@ -24,7 +24,6 @@ import {
   resolveCommitteeName,
   COMMITTEE_UNAVAILABLE,
 } from '@/services/bill-committee';
-import { getBillStatusColor } from '@/services/bill-status';
 import * as LegiscanAPI from '@/services/legiscan';
 import {
   readFreshPersistentCache,
@@ -381,8 +380,8 @@ export default function BillsScreen() {
           >
             {`${item.billNumber} • ${item.committee}`}
           </ThemedText>
-          <View style={[styles.statusBadge, { backgroundColor: getBillStatusColor(item.status, mutedText) + '14' }]}>
-            <ThemedText style={[styles.statusText, { color: getBillStatusColor(item.status, mutedText) }]}>
+          <View style={[styles.statusBadge, { backgroundColor: mutedText + '14' }]}>
+            <ThemedText style={[styles.statusText, { color: mutedText }]}>
               {item.status}
             </ThemedText>
           </View>

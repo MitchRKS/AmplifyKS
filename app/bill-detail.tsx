@@ -16,7 +16,6 @@ import { useThemeColor } from '@/hooks/use-theme-color';
 import { useUserProfile } from '@/hooks/use-user-profile';
 import { useGamification } from '@/contexts/gamification-context';
 import { findCommitteeActionFromHistory, resolveCommitteeName } from '@/services/bill-committee';
-import { getBillStatusColor } from '@/services/bill-status';
 import * as LegiscanAPI from '@/services/legiscan';
 import { shareContent } from '@/services/share';
 
@@ -197,8 +196,8 @@ export default function BillDetailScreen() {
               <ThemedText type="title" style={{ color: tint }}>
                 {bill.billNumber}
               </ThemedText>
-              <View style={[styles.statusBadge, { backgroundColor: getBillStatusColor(bill.status, mutedText) + '14' }]}>
-                <ThemedText style={[styles.statusText, { color: getBillStatusColor(bill.status, mutedText) }]}>
+              <View style={[styles.statusBadge, { backgroundColor: mutedText + '14' }]}>
+                <ThemedText style={[styles.statusText, { color: mutedText }]}>
                   {bill.status}
                 </ThemedText>
               </View>
