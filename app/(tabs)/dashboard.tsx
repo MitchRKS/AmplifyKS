@@ -15,6 +15,7 @@ import { Radius, Shadows, Spacing } from '@/constants/theme';
 import { useAuth } from '@/contexts/auth-context';
 import { useSavedOfficials } from '@/hooks/use-saved-officials';
 import { useThemeColor } from '@/hooks/use-theme-color';
+import { getLegislatorImageAssetLocal } from '@/services/kansas-legislators';
 
 export default function DashboardScreen() {
   const router = useRouter();
@@ -115,7 +116,9 @@ export default function DashboardScreen() {
                   onPress={() => router.push({ pathname: '/legislator-detail', params: { id: official.id } })}
                 >
                   <View style={styles.cardRow}>
-                    {official.image ? (
+                    {getLegislatorImageAssetLocal(official.id) ? (
+                      <Image source={getLegislatorImageAssetLocal(official.id)} style={styles.photo} contentFit="cover" />
+                    ) : official.image ? (
                       <Image source={{ uri: official.image }} style={styles.photo} contentFit="cover" />
                     ) : (
                       <View style={[styles.photo, styles.photoPlaceholder, { backgroundColor: inputBackground }]}>

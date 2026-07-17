@@ -21,6 +21,7 @@ import { ThemedView } from '@/components/themed-view';
 import { Radius, Shadows, Spacing } from '@/constants/theme';
 import { useResponsiveLayout } from '@/hooks/use-responsive-layout';
 import { useThemeColor } from '@/hooks/use-theme-color';
+import { getLegislatorImageAssetLocal } from '@/services/kansas-legislators';
 import { getOfficialsByLocation, type Official } from '@/services/openstates';
 
 export default function LookupScreen() {
@@ -201,7 +202,9 @@ export default function LookupScreen() {
       onPress={() => handleContact(item)}
     >
       <View style={styles.cardRow}>
-        {item.image ? (
+        {getLegislatorImageAssetLocal(item.id) ? (
+          <Image source={getLegislatorImageAssetLocal(item.id)} style={styles.photo} contentFit="cover" />
+        ) : item.image ? (
           <Image source={{ uri: item.image }} style={styles.photo} contentFit="cover" />
         ) : (
           <View style={[styles.photo, styles.photoPlaceholder, { backgroundColor: inputBackground }]}>

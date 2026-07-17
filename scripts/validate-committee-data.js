@@ -29,13 +29,15 @@ const dataSrc = fs.readFileSync(dataPath, 'utf8');
 const committeeKeys = new Set();
 let currentChamber = null;
 
+// Keys may be quoted (raw generator output, JSON.stringify) or unquoted
+// (after a prettier pass) — accept both.
 for (const line of dataSrc.split('\n')) {
-  const chamberMatch = line.match(/^ {4}chamber: "(Senate|House)",$/);
+  const chamberMatch = line.match(/^ {4}"?chamber"?: "(Senate|House)",$/);
   if (chamberMatch) {
     currentChamber = chamberMatch[1];
     continue;
   }
-  const nameMatch = line.match(/^ {8}name: "(.+)",$/);
+  const nameMatch = line.match(/^ {8}"?name"?: "(.+)",?$/);
   if (nameMatch && currentChamber) {
     const name = nameMatch[1];
     // Mirrors bucketChamber() in services/kansas-legislators.ts

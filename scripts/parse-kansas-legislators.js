@@ -34,6 +34,22 @@ const outputPath = path.resolve(
   'data',
   'kansas-legislators.ts',
 );
+const imagesOutputPath = path.resolve(
+  __dirname,
+  '..',
+  'services',
+  'data',
+  'kansas-legislator-images.ts',
+);
+const imageAssetsDir = path.resolve(__dirname, '..', 'assets', 'legislators');
+
+// Known typos in the upstream Swift source, normalized here so regeneration
+// never reintroduces them (constants/committee-meetings.ts keys and
+// validate:data depend on the corrected names).
+const COMMITTEE_NAME_FIXES = {
+  'Veterans & Miliary': 'Veterans & Military',
+  'Energy, Utilties, & Telecommunications': 'Energy, Utilities, & Telecommunications',
+};
 
 const STRING_KEYS = [
   'chamber',
@@ -94,7 +110,8 @@ const parseCommittees = (block) => {
   let m;
   while ((m = re.exec(block)) !== null) {
     const role = ROLE_MAP[m[2]] ?? 'Member';
-    committees.push({ name: m[1], role });
+    const name = COMMITTEE_NAME_FIXES[m[1]] ?? m[1];
+    committees.push({ name, role });
   }
   return committees;
 };
@@ -139,6 +156,9 @@ const toRecord = (rec) => ({
     rec.leadershipPosition && rec.leadershipPosition !== 'None'
       ? rec.leadershipPosition
       : '',
+  // Asset-catalog name from iOS (e.g. "SD7_Corson") — resolved to a bundled
+  // image via the generated kansas-legislator-images.ts require map.
+  imageUrl: rec.imageUrl,
 });
 
 const renderTs = (records) => {
@@ -170,11 +190,50 @@ export interface KSLegislatorRecord {
   committees: KSCommitteeMembership[];
   isLeadership: boolean;
   leadershipPosition: string;
+  /** iOS asset-catalog image name (e.g. "SD7_Corson"); '' when none. */
+  imageUrl: string;
 }
 
 export const KANSAS_LEGISLATORS: KSLegislatorRecord[] = `;
 
   return header + JSON.stringify(records, null, 2) + ';\n';
+};
+
+// Metro can't require() dynamic paths, so emit a static map of every
+// imageUrl that has a bundled asset under assets/legislators/.
+const renderImagesTs = (records) => {
+  const names = [
+    ...new Set(records.map((r) => r.imageUrl).filter(Boolean)),
+  ].sort();
+  const present = [];
+  const missing = [];
+  for (const name of names) {
+    if (fs.existsSync(path.join(imageAssetsDir, `${name}.jpeg`))) {
+      present.push(name);
+    } else {
+      missing.push(name);
+    }
+  }
+  if (missing.length > 0) {
+    console.warn(
+      `No bundled asset for ${missing.length} imageUrl(s): ${missing.join(', ')} — those legislators fall back to initials.`,
+    );
+  }
+
+  const entries = present
+    .map((n) => `  '${n}': require('../../assets/legislators/${n}.jpeg'),`)
+    .join('\n');
+
+  return `// AUTO-GENERATED FROM KansasLegislators.swift — DO NOT EDIT BY HAND.
+// Run \`node scripts/parse-kansas-legislators.js\` to regenerate.
+//
+// Static require map: KSLegislatorRecord.imageUrl -> bundled headshot asset.
+// Sourced from the iOS app's Assets.xcassets (copied to assets/legislators/).
+
+export const KANSAS_LEGISLATOR_IMAGES: Record<string, number> = {
+${entries}
+};
+`;
 };
 
 const main = () => {
@@ -208,6 +267,8 @@ const main = () => {
   fs.mkdirSync(path.dirname(outputPath), { recursive: true });
   fs.writeFileSync(outputPath, renderTs(records));
   console.log(`Wrote ${outputPath}`);
+  fs.writeFileSync(imagesOutputPath, renderImagesTs(records));
+  console.log(`Wrote ${imagesOutputPath}`);
 };
 
 main();

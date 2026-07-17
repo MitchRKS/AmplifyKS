@@ -22,6 +22,7 @@ import { Radius, Shadows, Spacing } from '@/constants/theme';
 import { useLegislatorMatch } from '@/hooks/use-legislator-match';
 import { useSavedOfficials } from '@/hooks/use-saved-officials';
 import { useThemeColor } from '@/hooks/use-theme-color';
+import { getLegislatorImageAssetLocal } from '@/services/kansas-legislators';
 import { getKansasLegislators, type Official } from '@/services/openstates';
 
 type ChamberFilter = 'All' | 'Senate' | 'House';
@@ -163,6 +164,7 @@ export default function StateLegislatorsScreen() {
 
   const renderCard = (item: Official) => {
     const saved = isSaved(item.id);
+    const imageAsset = getLegislatorImageAssetLocal(item.id);
     return (
       <Pressable
         key={item.id}
@@ -175,7 +177,9 @@ export default function StateLegislatorsScreen() {
         onPress={() => openProfile(item)}
       >
         <View style={styles.cardRow}>
-          {item.image ? (
+          {imageAsset ? (
+            <Image source={imageAsset} style={styles.photo} contentFit="cover" />
+          ) : item.image ? (
             <Image source={{ uri: item.image }} style={styles.photo} contentFit="cover" />
           ) : (
             <View style={[styles.photo, styles.photoPlaceholder, { backgroundColor: inputBackground }]}>

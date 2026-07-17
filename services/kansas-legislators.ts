@@ -10,6 +10,7 @@ import {
   KANSAS_LEGISLATORS,
   type KSLegislatorRecord,
 } from './data/kansas-legislators';
+import { KANSAS_LEGISLATOR_IMAGES } from './data/kansas-legislator-images';
 
 const LEGISLATOR_ID_PREFIX = 'ks-state-';
 const COMMITTEE_ID_PREFIX = 'ks-committee-';
@@ -83,6 +84,18 @@ const findRecord = (id: string): KSLegislatorRecord | undefined => {
 
 export const getKansasLegislatorsLocal = (): Official[] =>
   KANSAS_LEGISLATORS.map(recordToOfficial);
+
+/**
+ * Bundled headshot asset for a local legislator id (ks-state-…), if we ship
+ * one. Resolved at render time by id — deliberately NOT stored on Official:
+ * require() module ids are not stable across builds, so persisting them (e.g.
+ * into savedOfficials docs) would break after any bundle change.
+ */
+export const getLegislatorImageAssetLocal = (id: string): number | undefined => {
+  const rec = findRecord(id);
+  if (!rec?.imageUrl) return undefined;
+  return KANSAS_LEGISLATOR_IMAGES[rec.imageUrl];
+};
 
 export const getOfficialDetailLocal = (id: string): OfficialDetail | null => {
   const rec = findRecord(id);

@@ -16,6 +16,7 @@ import { useGamification } from '@/contexts/gamification-context';
 import { useLegislatorMatch } from '@/hooks/use-legislator-match';
 import { useSavedOfficials } from '@/hooks/use-saved-officials';
 import { useThemeColor } from '@/hooks/use-theme-color';
+import { getLegislatorImageAssetLocal } from '@/services/kansas-legislators';
 import {
   getCommitteeAssignments,
   getOfficialDetail,
@@ -209,6 +210,7 @@ export default function LegislatorDetailScreen() {
 
   const partyColor = getPartyColor(legislator.party);
   const capitolOffice = legislator.offices.find((o) => o.classification === 'capitol');
+  const imageAsset = getLegislatorImageAssetLocal(legislator.id);
 
   return (
     <ThemedView style={styles.container}>
@@ -252,7 +254,9 @@ export default function LegislatorDetailScreen() {
         <ContentContainer style={styles.contentPadding}>
           {/* Profile Header */}
           <View style={styles.profileHeader}>
-            {legislator.image ? (
+            {imageAsset ? (
+              <Image source={imageAsset} style={styles.photo} contentFit="cover" />
+            ) : legislator.image ? (
               <Image source={{ uri: legislator.image }} style={styles.photo} contentFit="cover" />
             ) : (
               <View style={[styles.photo, styles.photoPlaceholder, { backgroundColor: inputBackground }]}>

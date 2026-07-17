@@ -25,6 +25,7 @@ import { useAuth } from '@/contexts/auth-context';
 import { useLegislatorMatch } from '@/hooks/use-legislator-match';
 import { useSavedOfficials } from '@/hooks/use-saved-officials';
 import { useThemeColor } from '@/hooks/use-theme-color';
+import { getLegislatorImageAssetLocal } from '@/services/kansas-legislators';
 import { getOfficialsByLocation, type Official } from '@/services/openstates';
 
 export default function LookupScreen() {
@@ -253,7 +254,9 @@ export default function LookupScreen() {
         onPress={() => openProfile(item)}
       >
         <View style={styles.cardRow}>
-          {item.image ? (
+          {getLegislatorImageAssetLocal(item.id) ? (
+            <Image source={getLegislatorImageAssetLocal(item.id)} style={styles.photo} contentFit="cover" />
+          ) : item.image ? (
             <Image source={{ uri: item.image }} style={styles.photo} contentFit="cover" />
           ) : (
             <View style={[styles.photo, styles.photoPlaceholder, { backgroundColor: inputBackground }]}>
