@@ -141,13 +141,6 @@ export default function LookupScreen() {
       });
     }
 
-    if (official.openstatesUrl) {
-      options.push({
-        text: 'View Profile',
-        onPress: () => Linking.openURL(official.openstatesUrl),
-      });
-    }
-
     if (options.length === 0) {
       AppAlert.alert('No Contact Info', 'No contact information is available for this official.');
       return;

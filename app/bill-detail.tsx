@@ -1,6 +1,5 @@
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import * as WebBrowser from 'expo-web-browser';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Switch, View } from 'react-native';
 
@@ -286,59 +285,6 @@ export default function BillDetailScreen() {
             ) : (
               <ThemedText style={{ color: mutedText }}>No history available</ThemedText>
             )}
-          </View>
-
-          {bill.texts.length > 0 && (
-            <View style={[styles.card, { backgroundColor: surface, borderColor: border }, Shadows.sm]}>
-              <ThemedText type="defaultSemiBold" style={styles.sectionTitle}>
-                Bill Documents
-              </ThemedText>
-              {bill.texts.map((text, index) => (
-                <Pressable
-                  key={index}
-                  style={({ pressed }) => [
-                    styles.documentRow,
-                    { borderBottomColor: index < bill.texts.length - 1 ? border : 'transparent' },
-                    pressed && styles.pressed,
-                  ]}
-                  onPress={() => WebBrowser.openBrowserAsync(text.url)}>
-                  <View style={styles.documentInfo}>
-                    <ThemedText type="defaultSemiBold" style={{ fontSize: 15 }}>{text.type}</ThemedText>
-                    <ThemedText type="caption" style={{ color: mutedText }}>
-                      {new Date(text.date).toLocaleDateString('en-US', {
-                        month: 'short',
-                        day: 'numeric',
-                        year: 'numeric',
-                      })}
-                    </ThemedText>
-                  </View>
-                  <IconSymbol name="arrow.up.right" size={16} color={tint} />
-                </Pressable>
-              ))}
-            </View>
-          )}
-
-          <View style={[styles.card, { backgroundColor: surface, borderColor: border }, Shadows.sm]}>
-            <ThemedText type="defaultSemiBold" style={styles.sectionTitle}>
-              Official Links
-            </ThemedText>
-            <Pressable
-              style={({ pressed }) => [styles.linkRow, pressed && styles.pressed]}
-              onPress={() => WebBrowser.openBrowserAsync(bill.stateLink)}>
-              <ThemedText style={[styles.linkText, { color: tint }]}>
-                View on Kansas Legislature Website
-              </ThemedText>
-              <IconSymbol name="arrow.up.right" size={16} color={tint} />
-            </Pressable>
-            <View style={[styles.linkDivider, { backgroundColor: border }]} />
-            <Pressable
-              style={({ pressed }) => [styles.linkRow, pressed && styles.pressed]}
-              onPress={() => WebBrowser.openBrowserAsync(bill.url)}>
-              <ThemedText style={[styles.linkText, { color: tint }]}>
-                View on LegiScan
-              </ThemedText>
-              <IconSymbol name="arrow.up.right" size={16} color={tint} />
-            </Pressable>
           </View>
 
           {isAdminRole(profile.role) && (

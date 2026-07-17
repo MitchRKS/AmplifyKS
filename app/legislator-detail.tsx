@@ -1,7 +1,6 @@
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { Image } from 'expo-image';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import * as WebBrowser from 'expo-web-browser';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Linking, Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
@@ -464,19 +463,12 @@ function ContactTab({
                 {office.name}
               </ThemedText>
               {office.address ? (
-                <Pressable
-                  onPress={() => {
-                    const q = encodeURIComponent(office.address!);
-                    Linking.openURL(`https://maps.google.com/?q=${q}`);
-                  }}
-                >
-                  <View style={styles.infoRow}>
-                    <MaterialIcons name="location-on" size={16} color={mutedText} />
-                    <ThemedText style={[styles.infoText, { color: tint }]}>
-                      {office.address}
-                    </ThemedText>
-                  </View>
-                </Pressable>
+                <View style={styles.infoRow}>
+                  <MaterialIcons name="location-on" size={16} color={mutedText} />
+                  <ThemedText style={[styles.infoText, { color: mutedText }]}>
+                    {office.address}
+                  </ThemedText>
+                </View>
               ) : null}
               {office.voice ? (
                 <Pressable onPress={() => Linking.openURL(`tel:${office.voice}`)}>
@@ -723,10 +715,6 @@ function VotesTab({
   border: string;
   inputBackground: string;
 }) {
-  const voteSmartUrl = legislator.sources.find((s) =>
-    s.url.includes('votesmart'),
-  )?.url;
-
   return (
     <View style={[styles.card, { backgroundColor: surface, borderColor: border }, Shadows.sm]}>
       <View style={styles.votesIntro}>
@@ -737,62 +725,9 @@ function VotesTab({
           Voting Record
         </ThemedText>
         <ThemedText style={[styles.votesBody, { color: mutedText }]}>
-          View {legislator.givenName || legislator.name}&apos;s full voting record on these external platforms.
+          See {legislator.givenName || legislator.name}&apos;s recent votes below.
         </ThemedText>
       </View>
-
-      {legislator.openstatesUrl ? (
-        <Pressable
-          style={({ pressed }) => [styles.voteLink, { borderColor: border }, pressed && styles.pressed]}
-          onPress={() => WebBrowser.openBrowserAsync(legislator.openstatesUrl)}
-        >
-          <View style={styles.voteLinkContent}>
-            <ThemedText type="defaultSemiBold" style={{ fontSize: 15 }}>
-              OpenStates
-            </ThemedText>
-            <ThemedText type="caption" style={{ color: mutedText }}>
-              Bills, votes, and legislative activity
-            </ThemedText>
-          </View>
-          <IconSymbol name="arrow.up.right" size={16} color={tint} />
-        </Pressable>
-      ) : null}
-
-      {voteSmartUrl ? (
-        <Pressable
-          style={({ pressed }) => [styles.voteLink, { borderColor: border }, pressed && styles.pressed]}
-          onPress={() => WebBrowser.openBrowserAsync(voteSmartUrl)}
-        >
-          <View style={styles.voteLinkContent}>
-            <ThemedText type="defaultSemiBold" style={{ fontSize: 15 }}>
-              VoteSmart
-            </ThemedText>
-            <ThemedText type="caption" style={{ color: mutedText }}>
-              Voting record, positions, and ratings
-            </ThemedText>
-          </View>
-          <IconSymbol name="arrow.up.right" size={16} color={tint} />
-        </Pressable>
-      ) : null}
-
-      {legislator.legislatureLinks.length > 0 ? (
-        <Pressable
-          style={({ pressed }) => [styles.voteLink, { borderColor: border }, pressed && styles.pressed]}
-          onPress={() =>
-            WebBrowser.openBrowserAsync(legislator.legislatureLinks[0].url)
-          }
-        >
-          <View style={styles.voteLinkContent}>
-            <ThemedText type="defaultSemiBold" style={{ fontSize: 15 }}>
-              Kansas Legislature
-            </ThemedText>
-            <ThemedText type="caption" style={{ color: mutedText }}>
-              Official profile and activity
-            </ThemedText>
-          </View>
-          <IconSymbol name="arrow.up.right" size={16} color={tint} />
-        </Pressable>
-      ) : null}
 
       <View style={[styles.voteHistorySection, { borderTopColor: border }]}>
         <ThemedText type="defaultSemiBold" style={styles.voteHistoryTitle}>
