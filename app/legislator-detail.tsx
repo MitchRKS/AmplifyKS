@@ -25,7 +25,7 @@ import {
 } from '@/services/openstates';
 import {
   fetchVotingRecord,
-  searchSponsoredBills,
+  getSponsoredBills,
   type LegislatorVoteRecord,
   type SponsoredBillSummary,
 } from '@/services/legiscan';
@@ -53,6 +53,7 @@ export default function LegislatorDetailScreen() {
 
   const [sponsoredBills, setSponsoredBills] = useState<SponsoredBillSummary[]>([]);
   const [billsLoading, setBillsLoading] = useState(false);
+  const [billsError, setBillsError] = useState(false);
   const billsLoaded = useRef(false);
   const [voteHistory, setVoteHistory] = useState<LegislatorVoteRecord[]>([]);
   const [votesLoading, setVotesLoading] = useState(false);
@@ -114,11 +115,20 @@ export default function LegislatorDetailScreen() {
     if (billsLoaded.current || !legislator) return;
     billsLoaded.current = true;
     setBillsLoading(true);
+    setBillsError(false);
     try {
-      const result = await searchSponsoredBills(legislator.familyName);
+      const result = await getSponsoredBills(
+        legislator.name,
+        legislator.district,
+        legislator.chamber,
+      );
       setSponsoredBills(result);
-    } catch {
-      /* handled gracefully */
+    } catch (error) {
+      console.error('Failed to load sponsored bills:', error);
+      // Allow a retry — otherwise a transient proxy/network failure would
+      // silently read as "No sponsored bills found" until remount.
+      billsLoaded.current = false;
+      setBillsError(true);
     } finally {
       setBillsLoading(false);
     }
@@ -369,6 +379,8 @@ export default function LegislatorDetailScreen() {
             <BillsTab
               bills={sponsoredBills}
               loading={billsLoading}
+              error={billsError}
+              onRetry={loadBills}
               tint={tint}
               mutedText={mutedText}
               surface={surface}
@@ -624,6 +636,8 @@ function CommitteesTab({
 function BillsTab({
   bills,
   loading,
+  error,
+  onRetry,
   tint,
   mutedText,
   surface,
@@ -632,6 +646,8 @@ function BillsTab({
 }: {
   bills: SponsoredBillSummary[];
   loading: boolean;
+  error: boolean;
+  onRetry: () => void;
   tint: string;
   mutedText: string;
   surface: string;
@@ -643,6 +659,30 @@ function BillsTab({
       <View style={styles.tabLoadingContainer}>
         <ActivityIndicator size="large" color={tint} />
         <ThemedText style={{ color: mutedText }}>Loading sponsored bills...</ThemedText>
+      </View>
+    );
+  }
+
+  if (error) {
+    return (
+      <View style={[styles.emptyCard, { backgroundColor: surface, borderColor: border }, Shadows.sm]}>
+        <View style={[styles.emptyIcon, { backgroundColor: border }]}>
+          <MaterialIcons name="error-outline" size={32} color={mutedText} />
+        </View>
+        <ThemedText type="defaultSemiBold" style={{ color: mutedText }}>
+          Unable to load sponsored bills
+        </ThemedText>
+        <Pressable
+          accessibilityRole="button"
+          onPress={onRetry}
+          style={({ pressed }) => [
+            styles.retryButton,
+            { backgroundColor: tint },
+            pressed && styles.pressed,
+          ]}
+        >
+          <ThemedText style={styles.retryButtonText}>Try Again</ThemedText>
+        </Pressable>
       </View>
     );
   }
@@ -955,6 +995,17 @@ const styles = StyleSheet.create({
     borderRadius: 32,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  retryButton: {
+    borderRadius: Radius.md,
+    paddingHorizontal: Spacing.xl,
+    paddingVertical: Spacing.md,
+    marginTop: Spacing.sm,
+  },
+  retryButtonText: {
+    color: '#fff',
+    fontWeight: '700',
+    fontSize: 15,
   },
 
   committeeHeader: {

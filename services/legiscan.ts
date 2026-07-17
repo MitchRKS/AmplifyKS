@@ -519,11 +519,26 @@ export async function fetchVotingRecord(
   return records;
 }
 
-export async function searchSponsoredBills(
-  lastName: string,
+/**
+ * Bills sponsored by a legislator in the current session.
+ *
+ * Uses LegiScan's getSponsoredList keyed by people_id (resolved via
+ * getSessionPeople + district/chamber/name matching — same approach as the
+ * voting-record scan and the iOS app). The previous implementation ran a
+ * full-text `search` with a made-up `sponsor:` prefix, which LegiScan does
+ * not support, so it returned junk or nothing.
+ *
+ * getSponsoredList rows carry only {session_id, bill_id, number}; title and
+ * last action are hydrated by joining against the cached master list rather
+ * than fanning out a getBill call per bill (quota discipline).
+ */
+export async function getSponsoredBills(
+  legislatorName: string,
+  district: string,
+  chamber: string,
 ): Promise<SponsoredBillSummary[]> {
-  const normalizedLastName = lastName.trim().toLowerCase();
-  const cacheKey = `legiscan:sponsored-bills:${normalizedLastName}`;
+  const sessionId = await getCurrentSession();
+  const cacheKey = `legiscan:sponsored-bills:${legislatorName.trim().toLowerCase()}_${district}_${chamber}_${sessionId}`;
   if (sponsoredBillsCache.has(cacheKey)) {
     return sponsoredBillsCache.get(cacheKey)!;
   }
@@ -531,34 +546,44 @@ export async function searchSponsoredBills(
     cacheKey,
     SPONSORED_BILLS_CACHE_TTL_MS,
   );
-  if (persisted) {
+  if (persisted && persisted.length > 0) {
     sponsoredBillsCache.set(cacheKey, persisted);
     return persisted;
   }
 
-  const data = await makeApiRequest('search', {
-    state: 'KS',
-    query: `sponsor:${lastName}`,
+  const peopleId = await resolvePeopleId(legislatorName, district, chamber, sessionId);
+  if (peopleId == null) return [];
+
+  const data = await makeApiRequest('getSponsoredList', { id: peopleId });
+  const sponsored: Array<{ session_id?: number; bill_id: number; number?: string }> =
+    data.sponsoredbills?.bills ?? [];
+  // The list spans every historical session the person served in.
+  const sessionBills = sponsored.filter((b) => b.session_id === sessionId);
+  if (sessionBills.length === 0) return [];
+
+  const master = await getMasterList(sessionId);
+  const masterById = new Map(master.map((m) => [m.bill_id, m]));
+
+  const bills: SponsoredBillSummary[] = sessionBills.map((b) => {
+    const m = masterById.get(b.bill_id);
+    return {
+      billId: b.bill_id,
+      billNumber: m?.number ?? b.number ?? '',
+      title: m?.title ?? '',
+      lastAction: m?.last_action ?? '',
+      lastActionDate: m?.last_action_date ?? '',
+      url: m?.url ?? '',
+    };
   });
+  bills.sort((a, b) => (b.lastActionDate ?? '').localeCompare(a.lastActionDate ?? ''));
 
-  const searchResult = data.searchresult ?? {};
-  const bills: SponsoredBillSummary[] = [];
-
-  for (const [key, value] of Object.entries(searchResult)) {
-    if (!/^\d+$/.test(key)) continue;
-    const item = value as Record<string, any>;
-    bills.push({
-      billId: item.bill_id,
-      billNumber: item.bill_number,
-      title: item.title ?? '',
-      lastAction: item.last_action ?? '',
-      lastActionDate: item.last_action_date ?? '',
-      url: item.url ?? '',
-    });
-  }
-
+  // Only cache non-empty results (matches getSessionList) so a transient
+  // failure or empty early-session list doesn't stick for the full TTL —
+  // note [] is truthy, so an unguarded write would read back as a cache hit.
   sponsoredBillsCache.set(cacheKey, bills);
-  await writePersistentCache(cacheKey, bills);
+  if (bills.length > 0) {
+    await writePersistentCache(cacheKey, bills);
+  }
   return bills;
 }
 

@@ -10,6 +10,7 @@ const ALLOWED_OPS = new Set([
   'getBill',
   'getBillText',
   'getSessionPeople',
+  'getSponsoredList',
   'getRollCall',
   'search',
 ]);
