@@ -12,6 +12,7 @@ import {
   View,
 } from 'react-native';
 
+import { AppAlert } from '@/components/app-alert';
 import { ContentContainer } from '@/components/content-container';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
@@ -25,7 +26,7 @@ import { useThemeColor } from '@/hooks/use-theme-color';
 
 export default function ProfileScreen() {
   const router = useRouter();
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
   const { profile, isLoaded, isSaving, updateProfile } = useUserProfile();
   const gamification = useGamification();
   const [form, setForm] = useState<UserProfile>({
@@ -263,6 +264,28 @@ export default function ProfileScreen() {
             )}
           </Pressable>
         </View>
+
+        {/* Sign Out lives at the bottom of Profile (matches iOS), with a
+            confirmation — it's no longer in the tab bar or top nav. */}
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Sign out"
+          style={({ pressed }) => [
+            styles.signOutButton,
+            { backgroundColor: surface, borderColor: border },
+            Shadows.sm,
+            pressed && styles.saveButtonPressed,
+          ]}
+          onPress={() =>
+            AppAlert.alert('Sign Out', 'Are you sure you want to sign out?', [
+              { text: 'Cancel', style: 'cancel' },
+              { text: 'Sign Out', style: 'destructive', onPress: () => void logout() },
+            ])
+          }
+        >
+          <MaterialIcons name="logout" size={20} color="#fa3332" />
+          <ThemedText style={styles.signOutText}>Sign Out</ThemedText>
+        </Pressable>
       </ContentContainer>
     </ScrollView>
   );
@@ -293,6 +316,22 @@ export default function ProfileScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+  },
+  signOutButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: Spacing.sm,
+    borderWidth: 1,
+    borderRadius: Radius.lg,
+    paddingVertical: Spacing.lg,
+    marginHorizontal: Spacing.xl,
+    marginTop: Spacing['2xl'],
+  },
+  signOutText: {
+    color: '#fa3332',
+    fontWeight: '700',
+    fontSize: 16,
   },
   keyboard: {
     flex: 1,

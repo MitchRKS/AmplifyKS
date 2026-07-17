@@ -7,12 +7,13 @@ import { Spacing } from '@/constants/theme';
 import { useResponsiveLayout } from '@/hooks/use-responsive-layout';
 import { useThemeColor } from '@/hooks/use-theme-color';
 
-// Committees is deliberately not here — it's its own top-level tab now
-// (see (tabs)/_layout.tsx), not nested under Electeds like these three.
+// Committees nests under Electeds (matches the iOS app, where the tab bar is
+// Dashboard·Electeds·Actions·Bills·Organizations with no top-level Committees).
 const SUBTABS = [
   { path: '/officials/lookup', label: 'Lookup' },
   { path: '/officials/state', label: 'State' },
   { path: '/officials/federal', label: 'Federal' },
+  { path: '/officials/committees', label: 'Committees' },
 ];
 
 export default function OfficialsLayout() {

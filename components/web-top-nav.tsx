@@ -26,16 +26,18 @@ const ELECTEDS_SUB_ROUTES = [
   '/officials/lookup',
   '/officials/state',
   '/officials/federal',
+  '/officials/committees',
 ] as const;
 
+// Order matches the iOS tab bar (ContentView.swift):
+// Dashboard · Electeds · Actions · Bills · Organizations.
+// Profile is not a nav item — it opens from the avatar button on the right.
 const NAV_ITEMS: NavItem[] = [
-  { route: '/profile', label: 'Profile', icon: 'person' },
   { route: '/dashboard', label: 'Dashboard', icon: 'dashboard' },
-  { route: '/actions', label: 'Actions', icon: 'campaign' },
   {
     route: '/officials/lookup',
     label: 'Electeds',
-    icon: 'how-to-vote',
+    icon: 'people',
     matchesPath: (pathname) =>
       pathname === '/officials' ||
       pathname === '/officials/' ||
@@ -44,18 +46,12 @@ const NAV_ITEMS: NavItem[] = [
       { route: '/officials/lookup', label: 'Lookup' },
       { route: '/officials/state', label: 'State' },
       { route: '/officials/federal', label: 'Federal' },
+      { route: '/officials/committees', label: 'Committees' },
     ],
   },
-  {
-    route: '/committees',
-    label: 'Committees',
-    icon: 'groups',
-    matchesPath: (pathname) =>
-      pathname === '/committees' || pathname.startsWith('/committees/'),
-  },
+  { route: '/actions', label: 'Actions', icon: 'campaign' },
   { route: '/bills', label: 'Bills', icon: 'description' },
-  // Organizations is a placeholder screen with no content yet — hidden from
-  // nav until the feature ships, matching how the mobile tab bar hides it.
+  { route: '/organizations', label: 'Organizations', icon: 'business' },
 ];
 
 const ACTIVE_BG = 'rgba(0, 151, 178, 0.12)';
@@ -70,7 +66,7 @@ const HOVER_CLEAR_MS = 180;
 export function WebTopNav() {
   const router = useRouter();
   const pathname = usePathname();
-  const { user, logout } = useAuth();
+  const { user } = useAuth();
   const [hoveredGroup, setHoveredGroup] = useState<string | null>(null);
   const hoverClearRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -200,14 +196,18 @@ export function WebTopNav() {
         {user ? (
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel="Sign out"
+            accessibilityLabel="Profile"
             style={({ pressed }) => [
-              styles.logoutButton,
+              styles.profileButton,
+              isActive('/profile') && { backgroundColor: ACTIVE_BG },
               pressed && { backgroundColor: HOVER_BG },
             ]}
-            onPress={logout}>
-            <MaterialIcons name="logout" size={18} color={INACTIVE_COLOR} />
-            <ThemedText style={styles.logoutText}>Sign Out</ThemedText>
+            onPress={() => router.navigate('/profile')}>
+            <View style={styles.avatarCircle}>
+              <ThemedText style={styles.avatarText}>
+                {`${user.firstName.charAt(0)}${user.lastName.charAt(0)}`.toUpperCase() || '?'}
+              </ThemedText>
+            </View>
           </Pressable>
         ) : null}
       </View>
@@ -364,18 +364,22 @@ const styles = StyleSheet.create({
     height: 2,
     borderRadius: 1,
   },
-  logoutButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.sm,
-    paddingVertical: Spacing.sm,
-    paddingHorizontal: Spacing.md,
+  profileButton: {
+    padding: Spacing.xs,
     borderRadius: 10,
     flexShrink: 0,
   },
-  logoutText: {
-    fontSize: 14,
-    fontWeight: '500',
-    color: 'rgba(255, 255, 255, 0.6)',
+  avatarCircle: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: 'rgba(255, 255, 255, 0.15)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  avatarText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#FFFFFF',
   },
 });

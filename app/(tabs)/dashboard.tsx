@@ -159,7 +159,7 @@ export default function DashboardScreen() {
                   No saved electeds yet
                 </ThemedText>
                 <ThemedText type="caption" style={[styles.emptyBody, { color: mutedText }]}>
-                  Look up your elected officials and save them for quick access.
+                  Look up your electeds and save them for quick access.
                 </ThemedText>
                 <Pressable
                   accessibilityRole="button"

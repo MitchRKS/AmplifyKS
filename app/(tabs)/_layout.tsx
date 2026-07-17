@@ -1,5 +1,5 @@
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
-import { Slot, Tabs } from 'expo-router';
+import { Slot, Tabs, useRouter } from 'expo-router';
 import React from 'react';
 import { Platform, Pressable, StyleSheet, View } from 'react-native';
 
@@ -7,7 +7,6 @@ import { AppHeader } from '@/components/app-header';
 import { HapticTab } from '@/components/haptic-tab';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { Colors } from '@/constants/theme';
-import { useAuth } from '@/contexts/auth-context';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useResponsiveLayout } from '@/hooks/use-responsive-layout';
 
@@ -26,7 +25,7 @@ function DesktopLayout() {
 
 function MobileLayout() {
   const colorScheme = useColorScheme();
-  const { logout } = useAuth();
+  const router = useRouter();
   const palette = Colors[colorScheme ?? 'light'];
   const isWeb = Platform.OS === 'web';
 
@@ -52,7 +51,10 @@ function MobileLayout() {
             backgroundColor: palette.tabBarBackground,
             borderTopColor: palette.border,
             borderTopWidth: 1,
-            paddingBottom: 6,
+            // Tall enough for icon + below-icon label — the default web
+            // height clips the labels off entirely at narrow widths.
+            height: 64,
+            paddingBottom: 10,
             paddingTop: 6,
           },
           default: {
@@ -60,27 +62,31 @@ function MobileLayout() {
             borderTopColor: palette.border,
           },
         }),
+        // Always show labels under the icons, at every width.
+        tabBarShowLabel: true,
+        tabBarLabelPosition: 'below-icon',
         tabBarLabelStyle: {
           fontSize: 11,
           fontWeight: '600',
           letterSpacing: 0.2,
         },
+        // Matches iOS: Profile is not a tab — it opens from an avatar button
+        // in the header (sign-out lives at the bottom of Profile).
         headerRight: !isWeb
           ? () => (
-              <Pressable onPress={logout} style={{ marginRight: 16, padding: 4 }}>
-                <MaterialIcons name="logout" size={22} color={palette.tint} />
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Profile"
+                onPress={() => router.push('/(tabs)/profile')}
+                style={{ marginRight: 16, padding: 4 }}
+              >
+                <MaterialIcons name="account-circle" size={26} color={palette.tint} />
               </Pressable>
             )
           : undefined,
       }}>
-      <Tabs.Screen
-        name="profile"
-        options={{
-          title: 'Profile',
-          tabBarIcon: ({ color }) => <MaterialIcons size={24} name="person" color={color} />,
-          tabBarItemStyle: isWeb ? { display: 'none' } : undefined,
-        }}
-      />
+      {/* Tab order matches the iOS app (ContentView.swift):
+          Dashboard · Electeds · Actions · Bills · Organizations */}
       <Tabs.Screen
         name="dashboard"
         options={{
@@ -89,27 +95,17 @@ function MobileLayout() {
         }}
       />
       <Tabs.Screen
+        name="officials"
+        options={{
+          title: 'Electeds',
+          tabBarIcon: ({ color }) => <MaterialIcons size={24} name="people" color={color} />,
+        }}
+      />
+      <Tabs.Screen
         name="actions"
         options={{
           title: 'Actions',
           tabBarIcon: ({ color }) => <MaterialIcons size={24} name="campaign" color={color} />,
-        }}
-      />
-      <Tabs.Screen
-        name="officials"
-        options={{
-          title: 'Electeds',
-          tabBarIcon: ({ color }) => <MaterialIcons size={24} name="how-to-vote" color={color} />,
-        }}
-      />
-      {/* Top-level like on desktop's WebTopNav, not just a sub-tab buried
-          under Electeds — Committees used to be a lot harder to find on
-          mobile than on desktop for the same feature. */}
-      <Tabs.Screen
-        name="committees"
-        options={{
-          title: 'Committees',
-          tabBarIcon: ({ color }) => <MaterialIcons size={24} name="groups" color={color} />,
         }}
       />
       <Tabs.Screen
@@ -122,18 +118,27 @@ function MobileLayout() {
         }}
       />
       <Tabs.Screen
-        name="points"
-        options={{
-          title: 'Points & Achievements',
-          href: null,
-        }}
-      />
-      {/* Not linked from any nav yet — the screen is a placeholder until the
-          feature ships. Matches the `points` pattern above. */}
-      <Tabs.Screen
         name="organizations"
         options={{
           title: 'Organizations',
+          // Short label so it doesn't truncate on a 5-tab bar at phone widths.
+          tabBarLabel: 'Orgs',
+          tabBarIcon: ({ color }) => <MaterialIcons size={24} name="business" color={color} />,
+        }}
+      />
+      {/* Routable but not on the tab bar — reached via the header avatar
+          (Profile) and Profile's View Details button (points). */}
+      <Tabs.Screen
+        name="profile"
+        options={{
+          title: 'Profile',
+          href: null,
+        }}
+      />
+      <Tabs.Screen
+        name="points"
+        options={{
+          title: 'Points & Achievements',
           href: null,
         }}
       />
