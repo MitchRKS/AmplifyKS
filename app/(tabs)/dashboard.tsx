@@ -48,7 +48,7 @@ export default function DashboardScreen() {
               {user?.firstName ? `Hi, ${user.firstName}` : 'Dashboard'}
             </ThemedText>
             <ThemedText style={[styles.subtitle, { color: mutedText }]}>
-              Your AmplifyKS overview
+              Your Amplify overview
             </ThemedText>
           </View>
 
@@ -92,7 +92,7 @@ export default function DashboardScreen() {
 
           <View style={styles.section}>
             <View style={styles.sectionHeader}>
-              <ThemedText type="subtitle">My Lawmakers</ThemedText>
+              <ThemedText type="subtitle">My Electeds</ThemedText>
               {savedOfficials.length > 0 && (
                 <View style={[styles.countBadge, { backgroundColor: tint + '15' }]}>
                   <ThemedText style={[styles.countText, { color: tint }]}>
@@ -140,7 +140,7 @@ export default function DashboardScreen() {
                       </View>
 
                       <ThemedText type="caption" style={{ color: mutedText }}>
-                        {official.chamber}{official.district ? ` — District ${official.district}` : ''}
+                        {official.chamber}{official.district ? ` — ${official.district}` : ''}
                       </ThemedText>
                     </View>
 
@@ -165,7 +165,7 @@ export default function DashboardScreen() {
                   <MaterialIcons name="how-to-vote" size={32} color={mutedText} />
                 </View>
                 <ThemedText type="defaultSemiBold" style={[styles.emptyTitle, { color: mutedText }]}>
-                  No saved lawmakers yet
+                  No saved electeds yet
                 </ThemedText>
                 <ThemedText type="caption" style={[styles.emptyBody, { color: mutedText }]}>
                   Look up your elected officials and save them for quick access.
@@ -179,7 +179,7 @@ export default function DashboardScreen() {
                   ]}
                   onPress={() => router.navigate('/(tabs)/officials')}
                 >
-                  <ThemedText style={styles.emptyButtonText}>Find My Officials</ThemedText>
+                  <ThemedText style={styles.emptyButtonText}>Find My Electeds</ThemedText>
                 </Pressable>
               </View>
             )}

@@ -34,6 +34,7 @@ function RootNavigator() {
         <Stack.Screen name="lookup" options={{ headerShown: false }} />
         <Stack.Screen name="(auth)" options={{ headerShown: false }} />
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+        <Stack.Screen name="legislator-detail" options={{ headerShown: false }} />
         <Stack.Screen name="bill-detail" options={{ headerShown: false }} />
         <Stack.Screen name="committee-detail" options={{ headerShown: false }} />
         <Stack.Screen name="quiz" options={{ headerShown: false }} />

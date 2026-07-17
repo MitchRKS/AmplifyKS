@@ -109,7 +109,7 @@ export function WebTopNav() {
             <MaterialIcons name="campaign" size={22} color="#1c355e" />
           </View>
           <View style={styles.brandText}>
-            <ThemedText style={styles.brandName}>AmplifyKS</ThemedText>
+            <ThemedText style={styles.brandName}>Amplify</ThemedText>
             <ThemedText style={styles.brandTagline}>Kansas Legislature</ThemedText>
           </View>
         </View>

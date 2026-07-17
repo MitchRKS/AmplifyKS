@@ -49,7 +49,7 @@ const STATUS_MESSAGES: Record<string, { title: string; message: string }> = {
   undetermined: {
     title: 'Email App Opened',
     message:
-      "Your email app should now be open with your testimony ready to send. Please review it and hit send — we can't confirm delivery from within AmplifyKS.",
+      "Your email app should now be open with your testimony ready to send. Please review it and hit send — we can't confirm delivery from within Amplify.",
   },
 };
 

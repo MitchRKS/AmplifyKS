@@ -189,7 +189,7 @@ export default function FederalDelegationScreen() {
               </ThemedText>
               <Pressable
                 accessibilityRole="button"
-                accessibilityLabel={saved ? 'Remove from saved' : 'Save official'}
+                accessibilityLabel={saved ? 'Remove from saved' : 'Add to My Electeds'}
                 onPress={(e) => { e.stopPropagation(); toggleSave(item); }}
                 hitSlop={8}
                 style={styles.saveButton}
@@ -210,7 +210,7 @@ export default function FederalDelegationScreen() {
             </View>
             <View style={styles.districtRow}>
               <ThemedText type="caption" style={{ color: mutedText }}>
-                {item.district ? `District ${item.district}` : ''}
+                {item.district ? `${item.district}` : ''}
               </ThemedText>
               {(() => {
                 const match = getMatch(item);
@@ -273,7 +273,7 @@ export default function FederalDelegationScreen() {
           </View>
           <View style={styles.resultsHeader}>
             <ThemedText type="caption" style={{ color: mutedText }}>
-              {filteredOfficials.length} official{filteredOfficials.length !== 1 ? 's' : ''}
+              {filteredOfficials.length} elected{filteredOfficials.length !== 1 ? 's' : ''}
             </ThemedText>
           </View>
 
@@ -318,8 +318,8 @@ export default function FederalDelegationScreen() {
                 <View style={styles.centerContainer}>
                   <ThemedText style={{ color: mutedText, fontSize: 16 }}>
                     {searchQuery || chamberFilter !== 'All' || partyFilter !== 'All'
-                      ? 'No officials match your filters'
-                      : 'No federal officials available'}
+                      ? 'No electeds match your filters'
+                      : 'No federal electeds available'}
                   </ThemedText>
                 </View>
               )}

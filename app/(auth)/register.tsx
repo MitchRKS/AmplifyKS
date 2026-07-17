@@ -96,7 +96,7 @@ export default function RegisterScreen() {
               <View style={styles.logoCircle}>
                 <MaterialIcons name="campaign" size={32} color={brandBg} />
               </View>
-              <ThemedText style={styles.brandName}>AmplifyKS</ThemedText>
+              <ThemedText style={styles.brandName}>Amplify</ThemedText>
               <ThemedText style={styles.brandTagline}>
                 Track bills & submit testimony
               </ThemedText>
@@ -105,7 +105,7 @@ export default function RegisterScreen() {
             <View style={[styles.formCard, { backgroundColor: surface, borderColor: border }, Shadows.md]}>
               <ThemedText type="subtitle" style={styles.formTitle}>Create your account</ThemedText>
               <ThemedText style={[styles.formSubtitle, { color: mutedText }]}>
-                Join AmplifyKS to make your voice heard
+                Join Amplify to make your voice heard
               </ThemedText>
 
               <View style={styles.form}>

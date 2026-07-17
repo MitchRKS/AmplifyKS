@@ -189,7 +189,7 @@ export default function StateLegislatorsScreen() {
               </ThemedText>
               <Pressable
                 accessibilityRole="button"
-                accessibilityLabel={saved ? 'Remove from saved' : 'Save official'}
+                accessibilityLabel={saved ? 'Remove from saved' : 'Add to My Electeds'}
                 onPress={(e) => { e.stopPropagation(); toggleSave(item); }}
                 hitSlop={8}
                 style={styles.saveButton}
@@ -215,7 +215,7 @@ export default function StateLegislatorsScreen() {
             </View>
             <View style={styles.districtRow}>
               <ThemedText type="caption" style={{ color: mutedText }}>
-                {item.district ? `District ${item.district}` : ''}
+                {item.district ? `${item.district}` : ''}
               </ThemedText>
               {(() => {
                 const match = getMatch(item);

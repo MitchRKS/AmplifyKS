@@ -170,7 +170,7 @@ export default function LegislatorDetailScreen() {
     if (!legislator) return;
     const outcome = await shareContent({
       title: legislator.name,
-      message: `${legislator.name} (${legislator.party} — ${legislator.chamber} District ${legislator.district})`,
+      message: `${legislator.name} (${legislator.party} — ${legislator.chamber} ${legislator.district})`,
       url: legislator.openstatesUrl || undefined,
     });
     if (outcome === 'shared' || outcome === 'copied') {
@@ -230,7 +230,7 @@ export default function LegislatorDetailScreen() {
             <Pressable
               onPress={toggleSave}
               accessibilityRole="button"
-              accessibilityLabel={saved ? 'Remove from saved officials' : 'Save official'}
+              accessibilityLabel={saved ? 'Remove from My Electeds' : 'Add to My Electeds'}
               style={styles.backButton}
             >
               <MaterialIcons
@@ -289,7 +289,7 @@ export default function LegislatorDetailScreen() {
               {legislator.district ? (
                 <View style={[styles.badge, { backgroundColor: border }]}>
                   <ThemedText style={[styles.badgeText, { color: mutedText }]}>
-                    District {legislator.district}
+                    {legislator.district}
                   </ThemedText>
                 </View>
               ) : null}

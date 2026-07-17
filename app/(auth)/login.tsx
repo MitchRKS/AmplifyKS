@@ -104,7 +104,7 @@ export default function LoginScreen() {
               <View style={styles.logoCircle}>
                 <MaterialIcons name="campaign" size={36} color={brandBg} />
               </View>
-              <ThemedText style={styles.brandName}>AmplifyKS</ThemedText>
+              <ThemedText style={styles.brandName}>Amplify</ThemedText>
               <ThemedText style={styles.brandTagline}>
                 Your voice in the Kansas Legislature
               </ThemedText>

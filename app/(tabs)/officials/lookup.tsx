@@ -59,7 +59,7 @@ export default function LookupScreen() {
       const results = await getOfficialsByLocation(lat, lng);
       setSearchResults(results);
       if (results.length === 0) {
-        AppAlert.alert('No Results', 'No elected officials found for this location.');
+        AppAlert.alert('No Results', 'No electeds found for this location.');
       } else {
         // Capture which officials are unsaved RIGHT NOW, before the Firestore snapshot
         // may arrive and change isSaved's return values (race condition on web).
@@ -70,7 +70,7 @@ export default function LookupScreen() {
       }
     } catch (error) {
       console.error('Error fetching officials:', error);
-      AppAlert.alert('Error', 'Unable to look up officials. Please try again.');
+      AppAlert.alert('Error', 'Unable to look up your electeds. Please try again.');
       setSearchResults([]);
     } finally {
       setLoading(false);
@@ -83,7 +83,7 @@ export default function LookupScreen() {
       if (status !== 'granted') {
         AppAlert.alert(
           'Permission Denied',
-          'Location access is needed to find your elected officials. You can also enter an address instead.',
+          'Location access is needed to find your electeds. You can also enter an address instead.',
         );
         return;
       }
@@ -140,7 +140,7 @@ export default function LookupScreen() {
   };
 
   const promptLoginToSave = () => {
-    AppAlert.alert('Sign in required', 'Please sign in or create an account to save elected officials.', [
+    AppAlert.alert('Sign in required', 'Please sign in or create an account to save your electeds.', [
       { text: 'Not Now', style: 'cancel' },
       { text: 'Sign In', onPress: () => router.navigate('/(auth)/login') },
       { text: 'Create Account', onPress: () => router.navigate('/(auth)/register') },
@@ -165,7 +165,7 @@ export default function LookupScreen() {
       }
     } catch (error) {
       console.error('Error saving official:', error);
-      const message = error instanceof Error ? error.message : 'Unable to update saved officials. Please try again.';
+      const message = error instanceof Error ? error.message : 'Unable to update your saved electeds. Please try again.';
       AppAlert.alert('Error', message);
     }
   };
@@ -192,7 +192,7 @@ export default function LookupScreen() {
       router.navigate('/(tabs)/dashboard');
     } catch (error) {
       console.error('Error saving multiple officials:', error);
-      const message = error instanceof Error ? error.message : 'Unable to save officials. Please try again.';
+      const message = error instanceof Error ? error.message : 'Unable to save your electeds. Please try again.';
       setSaving(false);
       setPendingOfficials([]);
       AppAlert.alert('Error', message);
@@ -231,7 +231,7 @@ export default function LookupScreen() {
               {showSaveButton && (
                 <Pressable
                   accessibilityRole="button"
-                  accessibilityLabel={saved ? 'Remove from saved' : 'Save official'}
+                  accessibilityLabel={saved ? 'Remove from saved' : 'Add to My Electeds'}
                   onPress={(e) => {
                     e.stopPropagation();
                     void toggleSave(item);
@@ -261,7 +261,7 @@ export default function LookupScreen() {
             </View>
             <View style={styles.districtRow}>
               <ThemedText type="caption" style={{ color: mutedText }}>
-                {item.district ? `District ${item.district}` : ''}
+                {item.district ? `${item.district}` : ''}
               </ThemedText>
               {(() => {
                 const match = getMatch(item);
@@ -301,14 +301,14 @@ export default function LookupScreen() {
         >
           <ContentContainer>
             <View style={styles.header}>
-              <ThemedText type="title">Find Officials</ThemedText>
+              <ThemedText type="title">Find Electeds</ThemedText>
               <ThemedText style={[styles.subtitle, { color: mutedText }]}>
                 Look up your representatives by address or location
               </ThemedText>
             </View>
 
             <View style={styles.section}>
-              <ThemedText type="subtitle" style={styles.sectionTitle}>Look Up Officials</ThemedText>
+              <ThemedText type="subtitle" style={styles.sectionTitle}>Look Up Electeds</ThemedText>
               <View style={[styles.lookupCard, { backgroundColor: surface, borderColor: border }, Shadows.sm]}>
                 <Pressable
                   accessibilityRole="button"
@@ -360,7 +360,7 @@ export default function LookupScreen() {
             {loading ? (
               <View style={styles.centerContainer}>
                 <ActivityIndicator size="large" color={tint} />
-                <ThemedText style={{ color: mutedText, fontSize: 16 }}>Looking up officials...</ThemedText>
+                <ThemedText style={{ color: mutedText, fontSize: 16 }}>Looking up your electeds...</ThemedText>
               </View>
             ) : (
               <>
@@ -378,7 +378,7 @@ export default function LookupScreen() {
                 {hasSearched && searchResults.length === 0 && (
                   <View style={styles.centerContainer}>
                     <ThemedText style={{ color: mutedText, fontSize: 16 }}>
-                      No officials found for this location.
+                      No electeds found for this location.
                     </ThemedText>
                   </View>
                 )}
@@ -411,7 +411,7 @@ export default function LookupScreen() {
               Save as your electeds?
             </ThemedText>
             <ThemedText style={[styles.modalBody, { color: mutedText }]}>
-              We found {pendingOfficials.length} official{pendingOfficials.length !== 1 ? 's' : ''} for
+              We found {pendingOfficials.length} elected{pendingOfficials.length !== 1 ? 's' : ''} for
               your location. Would you like to save them for quick access?
             </ThemedText>
 

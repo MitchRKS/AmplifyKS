@@ -67,7 +67,7 @@ export default function ProfileScreen() {
         <View style={styles.header}>
           <ThemedText type="title">Profile</ThemedText>
           <ThemedText style={[styles.subtitle, { color: mutedText }]}>
-            Your AmplifyKS account
+            Your Amplify account
           </ThemedText>
         </View>
 
@@ -173,7 +173,7 @@ export default function ProfileScreen() {
         <View style={[styles.card, { backgroundColor: surface, borderColor: border }, Shadows.sm]}>
           <ThemedText type="subtitle" style={styles.cardTitle}>Personal Info</ThemedText>
           <ThemedText type="caption" style={[styles.cardHint, { color: mutedText }]}>
-            Used when submitting testimony and contacting lawmakers
+            Used when submitting testimony and contacting your electeds
           </ThemedText>
 
           <View style={styles.field}>

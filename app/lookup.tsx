@@ -50,13 +50,13 @@ export default function LookupScreen() {
       const results = await getOfficialsByLocation(lat, lng);
       setSearchResults(results);
       if (results.length === 0) {
-        AppAlert.alert('No Results', 'No elected officials found for this location.');
+        AppAlert.alert('No Results', 'No electeds found for this location.');
       } else {
         setTimeout(() => setShowPrompt(true), 1200);
       }
     } catch (error) {
       console.error('Error fetching officials:', error);
-      AppAlert.alert('Error', 'Unable to look up officials. Please try again.');
+      AppAlert.alert('Error', 'Unable to look up your electeds. Please try again.');
       setSearchResults([]);
     } finally {
       setLoading(false);
@@ -69,7 +69,7 @@ export default function LookupScreen() {
       if (status !== 'granted') {
         AppAlert.alert(
           'Permission Denied',
-          'Location access is needed to find your elected officials. You can also enter an address instead.',
+          'Location access is needed to find your electeds. You can also enter an address instead.',
         );
         return;
       }
@@ -155,7 +155,7 @@ export default function LookupScreen() {
 
     AppAlert.alert(
       official.name,
-      `${official.party} — ${official.chamber} District ${official.district}`,
+      `${official.party} — ${official.chamber} ${official.district}`,
       [...options.map((o) => ({ text: o.text, onPress: o.onPress })), { text: 'Cancel', style: 'cancel' as const }],
     );
   };
@@ -197,7 +197,7 @@ export default function LookupScreen() {
           </View>
 
           <ThemedText type="caption" style={{ color: mutedText }}>
-            {item.chamber}{item.district ? ` — District ${item.district}` : ''}
+            {item.chamber}{item.district ? ` — ${item.district}` : ''}
           </ThemedText>
 
           {item.email ? (
@@ -216,14 +216,14 @@ export default function LookupScreen() {
         <ContentContainer style={styles.topBarInner}>
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel="AmplifyKS home"
+            accessibilityLabel="Amplify home"
             style={styles.logoRow}
             onPress={() => router.navigate('/')}
           >
             <View style={[styles.logoCircle, { backgroundColor: '#1c355e' }]}>
               <MaterialIcons name="campaign" size={18} color="#FFFFFF" />
             </View>
-            <ThemedText style={styles.logoText}>AmplifyKS</ThemedText>
+            <ThemedText style={styles.logoText}>Amplify</ThemedText>
           </Pressable>
           <View style={styles.topBarActions}>
             <Pressable
@@ -263,7 +263,7 @@ export default function LookupScreen() {
               Who represents you in Kansas?
             </ThemedText>
             <ThemedText style={[styles.heroSubtitle, { color: mutedText }]}>
-              Enter your address to find your elected officials and their contact information.
+              Enter your address to find your electeds and their contact information.
             </ThemedText>
           </View>
 
@@ -320,7 +320,7 @@ export default function LookupScreen() {
             <View style={styles.centerContainer}>
               <ActivityIndicator size="large" color={tint} />
               <ThemedText style={{ color: mutedText, fontSize: 16 }}>
-                Looking up officials...
+                Looking up your electeds...
               </ThemedText>
             </View>
           )}
@@ -343,7 +343,7 @@ export default function LookupScreen() {
           {!loading && hasSearched && searchResults.length === 0 && (
             <View style={styles.centerContainer}>
               <ThemedText style={{ color: mutedText, fontSize: 16 }}>
-                No officials found for this location.
+                No electeds found for this location.
               </ThemedText>
             </View>
           )}
@@ -351,14 +351,14 @@ export default function LookupScreen() {
           {!hasSearched && (
             <View style={styles.featuresSection}>
               <ThemedText type="sectionHeader" style={{ color: mutedText, textAlign: 'center', marginBottom: Spacing.xl }}>
-                What you can do with AmplifyKS
+                What you can do with Amplify
               </ThemedText>
               <View style={styles.featuresGrid}>
                 {[
-                  { icon: 'how-to-vote' as const, title: 'Find Officials', desc: 'Look up your Kansas elected officials by address' },
+                  { icon: 'how-to-vote' as const, title: 'Find Electeds', desc: 'Look up your Kansas electeds by address' },
                   { icon: 'description' as const, title: 'Track Bills', desc: 'Follow legislation through the Kansas Legislature' },
                   { icon: 'edit-note' as const, title: 'Submit Testimony', desc: 'Draft and send testimony directly to committees' },
-                  { icon: 'bookmark' as const, title: 'Save & Organize', desc: 'Save your officials and bills for quick access' },
+                  { icon: 'bookmark' as const, title: 'Save & Organize', desc: 'Save your electeds and bills for quick access' },
                 ].map((feature) => (
                   <View key={feature.title} style={[styles.featureCard, { backgroundColor: surface, borderColor: border }, Shadows.sm]}>
                     <View style={[styles.featureIcon, { backgroundColor: tint + '10' }]}>
@@ -392,10 +392,10 @@ export default function LookupScreen() {
 
             <MaterialIcons name="bookmark-border" size={36} color="rgba(255,255,255,0.85)" />
             <ThemedText style={styles.modalTitle}>
-              Want to save your elected officials?
+              Want to save your electeds?
             </ThemedText>
             <ThemedText style={styles.modalBody}>
-              Create a free AmplifyKS account to save your officials, track bills, and submit testimony directly to committees.
+              Create a free Amplify account to save your electeds, track bills, and submit testimony directly to committees.
             </ThemedText>
             <View style={styles.modalButtons}>
               <Pressable
