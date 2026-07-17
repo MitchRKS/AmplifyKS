@@ -55,9 +55,13 @@ export async function verifyBearer(
   }
 }
 
-// Origins allowed to use the auth endpoints. Production + local dev; extend
-// with PASSKEY_ALLOWED_ORIGINS (comma-separated) when a custom domain lands.
-const DEFAULT_ORIGINS = ['https://amplifyks-web.netlify.app'];
+// Origins allowed to use the auth endpoints. Production domains + local dev;
+// extend with PASSKEY_ALLOWED_ORIGINS (comma-separated) if more are added.
+const DEFAULT_ORIGINS = [
+  'https://amplifyks.org',
+  'https://www.amplifyks.org',
+  'https://amplifyks-web.netlify.app',
+];
 
 export function resolveOrigin(req: Request): { origin: string; rpID: string } | null {
   const origin = req.headers.get('origin') ?? '';
