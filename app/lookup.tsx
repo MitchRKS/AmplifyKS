@@ -86,26 +86,62 @@ export default function LookupScreen() {
     }
   };
 
-  const geocodeAddress = async (query: string): Promise<{ lat: number; lng: number } | null> => {
+  const geocodeAddress = async (
+    query: string,
+  ): Promise<{ lat: number; lng: number; inKansas: boolean } | null> => {
     const encoded = encodeURIComponent(query);
-    const url = `https://nominatim.openstreetmap.org/search?q=${encoded}&format=json&limit=1&countrycodes=us`;
+    const url = `https://nominatim.openstreetmap.org/search?q=${encoded}&format=json&limit=1&countrycodes=us&addressdetails=1`;
     const response = await fetch(url, {
-      headers: { 'User-Agent': 'AmplifyKS/1.0' },
+      headers: { 'User-Agent': 'Amplify/1.0' },
     });
     const data = await response.json();
     if (!data || data.length === 0) return null;
-    return { lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon) };
+    const top = data[0];
+    const state = (top.address?.state ?? '') as string;
+    // Only treat a result as out-of-state when Nominatim actually reports a
+    // non-Kansas state — a missing state field shouldn't block a valid lookup.
+    return {
+      lat: parseFloat(top.lat),
+      lng: parseFloat(top.lon),
+      inKansas: state === '' || /kansas/i.test(state),
+    };
   };
 
   const handleSearchAddress = async () => {
-    if (!address.trim()) return;
+    const trimmed = address.trim();
+    if (!trimmed) {
+      AppAlert.alert('Enter an address', 'Type your home address to find your electeds.');
+      return;
+    }
+    // Guard against obviously incomplete input (a lone word or number) before
+    // spending a geocode request — a vague query resolves to a broad area and
+    // returns the wrong electeds.
+    const words = trimmed.split(/\s+/).filter(Boolean);
+    if (trimmed.length < 5 || (words.length < 2 && !trimmed.includes(','))) {
+      AppAlert.alert(
+        'Add more detail',
+        'Enter a fuller address including street and city, e.g. 123 Main St, Topeka.',
+      );
+      return;
+    }
 
     setLoading(true);
     try {
-      const coords = await geocodeAddress(address.trim());
+      const coords = await geocodeAddress(trimmed);
       if (!coords) {
-        AppAlert.alert('Address Not Found', 'Could not find that address. Please try a more specific address.');
         setLoading(false);
+        AppAlert.alert(
+          'Address not found',
+          "We couldn't find that address. Check the spelling and include street, city, and ZIP.",
+        );
+        return;
+      }
+      if (!coords.inKansas) {
+        setLoading(false);
+        AppAlert.alert(
+          'Kansas addresses only',
+          "That address doesn't appear to be in Kansas. Amplify covers Kansas electeds.",
+        );
         return;
       }
       await fetchByCoords(coords.lat, coords.lng);
