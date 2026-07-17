@@ -14,6 +14,7 @@ import {
 
 import { AppAlert } from '@/components/app-alert';
 import { ContentContainer } from '@/components/content-container';
+import { SocialAuthButtons } from '@/components/social-auth-buttons';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Radius, Shadows, Spacing } from '@/constants/theme';
@@ -125,7 +126,7 @@ export default function LoginScreen() {
                     placeholderTextColor={placeholder}
                     value={email}
                     onChangeText={setEmail}
-                    textContentType="emailAddress"
+                    textContentType="username"
                     autoComplete="email"
                     keyboardType="email-address"
                     inputMode="email"
@@ -145,7 +146,7 @@ export default function LoginScreen() {
                     value={password}
                     onChangeText={setPassword}
                     textContentType="password"
-                    autoComplete="password"
+                    autoComplete="current-password"
                     secureTextEntry
                     returnKeyType="done"
                     onSubmitEditing={handleLogin}
@@ -179,6 +180,8 @@ export default function LoginScreen() {
                     <ThemedText style={styles.buttonText}>Sign In</ThemedText>
                   )}
                 </Pressable>
+
+                <SocialAuthButtons />
               </View>
             </View>
 

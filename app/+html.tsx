@@ -11,6 +11,13 @@ export default function Root({ children }: PropsWithChildren) {
           name="viewport"
           content="width=device-width, initial-scale=1, shrink-to-fit=no, viewport-fit=cover"
         />
+        <title>Amplify</title>
+        {/* Home-screen install: name "Amplify", "A" icon on plain navy. */}
+        <link rel="manifest" href="/manifest.json" />
+        <link rel="apple-touch-icon" sizes="180x180" href="/icons/amplify-a-180.png" />
+        <meta name="apple-mobile-web-app-title" content="Amplify" />
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta name="theme-color" content="#1c355e" />
         <ScrollViewStyleReset />
         <style dangerouslySetInnerHTML={{ __html: responsiveStyle }} />
       </head>

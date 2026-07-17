@@ -14,6 +14,7 @@ import {
 
 import { AppAlert } from '@/components/app-alert';
 import { ContentContainer } from '@/components/content-container';
+import { SocialAuthButtons } from '@/components/social-auth-buttons';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Radius, Shadows, Spacing } from '@/constants/theme';
@@ -212,6 +213,8 @@ export default function RegisterScreen() {
                     <ThemedText style={styles.buttonText}>Create Account</ThemedText>
                   )}
                 </Pressable>
+
+                <SocialAuthButtons />
               </View>
             </View>
 

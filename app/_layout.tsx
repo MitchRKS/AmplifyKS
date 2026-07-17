@@ -5,6 +5,7 @@ import { useEffect } from 'react';
 import 'react-native-reanimated';
 
 import { AppAlertHost } from '@/components/app-alert';
+import { AuthPromptModal } from '@/components/auth-prompt-modal';
 import { DesktopWebShell } from '@/components/desktop-web-shell';
 import { AchievementCelebration } from '@/components/gamification/achievement-celebration';
 import { AuthProvider, useAuth } from '@/contexts/auth-context';
@@ -52,6 +53,7 @@ export default function RootLayout() {
       <GamificationProvider>
         <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
           <RootNavigator />
+          <AuthPromptModal />
           <AchievementCelebration />
           <AppAlertHost />
           <StatusBar style="auto" />

@@ -1,12 +1,16 @@
 import {
   createUserWithEmailAndPassword,
+  GoogleAuthProvider,
+  OAuthProvider,
   onAuthStateChanged,
   sendPasswordResetEmail,
   signInWithEmailAndPassword,
+  signInWithPopup,
   signOut,
   updateProfile,
   type User as FirebaseUser,
 } from 'firebase/auth';
+import { Platform } from 'react-native';
 import {
   createContext,
   useCallback,
@@ -42,6 +46,8 @@ interface AuthContextValue {
     password: string;
   }) => Promise<{ success: boolean; error?: string }>;
   resetPassword: (email: string) => Promise<{ success: boolean; error?: string }>;
+  loginWithGoogle: () => Promise<{ success: boolean; error?: string }>;
+  loginWithApple: () => Promise<{ success: boolean; error?: string }>;
   logout: () => Promise<void>;
 }
 
@@ -153,6 +159,63 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
+  // Social sign-in. Registration and login are the same flow — Firebase
+  // creates the account on first sign-in with the provider.
+  // Web uses popup OAuth; the native builds need expo-auth-session /
+  // expo-apple-authentication wiring before these can work there.
+  // NOTE: each provider must also be enabled in the Firebase console
+  // (Authentication → Sign-in method) before this succeeds in production.
+  const loginWithProvider = useCallback(
+    async (provider: GoogleAuthProvider | OAuthProvider) => {
+      if (Platform.OS !== 'web') {
+        return {
+          success: false,
+          error: 'Social sign-in is not available in this app build yet. Please use email and password.',
+        };
+      }
+      try {
+        await signInWithPopup(getAuth(), provider);
+        return { success: true };
+      } catch (error: any) {
+        // The user closing the popup isn't an error worth alerting about.
+        if (
+          error.code === 'auth/popup-closed-by-user' ||
+          error.code === 'auth/cancelled-popup-request'
+        ) {
+          return { success: false };
+        }
+        if (error.code === 'auth/account-exists-with-different-credential') {
+          return {
+            success: false,
+            error:
+              'An account already exists with this email using a different sign-in method. Sign in the way you originally registered.',
+          };
+        }
+        if (error.code === 'auth/operation-not-allowed') {
+          return {
+            success: false,
+            error: 'This sign-in method is not enabled yet. Please use email and password.',
+          };
+        }
+        console.error('Social sign-in error:', error.code, error.message);
+        return { success: false, error: firebaseErrorMessage(error.code) };
+      }
+    },
+    [],
+  );
+
+  const loginWithGoogle = useCallback(
+    () => loginWithProvider(new GoogleAuthProvider()),
+    [loginWithProvider],
+  );
+
+  const loginWithApple = useCallback(() => {
+    const provider = new OAuthProvider('apple.com');
+    provider.addScope('email');
+    provider.addScope('name');
+    return loginWithProvider(provider);
+  }, [loginWithProvider]);
+
   const logout = useCallback(async () => {
     await signOut(getAuth());
     // Send the user to the sign-in page after signing out (rather than
@@ -161,8 +224,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const value = useMemo(
-    () => ({ user, isLoading, register, login, resetPassword, logout }),
-    [user, isLoading, register, login, resetPassword, logout],
+    () => ({ user, isLoading, register, login, resetPassword, loginWithGoogle, loginWithApple, logout }),
+    [user, isLoading, register, login, resetPassword, loginWithGoogle, loginWithApple, logout],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
