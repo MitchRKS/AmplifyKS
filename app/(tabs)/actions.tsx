@@ -15,6 +15,7 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Radius, Shadows, Spacing } from '@/constants/theme';
 import { useOpenTestimonyBillIds } from '@/hooks/use-open-testimony-bills';
+import { BillCard } from '@/components/bill-card';
 import { useQuiz } from '@/hooks/use-quiz';
 import { useThemeColor } from '@/hooks/use-theme-color';
 import * as LegiscanAPI from '@/services/legiscan';
@@ -87,52 +88,24 @@ export default function ActionsScreen() {
 
   const loading = idsLoading || billsLoading;
 
+  // Shared iOS-style card; the footer swaps the last-action row for the
+  // "Open for testimony" call-to-action (more informative than iOS's
+  // "No recent action available." on these cards).
   const renderBillItem = ({ item }: { item: Bill }) => (
     <ContentContainer style={styles.listItemContainer}>
-      <Pressable
-        style={({ pressed }) => [
-          styles.billCard,
-          { backgroundColor: surface, borderColor: border },
-          Shadows.sm,
-          pressed && styles.pressed,
-        ]}
+      <BillCard
+        billNumber={item.billNumber}
+        description={item.description || item.title}
         onPress={() => router.push({ pathname: '/bill-detail', params: { id: item.id } })}
-      >
-        <View style={styles.billHeader}>
-          <View style={styles.billNumberContainer}>
-            <ThemedText type="defaultSemiBold" style={[styles.billNumber, { color: tint }]}>
-              {item.billNumber}
-            </ThemedText>
-            <View style={[styles.chamberChip, { backgroundColor: border }]}>
-              <ThemedText type="caption" style={{ color: mutedText }}>{item.chamber}</ThemedText>
-            </View>
-          </View>
-          <View style={[styles.statusBadge, { backgroundColor: mutedText + '14' }]}>
-            <ThemedText style={[styles.statusText, { color: mutedText }]}>
-              {item.status}
+        footer={
+          <View style={styles.testimonyRow}>
+            <MaterialIcons name="edit-note" size={16} color={tint} />
+            <ThemedText type="caption" style={{ color: tint, fontWeight: '600' }}>
+              Open for testimony
             </ThemedText>
           </View>
-        </View>
-
-        <ThemedText type="defaultSemiBold" style={styles.billTitle} numberOfLines={2}>
-          {item.title}
-        </ThemedText>
-
-        {item.description ? (
-          <ThemedText style={[styles.billDescription, { color: mutedText }]} numberOfLines={2}>
-            {item.description}
-          </ThemedText>
-        ) : null}
-
-        <View style={[styles.cardDivider, { backgroundColor: border }]} />
-
-        <View style={styles.testimonyRow}>
-          <MaterialIcons name="edit-note" size={16} color={tint} />
-          <ThemedText type="caption" style={{ color: tint, fontWeight: '600' }}>
-            Open for testimony
-          </ThemedText>
-        </View>
-      </Pressable>
+        }
+      />
     </ContentContainer>
   );
 

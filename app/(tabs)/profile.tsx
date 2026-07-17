@@ -67,9 +67,6 @@ export default function ProfileScreen() {
       <ContentContainer>
         <View style={styles.header}>
           <ThemedText type="title">Profile</ThemedText>
-          <ThemedText style={[styles.subtitle, { color: mutedText }]}>
-            Your Amplify account
-          </ThemedText>
         </View>
 
         <View style={[styles.card, { backgroundColor: surface, borderColor: border }, Shadows.sm]}>
@@ -81,14 +78,39 @@ export default function ProfileScreen() {
               <View style={styles.nameRow}>
                 <ThemedText type="subtitle">{fullName}</ThemedText>
                 {isAdminRole(profile.role) && (
-                  <View style={[styles.adminBadge, { backgroundColor: tint + '15' }]}>
-                    <ThemedText style={[styles.adminBadgeText, { color: tint }]}>Admin</ThemedText>
-                  </View>
+                  <MaterialIcons name="shield" size={14} color={tint} />
                 )}
               </View>
               <ThemedText type="caption" style={{ color: mutedText }}>
                 {user?.email || 'Not set'}
               </ThemedText>
+              {profile.phone ? (
+                <ThemedText type="caption" style={{ color: mutedText }}>
+                  {profile.phone}
+                </ThemedText>
+              ) : null}
+              {/* iOS role chip: gray user / orange admin / red super admin */}
+              <View
+                style={[
+                  styles.roleChip,
+                  {
+                    backgroundColor:
+                      profile.role === 'super_admin'
+                        ? '#FA3332'
+                        : profile.role === 'admin'
+                          ? '#FF9500'
+                          : '#8E8E93',
+                  },
+                ]}
+              >
+                <ThemedText style={styles.roleChipText}>
+                  {profile.role === 'super_admin'
+                    ? 'Super Admin'
+                    : profile.role === 'admin'
+                      ? 'Admin'
+                      : 'User'}
+                </ThemedText>
+              </View>
             </View>
           </View>
         </View>
@@ -380,15 +402,18 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: Spacing.sm,
   },
-  adminBadge: {
+  roleChip: {
+    alignSelf: 'flex-start',
     paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: Radius.sm,
+    paddingVertical: 3,
+    borderRadius: 6,
+    marginTop: 2,
   },
-  adminBadgeText: {
+  roleChipText: {
     fontSize: 11,
     fontWeight: '700',
     letterSpacing: 0.3,
+    color: '#FFFFFF',
   },
   levelRow: {
     flexDirection: 'row',

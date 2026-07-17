@@ -207,9 +207,13 @@ export default function BillDetailScreen() {
               {bill.title}
             </ThemedText>
 
-            <ThemedText style={[styles.description, { color: mutedText }]}>
-              {bill.description}
-            </ThemedText>
+            {/* LegiScan's description often duplicates the title verbatim —
+                only render it when it actually adds information. */}
+            {bill.description && bill.description.trim() !== bill.title.trim() ? (
+              <ThemedText style={[styles.description, { color: mutedText }]}>
+                {bill.description}
+              </ThemedText>
+            ) : null}
           </View>
 
           <View style={[styles.card, { backgroundColor: surface, borderColor: border }, Shadows.sm]}>

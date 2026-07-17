@@ -14,6 +14,7 @@ import {
 } from 'react-native';
 
 import { AppAlert } from '@/components/app-alert';
+import { BillCard } from '@/components/bill-card';
 import { ContentContainer } from '@/components/content-container';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
@@ -145,11 +146,6 @@ function extractCommitteeName(rawBill: Record<string, unknown>): string {
     return resolveCommitteeName(committeeObj, fallbackAction, fallbackChamber);
   }
   return resolveCommitteeName(undefined, fallbackAction, fallbackChamber);
-}
-
-function formatLastActionForCard(lastAction: string): string {
-  // Remove leading chamber label for a cleaner card preview.
-  return lastAction.replace(/^(House|Senate)\s+/i, '');
 }
 
 export default function BillsScreen() {
@@ -361,50 +357,21 @@ export default function BillsScreen() {
     });
   };
 
+  // Card layout is shared with Actions via <BillCard> (ported from iOS's
+  // BillCardView). The committee suffix is omitted until it resolves rather
+  // than rendering the "No committee assigned yet" placeholder inline.
   const renderBillItem = ({ item }: { item: Bill }) => (
     <ContentContainer style={styles.listItemContainer}>
-      <Pressable
-        style={({ pressed }) => [
-          styles.billCard,
-          { backgroundColor: surface, borderColor: border },
-          Shadows.sm,
-          pressed && styles.pressed,
-        ]}
+      <BillCard
+        billNumber={item.billNumber}
+        committeeName={
+          item.committee && item.committee !== COMMITTEE_UNAVAILABLE ? item.committee : undefined
+        }
+        description={item.description || item.title}
+        lastAction={item.lastAction}
+        lastActionDate={item.lastActionDate}
         onPress={() => handleBillPress(item)}
-      >
-        <View style={styles.billHeader}>
-          <ThemedText
-            type="defaultSemiBold"
-            style={[styles.billTitle, { color: tint }]}
-            numberOfLines={1}
-          >
-            {`${item.billNumber} • ${item.committee}`}
-          </ThemedText>
-          <View style={[styles.statusBadge, { backgroundColor: mutedText + '14' }]}>
-            <ThemedText style={[styles.statusText, { color: mutedText }]}>
-              {item.status}
-            </ThemedText>
-          </View>
-        </View>
-
-        <ThemedText style={[styles.billDescription, { color: mutedText }]} numberOfLines={2}>
-          {item.description || item.title}
-        </ThemedText>
-
-        <View style={[styles.cardDivider, { backgroundColor: border }]} />
-
-        <View style={styles.lastActionRow}>
-          <MaterialIcons name="history" size={14} color={mutedText} />
-          <ThemedText type="caption" style={{ color: mutedText, flex: 1 }} numberOfLines={2}>
-            {new Date(item.lastActionDate).toLocaleDateString('en-US', {
-              month: 'short',
-              day: 'numeric',
-            })}
-            {' • '}
-            {formatLastActionForCard(item.lastAction)}
-          </ThemedText>
-        </View>
-      </Pressable>
+      />
     </ContentContainer>
   );
 
