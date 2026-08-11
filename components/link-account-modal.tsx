@@ -9,6 +9,7 @@ import {
   View,
 } from 'react-native';
 
+import { AppAlert } from '@/components/app-alert';
 import { AuthForm, type AuthFormHandle } from '@/components/auth-form';
 import { ThemedText } from '@/components/themed-text';
 import { Radius, Shadows, Spacing } from '@/constants/theme';
@@ -51,6 +52,18 @@ export function LinkAccountModal({ link, onClose }: LinkAccountModalProps) {
   // of showing an empty dead-end modal.
   const existingLabels = link.existingMethods.map(providerLabel).join(' or ');
 
+  // Signed in either way — but if the provider link itself failed, say so
+  // rather than letting the modal's silent close imply it worked.
+  const finishSignedIn = (linked: boolean | undefined) => {
+    onClose();
+    if (linked === false) {
+      AppAlert.alert(
+        'Signed In',
+        `You're signed in, but we couldn't connect ${attemptedLabel} to your account. You can try again from the sign-in screen next time.`,
+      );
+    }
+  };
+
   const handlePasswordSubmit = async () => {
     if (!password.trim() || busy) return;
     setBusy('password');
@@ -58,7 +71,7 @@ export function LinkAccountModal({ link, onClose }: LinkAccountModalProps) {
     try {
       const result = await completePendingLinkWithPassword(link, password);
       if (result.success) {
-        onClose();
+        finishSignedIn(result.linked);
       } else {
         setError(result.error ?? 'Sign-in failed. Please try again.');
       }
@@ -76,7 +89,7 @@ export function LinkAccountModal({ link, onClose }: LinkAccountModalProps) {
     try {
       const result = await completePendingLinkWithGoogle(link);
       if (result.success) {
-        onClose();
+        finishSignedIn(result.linked);
       } else if (result.error) {
         setError(result.error);
       }
@@ -91,7 +104,16 @@ export function LinkAccountModal({ link, onClose }: LinkAccountModalProps) {
   const canSubmitPassword = Boolean(password.trim()) && !busy;
 
   return (
-    <Modal transparent visible animationType="fade" onRequestClose={onClose}>
+    <Modal
+      transparent
+      visible
+      animationType="fade"
+      // Escape/back must respect the same guard as the disabled Cancel
+      // button — dismissing mid-re-auth would silently drop the outcome.
+      onRequestClose={() => {
+        if (!busy) onClose();
+      }}
+    >
       <View style={styles.overlay}>
         <View style={[styles.card, { backgroundColor: surface }, Shadows.lg]}>
           <ThemedText type="subtitle">Link your accounts</ThemedText>

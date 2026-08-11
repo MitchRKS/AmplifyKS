@@ -56,7 +56,12 @@ export function useSavedOfficials() {
     const unsubscribe = onSnapshot(
       col,
       (snapshot) => {
-        const officials = snapshot.docs.map((d) => d.data() as SavedOfficial);
+        // Guard against malformed docs (e.g. written without an id field by
+        // older clients) — a single one would crash every consumer that
+        // calls id-based helpers while rendering.
+        const officials = snapshot.docs
+          .map((d) => d.data() as SavedOfficial)
+          .filter((official) => typeof official?.id === 'string' && official.id.length > 0);
         setSavedOfficials(officials);
         setIsLoaded(true);
       },

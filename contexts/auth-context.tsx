@@ -60,6 +60,15 @@ interface AuthResult {
   error?: string;
 }
 
+interface LinkCompletionResult extends AuthResult {
+  /**
+   * Only meaningful when success is true: whether the pending provider was
+   * actually linked. Sign-in can succeed while the link itself fails — the
+   * UI should say so instead of implying the connection was made.
+   */
+  linked?: boolean;
+}
+
 interface SocialAuthResult extends AuthResult {
   /** Set when the account exists with a different method and needs linking. */
   pendingLink?: PendingSocialLink;
@@ -85,9 +94,9 @@ interface AuthContextValue {
   completePendingLinkWithPassword: (
     link: PendingSocialLink,
     password: string,
-  ) => Promise<AuthResult>;
+  ) => Promise<LinkCompletionResult>;
   /** Sign in with Google, then link the pending provider (Apple). */
-  completePendingLinkWithGoogle: (link: PendingSocialLink) => Promise<AuthResult>;
+  completePendingLinkWithGoogle: (link: PendingSocialLink) => Promise<LinkCompletionResult>;
   logout: () => Promise<void>;
 }
 
@@ -280,24 +289,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // After a pendingLink re-auth succeeds the user is signed in either way —
   // linking the new provider is best-effort on top of that. A link failure
   // (e.g. the credential is somehow attached to another account) shouldn't
-  // undo or hide a successful sign-in.
+  // undo a successful sign-in, but it must not be hidden either: the caller
+  // gets `false` back so the UI can say the connection wasn't made.
   const linkCredentialBestEffort = useCallback(
-    async (firebaseUser: FirebaseUser, credential: AuthCredential) => {
+    async (firebaseUser: FirebaseUser, credential: AuthCredential): Promise<boolean> => {
       try {
         await linkWithCredential(firebaseUser, credential);
+        return true;
       } catch (error: any) {
         console.error('Provider link failed after sign-in:', error.code, error.message);
+        return false;
       }
     },
     [],
   );
 
   const completePendingLinkWithPassword = useCallback(
-    async (link: PendingSocialLink, password: string): Promise<AuthResult> => {
+    async (link: PendingSocialLink, password: string): Promise<LinkCompletionResult> => {
       try {
         const result = await signInWithEmailAndPassword(getAuth(), link.email, password);
-        await linkCredentialBestEffort(result.user, link.credential);
-        return { success: true };
+        const linked = await linkCredentialBestEffort(result.user, link.credential);
+        return { success: true, linked };
       } catch (error: any) {
         // The generic sign-in message points at UI ("Forgot password?",
         // social buttons) that doesn't exist inside the linking modal —
@@ -320,19 +332,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   );
 
   const completePendingLinkWithGoogle = useCallback(
-    async (link: PendingSocialLink): Promise<AuthResult> => {
+    async (link: PendingSocialLink): Promise<LinkCompletionResult> => {
       const provider = new GoogleAuthProvider();
       // Steer the account chooser to the email that owns the account.
       provider.setCustomParameters({ login_hint: link.email });
       try {
         const result = await signInWithPopup(getAuth(), provider);
-        // Only link if Google signed in the same email; otherwise the user
-        // picked a different Google account and is now signed into that one —
-        // attaching this credential to it would tangle two identities.
-        if (result.user.email?.toLowerCase() === link.email.toLowerCase()) {
-          await linkCredentialBestEffort(result.user, link.credential);
+        // Only proceed if Google signed in the same email. Otherwise the
+        // user picked a different Google account and is now signed into that
+        // one (possibly freshly created) — silently keeping that session
+        // would strand them in the wrong identity, so undo it and explain.
+        if (result.user.email?.toLowerCase() !== link.email.toLowerCase()) {
+          const pickedEmail = result.user.email ?? 'a different Google account';
+          await signOut(getAuth());
+          return {
+            success: false,
+            error: `That was ${pickedEmail}, not ${link.email}. Choose the Google account for ${link.email} to link your accounts.`,
+          };
         }
-        return { success: true };
+        const linked = await linkCredentialBestEffort(result.user, link.credential);
+        return { success: true, linked };
       } catch (error: any) {
         if (
           error.code === 'auth/popup-closed-by-user' ||
