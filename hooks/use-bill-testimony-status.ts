@@ -5,6 +5,15 @@ import { getFirestoreDb } from '@/services/firebase';
 
 const COLLECTION = 'billTestimony';
 
+/**
+ * Direct write used by the admin panel's bill list, where per-row hook
+ * instances aren't practical. Rules restrict writes to admins.
+ */
+export async function setTestimonyOpen(billId: string | number, isOpen: boolean): Promise<void> {
+  const db = getFirestoreDb();
+  await setDoc(doc(db, COLLECTION, String(billId)), { isOpen }, { merge: true });
+}
+
 interface BillTestimonyStatus {
   isOpen: boolean;
   isLoading: boolean;

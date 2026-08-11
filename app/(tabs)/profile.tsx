@@ -475,6 +475,27 @@ export default function ProfileScreen() {
           </Pressable>
         </View>
 
+        {/* Admin Panel entry (iOS: ProfileView -> AdminPanelView). */}
+        {isAdminRole(profile.role) && (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Open admin panel"
+            style={({ pressed }) => [
+              styles.adminPanelButton,
+              { backgroundColor: surface, borderColor: border },
+              Shadows.sm,
+              pressed && styles.saveButtonPressed,
+            ]}
+            onPress={() => router.push('/admin-panel')}
+          >
+            <MaterialIcons name="shield" size={20} color={tint} />
+            <ThemedText style={[styles.adminPanelButtonText, { color: tint }]}>
+              Admin Panel
+            </ThemedText>
+            <MaterialIcons name="chevron-right" size={20} color={mutedText} />
+          </Pressable>
+        )}
+
         {/* Passkey enrollment (web only — WebAuthn needs the browser). */}
         {passkeysSupported() && (
           <View style={[styles.card, { backgroundColor: surface, borderColor: border }, Shadows.sm]}>
@@ -640,6 +661,22 @@ export default function ProfileScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+  },
+  adminPanelButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.sm,
+    borderWidth: 1,
+    borderRadius: Radius.lg,
+    paddingVertical: Spacing.lg,
+    paddingHorizontal: Spacing.xl,
+    marginHorizontal: Spacing.xl,
+    marginBottom: Spacing.lg,
+  },
+  adminPanelButtonText: {
+    flex: 1,
+    fontWeight: '700',
+    fontSize: 16,
   },
   signOutButton: {
     flexDirection: 'row',

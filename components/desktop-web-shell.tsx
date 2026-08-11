@@ -19,7 +19,7 @@ const STICKY_HEADER_STYLE: ViewStyle = Platform.select({
 // lookup, and (auth) already have their own header, and rendering WebTopNav
 // there too showed a confusing double header advertising Profile/Dashboard/etc.
 // before the user had signed in.
-const AUTHENTICATED_SEGMENTS = new Set(['(tabs)', 'bill-detail', 'committee-detail', 'quiz']);
+const AUTHENTICATED_SEGMENTS = new Set(['(tabs)', 'bill-detail', 'committee-detail', 'quiz', 'admin-panel']);
 
 export function DesktopWebShell({ children }: DesktopWebShellProps) {
   const { showSidebar } = useResponsiveLayout();

@@ -39,6 +39,7 @@ function RootNavigator() {
         <Stack.Screen name="bill-detail" options={{ headerShown: false }} />
         <Stack.Screen name="committee-detail" options={{ headerShown: false }} />
         <Stack.Screen name="quiz" options={{ headerShown: false }} />
+        <Stack.Screen name="admin-panel" options={{ headerShown: false }} />
         <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
       </Stack>
     </DesktopWebShell>

@@ -69,10 +69,12 @@ jest.mock('expo-router', () => ({
 }));
 
 jest.mock('expo-image', () => {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports -- jest.mock factories can't use ES imports
   const { View } = require('react-native');
   return { Image: View };
 });
 
+// eslint-disable-next-line import/first -- must come after the jest.mock calls above
 import DashboardScreen from '../(tabs)/dashboard';
 
 // ── Helpers ────────────────────────────────────────────────────────────
