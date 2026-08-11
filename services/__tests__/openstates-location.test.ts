@@ -32,10 +32,24 @@ const CACHED_DELEGATION = [
   { id: 'ocd-person/schmidt', name: 'Derek Schmidt', chamber: 'U.S. House', district: 'KS-2' },
 ];
 
-const mockGeoResponse = (results: unknown[]) => {
-  global.fetch = jest.fn().mockResolvedValue({
-    ok: true,
-    json: () => Promise.resolve({ results }),
+// Route fetches by URL: OpenStates people.geo vs the Census CD geocoder.
+const mockGeoResponse = (results: unknown[], censusDistrict: string | null = null) => {
+  global.fetch = jest.fn((url: string) => {
+    if (String(url).includes('geocoding.geo.census.gov')) {
+      if (censusDistrict === null) return Promise.resolve({ ok: false });
+      return Promise.resolve({
+        ok: true,
+        json: () =>
+          Promise.resolve({
+            result: {
+              geographies: {
+                '119th Congressional Districts': [{ BASENAME: censusDistrict }],
+              },
+            },
+          }),
+      });
+    }
+    return Promise.resolve({ ok: true, json: () => Promise.resolve({ results }) });
   }) as unknown as typeof fetch;
 };
 
@@ -47,21 +61,37 @@ beforeEach(() => {
 });
 
 describe('getOfficialsByLocation federal backfill', () => {
-  it('backfills the statewide U.S. Senators when people.geo returns none', async () => {
-    mockGeoResponse([
-      geoPerson('ocd-person/state-rep', 'State Rep', 'Kansas', 'lower', '57'),
-      geoPerson('ocd-person/state-sen', 'State Sen', 'Kansas', 'upper', '19'),
-    ]);
+  it('backfills senators AND the district-resolved House rep when people.geo returns no federal', async () => {
+    mockGeoResponse(
+      [
+        geoPerson('ocd-person/state-rep', 'State Rep', 'Kansas', 'lower', '57'),
+        geoPerson('ocd-person/state-sen', 'State Sen', 'Kansas', 'upper', '19'),
+      ],
+      '2', // Census says this point is in KS-2
+    );
 
     const officials = await getOfficialsByLocation(39.0473, -95.6752);
     const names = officials.map((o) => o.name);
 
     expect(names).toContain('Jerry Moran');
     expect(names).toContain('Roger Marshall');
-    // The right U.S. House rep depends on the point's district — it must NOT
-    // be guessed from the statewide delegation.
+    expect(names).toContain('Derek Schmidt'); // KS-2 in the cached delegation
+    expect(officials).toHaveLength(5);
+  });
+
+  it('skips the House rep (keeps senators) when the Census lookup fails', async () => {
+    mockGeoResponse(
+      [geoPerson('ocd-person/state-rep', 'State Rep', 'Kansas', 'lower', '57')],
+      null, // census unavailable
+    );
+
+    const officials = await getOfficialsByLocation(39.0473, -95.6752);
+    const names = officials.map((o) => o.name);
+
+    expect(names).toContain('Jerry Moran');
+    expect(names).toContain('Roger Marshall');
+    // Without a resolved district the rep must not be guessed.
     expect(names).not.toContain('Derek Schmidt');
-    expect(officials).toHaveLength(4);
   });
 
   it('leaves results alone when people.geo already includes federal senators', async () => {

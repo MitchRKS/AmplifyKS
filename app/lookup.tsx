@@ -21,6 +21,7 @@ import { ThemedView } from '@/components/themed-view';
 import { Radius, Shadows, Spacing } from '@/constants/theme';
 import { useResponsiveLayout } from '@/hooks/use-responsive-layout';
 import { useThemeColor } from '@/hooks/use-theme-color';
+import { districtLabel } from '@/services/district-label';
 import { geocodeAddress } from '@/services/elected-lookup';
 import { getLegislatorImageAssetLocal } from '@/services/kansas-legislators';
 import { getOfficialsByLocation, type Official } from '@/services/openstates';
@@ -207,7 +208,7 @@ export default function LookupScreen() {
           </View>
 
           <ThemedText type="caption" style={{ color: mutedText }}>
-            {item.chamber}{item.district ? ` — ${item.district}` : ''}
+            {item.chamber}{item.district ? ` — ${districtLabel(item.district)}` : ''}
           </ThemedText>
 
           {item.email ? (

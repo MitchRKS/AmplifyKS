@@ -24,6 +24,7 @@ import { useOpenTestimonyBillIds } from '@/hooks/use-open-testimony-bills';
 import { useSavedOfficials } from '@/hooks/use-saved-officials';
 import { useThemeColor } from '@/hooks/use-theme-color';
 import { useUserProfile } from '@/hooks/use-user-profile';
+import { districtLabel } from '@/services/district-label';
 import { getLegislatorImageAssetLocal } from '@/services/kansas-legislators';
 import * as LegiscanAPI from '@/services/legiscan';
 import type { Official } from '@/services/openstates';
@@ -82,9 +83,9 @@ const normalizedTitle = (chamber: string): string => {
   }
 };
 
-/** iOS row 3: "{district}  |  {Party}"; U.S. Senators show the state instead. */
+/** iOS row 3: "District {n}  |  {Party}"; U.S. Senators show the state instead. */
 const detailLine = (official: Official): string => {
-  const left = official.chamber === 'U.S. Senate' ? 'Kansas' : official.district;
+  const left = official.chamber === 'U.S. Senate' ? 'Kansas' : districtLabel(official.district);
   return [left, official.party].filter(Boolean).join('  |  ');
 };
 

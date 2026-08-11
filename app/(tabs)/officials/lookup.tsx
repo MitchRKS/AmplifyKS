@@ -25,6 +25,7 @@ import { useAuth } from '@/contexts/auth-context';
 import { useLegislatorMatch } from '@/hooks/use-legislator-match';
 import { useSavedOfficials } from '@/hooks/use-saved-officials';
 import { useThemeColor } from '@/hooks/use-theme-color';
+import { districtLabel } from '@/services/district-label';
 import { geocodeAddress } from '@/services/elected-lookup';
 import { getLegislatorImageAssetLocal } from '@/services/kansas-legislators';
 import { getOfficialsByLocation, type Official } from '@/services/openstates';
@@ -291,7 +292,7 @@ export default function LookupScreen() {
             </View>
             <View style={styles.districtRow}>
               <ThemedText type="caption" style={{ color: mutedText }}>
-                {item.district ? `${item.district}` : ''}
+                {districtLabel(item.district)}
               </ThemedText>
               {(() => {
                 const match = getMatch(item);

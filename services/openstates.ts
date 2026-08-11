@@ -150,20 +150,58 @@ export const getOfficialsByLocation = async (
   const officials = data.results.map(transformPerson);
 
   // people.geo can miss federal officials for a point (boundary gaps in
-  // OpenStates' congressional shapefiles). U.S. Senators represent the whole
-  // state, so when none came back they can safely be filled in from the
-  // cached federal delegation. A missing U.S. House rep can't be — which one
-  // is right depends on the congressional district this point falls in.
-  if (!officials.some((official) => official.chamber === 'U.S. Senate')) {
+  // OpenStates' congressional shapefiles). Backfill from the cached federal
+  // delegation so lookups always return the complete state + federal set:
+  // U.S. Senators are statewide, and the right U.S. House rep is resolved by
+  // asking the Census geocoder which congressional district the point is in.
+  const hasSenators = officials.some((official) => official.chamber === 'U.S. Senate');
+  const hasHouseRep = officials.some((official) => official.chamber === 'U.S. House');
+  if (!hasSenators || !hasHouseRep) {
     try {
       const delegation = await getKansasFederalDelegation();
-      officials.push(...delegation.filter((official) => official.chamber === 'U.S. Senate'));
+      if (!hasSenators) {
+        officials.push(...delegation.filter((official) => official.chamber === 'U.S. Senate'));
+      }
+      if (!hasHouseRep) {
+        const cd = await resolveCongressionalDistrict(lat, lng);
+        if (cd) {
+          const rep = delegation.find(
+            (official) => official.chamber === 'U.S. House' && official.district === `KS-${cd}`,
+          );
+          if (rep) officials.push(rep);
+        }
+      }
     } catch {
       // Best-effort — the point lookup's own results still stand.
     }
   }
 
   return officials;
+};
+
+/**
+ * Congressional district number for a point, via the Census Bureau's free
+ * geocoder (no key). Returns e.g. "2" for Topeka, or null on any failure —
+ * this only backs up OpenStates, it must never break a lookup.
+ */
+const resolveCongressionalDistrict = async (lat: number, lng: number): Promise<string | null> => {
+  try {
+    const url = `https://geocoding.geo.census.gov/geocoder/geographies/coordinates?x=${lng}&y=${lat}&benchmark=Public_AR_Current&vintage=Current_Current&layers=54&format=json`;
+    const response = await fetch(url);
+    if (!response.ok) return null;
+    const data = await response.json();
+    const groups: Record<string, { BASENAME?: string }[]> = data?.result?.geographies ?? {};
+    for (const [name, entries] of Object.entries(groups)) {
+      // Group name carries the congress number ("119th Congressional
+      // Districts") — match loosely so a new congress doesn't break this.
+      if (/congressional districts/i.test(name) && entries?.[0]?.BASENAME) {
+        return String(entries[0].BASENAME);
+      }
+    }
+    return null;
+  } catch {
+    return null;
+  }
 };
 
 interface OpenStatesOffice {

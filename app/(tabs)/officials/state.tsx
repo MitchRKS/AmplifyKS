@@ -22,6 +22,7 @@ import { Radius, Shadows, Spacing } from '@/constants/theme';
 import { useLegislatorMatch } from '@/hooks/use-legislator-match';
 import { useSavedOfficials } from '@/hooks/use-saved-officials';
 import { useThemeColor } from '@/hooks/use-theme-color';
+import { districtLabel } from '@/services/district-label';
 import { getLegislatorImageAssetLocal } from '@/services/kansas-legislators';
 import { getKansasLegislators, type Official } from '@/services/openstates';
 
@@ -231,7 +232,7 @@ export default function StateLegislatorsScreen() {
             </View>
             <View style={styles.districtRow}>
               <ThemedText type="caption" style={{ color: mutedText }}>
-                {item.district ? `${item.district}` : ''}
+                {districtLabel(item.district)}
               </ThemedText>
               {(() => {
                 const match = getMatch(item);

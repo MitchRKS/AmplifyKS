@@ -22,6 +22,7 @@ import { Radius, Shadows, Spacing } from '@/constants/theme';
 import { useLegislatorMatch } from '@/hooks/use-legislator-match';
 import { useSavedOfficials } from '@/hooks/use-saved-officials';
 import { useThemeColor } from '@/hooks/use-theme-color';
+import { districtLabel } from '@/services/district-label';
 import { getKansasFederalDelegation, type Official } from '@/services/openstates';
 
 type ChamberFilter = 'All' | 'Senate' | 'House';
@@ -222,7 +223,7 @@ export default function FederalDelegationScreen() {
             </View>
             <View style={styles.districtRow}>
               <ThemedText type="caption" style={{ color: mutedText }}>
-                {item.district ? `${item.district}` : ''}
+                {districtLabel(item.district)}
               </ThemedText>
               {(() => {
                 const match = getMatch(item);
