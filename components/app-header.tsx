@@ -7,18 +7,24 @@ import { ThemedText } from '@/components/themed-text';
 import { Radius, Spacing } from '@/constants/theme';
 import { useAuth } from '@/contexts/auth-context';
 import { useThemeColor } from '@/hooks/use-theme-color';
+import { useUserProfile } from '@/hooks/use-user-profile';
 
 export function AppHeader() {
   const router = useRouter();
   const { user } = useAuth();
+  const { profile } = useUserProfile();
 
   const surface = useThemeColor({ light: '#FFFFFF', dark: '#1C1F26' }, 'background');
   const border = useThemeColor({ light: '#d5d5d5', dark: '#2D3139' }, 'background');
   const tint = useThemeColor({ light: '#0097b2', dark: '#33C4DB' }, 'tint');
   const mutedText = useThemeColor({ light: '#5E6368', dark: '#9CA3AF' }, 'text');
 
+  // Profile names win over the Auth displayName (which can be a
+  // handle/username for social sign-ins).
+  const firstName = profile.firstName.trim() || user?.firstName || '';
+  const lastName = profile.lastName.trim() || user?.lastName || '';
   const initials = user
-    ? `${user.firstName.charAt(0)}${user.lastName.charAt(0)}`.toUpperCase() || '?'
+    ? `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase() || '?'
     : '?';
 
   return (
@@ -37,7 +43,7 @@ export function AppHeader() {
           <ThemedText style={[styles.avatarText, { color: tint }]}>{initials}</ThemedText>
         </Pressable>
         <ThemedText style={styles.greeting} numberOfLines={1}>
-          Hi, {user?.firstName || 'there'}!
+          Hi, {firstName || 'there'}!
         </ThemedText>
       </View>
 

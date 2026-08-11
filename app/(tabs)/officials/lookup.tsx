@@ -11,10 +11,10 @@ import {
   Pressable,
   ScrollView,
   StyleSheet,
-  TextInput,
   View,
 } from 'react-native';
 
+import { AddressAutocompleteInput } from '@/components/address-autocomplete-input';
 import { AppAlert } from '@/components/app-alert';
 import { MatchScoreBadge } from '@/components/legislator-match-detail';
 import { ContentContainer } from '@/components/content-container';
@@ -25,6 +25,7 @@ import { useAuth } from '@/contexts/auth-context';
 import { useLegislatorMatch } from '@/hooks/use-legislator-match';
 import { useSavedOfficials } from '@/hooks/use-saved-officials';
 import { useThemeColor } from '@/hooks/use-theme-color';
+import { geocodeAddress } from '@/services/elected-lookup';
 import { getLegislatorImageAssetLocal } from '@/services/kansas-legislators';
 import { getOfficialsByLocation, type Official } from '@/services/openstates';
 
@@ -39,14 +40,12 @@ export default function LookupScreen() {
   const showSaveModal = pendingOfficials.length > 0;
   const [saving, setSaving] = useState(false);
 
-  const { saveOfficial, replaceOfficials, isSaved } = useSavedOfficials();
+  const { saveOfficial, removeOfficial, replaceOfficials, isSaved, isMyElected } = useSavedOfficials();
   const { getMatch } = useLegislatorMatch();
 
   const surface = useThemeColor({ light: '#FFFFFF', dark: '#1C1F26' }, 'background');
   const inputBackground = useThemeColor({ light: '#F0F2F5', dark: '#1C1F26' }, 'background');
   const inputBorder = useThemeColor({ light: '#d5d5d5', dark: '#2D3139' }, 'background');
-  const inputText = useThemeColor({ light: '#1A1D21', dark: '#F0F2F5' }, 'text');
-  const placeholder = useThemeColor({ light: '#9CA3AF', dark: '#6B7280' }, 'text');
   const tint = useThemeColor({ light: '#0097b2', dark: '#33C4DB' }, 'tint');
   const mutedText = useThemeColor({ light: '#5E6368', dark: '#9CA3AF' }, 'text');
   const border = useThemeColor({ light: '#d5d5d5', dark: '#2D3139' }, 'background');
@@ -62,11 +61,15 @@ export default function LookupScreen() {
       if (results.length === 0) {
         AppAlert.alert('No Results', 'No electeds found for this location.');
       } else {
-        // Capture which officials are unsaved RIGHT NOW, before the Firestore snapshot
-        // may arrive and change isSaved's return values (race condition on web).
-        const toSave = results.filter((r) => !isSaved(r.id));
-        if (toSave.length > 0) {
-          setTimeout(() => setPendingOfficials(toSave), 800);
+        // Decide whether to prompt based on what's unsaved RIGHT NOW, before
+        // the Firestore snapshot may arrive and change isSaved's return
+        // values (race condition on web). But stage the FULL result set —
+        // replaceOfficials wholesale-replaces My Electeds, so saving only the
+        // unsaved subset would delete the already-saved rest (e.g. keep your
+        // state legislators, drop your federal ones, or vice versa).
+        const hasNew = results.some((r) => !isSaved(r.id));
+        if (hasNew) {
+          setTimeout(() => setPendingOfficials(results), 800);
         }
       }
     } catch (error) {
@@ -98,27 +101,6 @@ export default function LookupScreen() {
       setLoading(false);
       AppAlert.alert('Location Error', 'Unable to determine your location. Try entering an address instead.');
     }
-  };
-
-  const geocodeAddress = async (
-    query: string,
-  ): Promise<{ lat: number; lng: number; inKansas: boolean } | null> => {
-    const encoded = encodeURIComponent(query);
-    const url = `https://nominatim.openstreetmap.org/search?q=${encoded}&format=json&limit=1&countrycodes=us&addressdetails=1`;
-    const response = await fetch(url, {
-      headers: { 'User-Agent': 'Amplify/1.0' },
-    });
-    const data = await response.json();
-    if (!data || data.length === 0) return null;
-    const top = data[0];
-    const state = (top.address?.state ?? '') as string;
-    // Only treat a result as out-of-state when Nominatim actually reports a
-    // non-Kansas state — a missing state field shouldn't block a valid lookup.
-    return {
-      lat: parseFloat(top.lat),
-      lng: parseFloat(top.lon),
-      inKansas: state === '' || /kansas/i.test(state),
-    };
   };
 
   const handleSearchAddress = async () => {
@@ -194,19 +176,24 @@ export default function LookupScreen() {
       return;
     }
 
-    if (isSaved(official.id)) {
+    if (isMyElected(official.id)) {
       AppAlert.alert(
-        'Set by address',
-        'Your electeds are set from your address. Run a new search by address to change your My Electeds.',
+        'Part of My Electeds',
+        'This official is one of your My Electeds, which are set from your address. Save a new address to change them.',
       );
       return;
     }
 
     try {
-      await saveOfficial(official);
+      if (isSaved(official.id)) {
+        // A manual bookmark — tapping again un-saves it.
+        await removeOfficial(official.id);
+      } else {
+        await saveOfficial(official);
+      }
     } catch (error) {
-      console.error('Error saving official:', error);
-      const message = error instanceof Error ? error.message : 'Unable to save your electeds. Please try again.';
+      console.error('Error updating saved official:', error);
+      const message = error instanceof Error ? error.message : 'Unable to update your electeds. Please try again.';
       AppAlert.alert('Error', message);
     }
   };
@@ -363,15 +350,17 @@ export default function LookupScreen() {
                 </View>
 
                 <View style={styles.addressRow}>
-                  <TextInput
-                    style={[styles.addressInput, { backgroundColor: inputBackground, borderColor: inputBorder, color: inputText }]}
+                  <AddressAutocompleteInput
                     placeholder="123 Main St, Topeka, KS"
-                    placeholderTextColor={placeholder}
                     value={address}
                     onChangeText={setAddress}
-                    autoCapitalize="words"
-                    returnKeyType="search"
                     onSubmitEditing={handleSearchAddress}
+                    onSelectSuggestion={(suggestion) => {
+                      // The suggestion already carries coordinates — go
+                      // straight to the electeds lookup, no geocoding.
+                      setAddress(suggestion.label);
+                      void fetchByCoords(suggestion.lat, suggestion.lng);
+                    }}
                   />
                   <Pressable
                     accessibilityRole="button"
@@ -500,9 +489,10 @@ const styles = StyleSheet.create({
   locationButtonText: { color: '#fff', fontWeight: '700', fontSize: 16 },
   dividerRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.md },
   dividerLine: { flex: 1, height: 1 },
-  addressRow: { flexDirection: 'row', gap: Spacing.sm },
-  addressInput: { flex: 1, borderWidth: 1, borderRadius: Radius.md, paddingHorizontal: 14, paddingVertical: 11, fontSize: 16 },
-  searchButton: { borderRadius: Radius.md, paddingHorizontal: 18, justifyContent: 'center', alignItems: 'center' },
+  // flex-start so the Search button keeps input height while the
+  // autocomplete's suggestion list grows below the input.
+  addressRow: { flexDirection: 'row', gap: Spacing.sm, alignItems: 'flex-start' },
+  searchButton: { borderRadius: Radius.md, paddingHorizontal: 18, paddingVertical: 13, justifyContent: 'center', alignItems: 'center' },
   searchButtonText: { color: '#fff', fontWeight: '700', fontSize: 15 },
   card: { borderWidth: 1, borderRadius: Radius.lg, padding: Spacing.lg, marginBottom: Spacing.md },
   cardRow: { flexDirection: 'row', gap: 14 },

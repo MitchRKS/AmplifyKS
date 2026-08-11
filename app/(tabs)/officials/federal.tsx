@@ -74,7 +74,7 @@ export default function FederalDelegationScreen() {
   const [sortBy, setSortBy] = useState<SortOption>('nameAsc');
   const [filterModalVisible, setFilterModalVisible] = useState(false);
 
-  const { saveOfficial, isSaved } = useSavedOfficials();
+  const { saveOfficial, removeOfficial, isSaved, isMyElected } = useSavedOfficials();
   const { getMatch } = useLegislatorMatch();
 
   const surface = useThemeColor({ light: '#FFFFFF', dark: '#1C1F26' }, 'background');
@@ -151,11 +151,20 @@ export default function FederalDelegationScreen() {
   };
 
   const toggleSave = (official: Official) => {
-    if (isSaved(official.id)) {
+    if (isMyElected(official.id)) {
       AppAlert.alert(
-        'Set by address',
-        'Your electeds are set from your address. Run a new search by address to change your My Electeds.',
+        'Part of My Electeds',
+        'This official is one of your My Electeds, which are set from your address. Save a new address to change them.',
       );
+      return;
+    }
+    if (isSaved(official.id)) {
+      // A manual bookmark — tapping again un-saves it.
+      removeOfficial(official.id).catch((error) => {
+        const message =
+          error instanceof Error ? error.message : 'Unable to remove this official. Please try again.';
+        AppAlert.alert('Error', message);
+      });
       return;
     }
     saveOfficial(official);

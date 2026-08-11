@@ -13,6 +13,7 @@ import {
 } from 'react-native';
 
 import { AppAlert } from '@/components/app-alert';
+import { AuthForm, type AuthFormHandle } from '@/components/auth-form';
 import { ContentContainer } from '@/components/content-container';
 import { SocialAuthButtons } from '@/components/social-auth-buttons';
 import { passkeysSupported, signInWithPasskey } from '@/services/passkeys';
@@ -33,6 +34,7 @@ export default function LoginScreen() {
   const [isPasskeySubmitting, setIsPasskeySubmitting] = useState(false);
 
   const passwordRef = useRef<TextInput>(null);
+  const formRef = useRef<AuthFormHandle>(null);
 
   const surface = useThemeColor({ light: '#FFFFFF', dark: '#1C1F26' }, 'background');
   const inputBackground = useThemeColor({ light: '#F0F2F5', dark: '#1C1F26' }, 'background');
@@ -134,7 +136,7 @@ export default function LoginScreen() {
                 Sign in to your account
               </ThemedText>
 
-              <View style={styles.form}>
+              <AuthForm ref={formRef} onSubmit={handleLogin} style={styles.form}>
                 <View style={styles.field}>
                   <ThemedText style={[styles.label, { color: mutedText }]}>Email</ThemedText>
                   <TextInput
@@ -143,8 +145,9 @@ export default function LoginScreen() {
                     placeholderTextColor={placeholder}
                     value={email}
                     onChangeText={setEmail}
+                    nativeID="login-email"
                     textContentType="username"
-                    autoComplete="email"
+                    autoComplete="username"
                     keyboardType="email-address"
                     inputMode="email"
                     autoCapitalize="none"
@@ -162,11 +165,12 @@ export default function LoginScreen() {
                     placeholderTextColor={placeholder}
                     value={password}
                     onChangeText={setPassword}
+                    nativeID="login-password"
                     textContentType="password"
                     autoComplete="current-password"
                     secureTextEntry
                     returnKeyType="done"
-                    onSubmitEditing={handleLogin}
+                    onSubmitEditing={() => formRef.current?.submit()}
                   />
                 </View>
 
@@ -188,7 +192,7 @@ export default function LoginScreen() {
                     { backgroundColor: canSubmit && !isSubmitting ? tint : inputBorder },
                     pressed && canSubmit && styles.buttonPressed,
                   ]}
-                  onPress={handleLogin}
+                  onPress={() => formRef.current?.submit()}
                   disabled={!canSubmit || isSubmitting}
                 >
                   {isSubmitting ? (
@@ -223,7 +227,7 @@ export default function LoginScreen() {
                     )}
                   </Pressable>
                 )}
-              </View>
+              </AuthForm>
             </View>
 
             <View style={styles.footer}>

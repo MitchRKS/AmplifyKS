@@ -10,10 +10,10 @@ import {
   Pressable,
   ScrollView,
   StyleSheet,
-  TextInput,
   View,
 } from 'react-native';
 
+import { AddressAutocompleteInput } from '@/components/address-autocomplete-input';
 import { AppAlert } from '@/components/app-alert';
 import { ContentContainer } from '@/components/content-container';
 import { ThemedText } from '@/components/themed-text';
@@ -21,6 +21,7 @@ import { ThemedView } from '@/components/themed-view';
 import { Radius, Shadows, Spacing } from '@/constants/theme';
 import { useResponsiveLayout } from '@/hooks/use-responsive-layout';
 import { useThemeColor } from '@/hooks/use-theme-color';
+import { geocodeAddress } from '@/services/elected-lookup';
 import { getLegislatorImageAssetLocal } from '@/services/kansas-legislators';
 import { getOfficialsByLocation, type Official } from '@/services/openstates';
 
@@ -36,8 +37,6 @@ export default function LookupScreen() {
   const surface = useThemeColor({ light: '#FFFFFF', dark: '#1C1F26' }, 'background');
   const inputBackground = useThemeColor({ light: '#F0F2F5', dark: '#1C1F26' }, 'background');
   const inputBorder = useThemeColor({ light: '#d5d5d5', dark: '#2D3139' }, 'background');
-  const inputText = useThemeColor({ light: '#1A1D21', dark: '#F0F2F5' }, 'text');
-  const placeholder = useThemeColor({ light: '#9CA3AF', dark: '#6B7280' }, 'text');
   const tint = useThemeColor({ light: '#0097b2', dark: '#33C4DB' }, 'tint');
   const mutedText = useThemeColor({ light: '#5E6368', dark: '#9CA3AF' }, 'text');
   const border = useThemeColor({ light: '#d5d5d5', dark: '#2D3139' }, 'background');
@@ -85,27 +84,6 @@ export default function LookupScreen() {
       setLoading(false);
       AppAlert.alert('Location Error', 'Unable to determine your location. Try entering an address instead.');
     }
-  };
-
-  const geocodeAddress = async (
-    query: string,
-  ): Promise<{ lat: number; lng: number; inKansas: boolean } | null> => {
-    const encoded = encodeURIComponent(query);
-    const url = `https://nominatim.openstreetmap.org/search?q=${encoded}&format=json&limit=1&countrycodes=us&addressdetails=1`;
-    const response = await fetch(url, {
-      headers: { 'User-Agent': 'Amplify/1.0' },
-    });
-    const data = await response.json();
-    if (!data || data.length === 0) return null;
-    const top = data[0];
-    const state = (top.address?.state ?? '') as string;
-    // Only treat a result as out-of-state when Nominatim actually reports a
-    // non-Kansas state — a missing state field shouldn't block a valid lookup.
-    return {
-      lat: parseFloat(top.lat),
-      lng: parseFloat(top.lon),
-      inKansas: state === '' || /kansas/i.test(state),
-    };
   };
 
   const handleSearchAddress = async () => {
@@ -323,15 +301,17 @@ export default function LookupScreen() {
             </View>
 
             <View style={styles.addressRow}>
-              <TextInput
-                style={[styles.addressInput, { backgroundColor: inputBackground, borderColor: inputBorder, color: inputText }]}
+              <AddressAutocompleteInput
                 placeholder="123 Main St, Topeka, KS"
-                placeholderTextColor={placeholder}
                 value={address}
                 onChangeText={setAddress}
-                autoCapitalize="words"
-                returnKeyType="search"
                 onSubmitEditing={handleSearchAddress}
+                onSelectSuggestion={(suggestion) => {
+                  // The suggestion already carries coordinates — go straight
+                  // to the electeds lookup, no geocoding.
+                  setAddress(suggestion.label);
+                  void fetchByCoords(suggestion.lat, suggestion.lng);
+                }}
               />
               <Pressable
                 accessibilityRole="button"
@@ -566,21 +546,17 @@ const styles = StyleSheet.create({
     flex: 1,
     height: 1,
   },
+  // flex-start so the Search button keeps input height while the
+  // autocomplete's suggestion list grows below the input.
   addressRow: {
     flexDirection: 'row',
     gap: Spacing.sm,
-  },
-  addressInput: {
-    flex: 1,
-    borderWidth: 1,
-    borderRadius: Radius.md,
-    paddingHorizontal: 14,
-    paddingVertical: 11,
-    fontSize: 16,
+    alignItems: 'flex-start',
   },
   searchButton: {
     borderRadius: Radius.md,
     paddingHorizontal: 18,
+    paddingVertical: 13,
     justifyContent: 'center',
     alignItems: 'center',
   },

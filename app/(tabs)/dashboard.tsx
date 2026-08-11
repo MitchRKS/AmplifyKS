@@ -11,6 +11,7 @@ import {
   View,
 } from 'react-native';
 
+import { AppAlert } from '@/components/app-alert';
 import { BillCard } from '@/components/bill-card';
 import { ContentContainer } from '@/components/content-container';
 import { MatchScoreBadge } from '@/components/legislator-match-detail';
@@ -22,12 +23,15 @@ import { useLegislatorMatch } from '@/hooks/use-legislator-match';
 import { useOpenTestimonyBillIds } from '@/hooks/use-open-testimony-bills';
 import { useSavedOfficials } from '@/hooks/use-saved-officials';
 import { useThemeColor } from '@/hooks/use-theme-color';
+import { useUserProfile } from '@/hooks/use-user-profile';
 import { getLegislatorImageAssetLocal } from '@/services/kansas-legislators';
 import * as LegiscanAPI from '@/services/legiscan';
 import type { Official } from '@/services/openstates';
 
 // Ported from the iOS app's DashboardView.swift. Section order:
-// My Alerts → Open for Testimony (hidden when empty) → My Electeds.
+// My Alerts → Open for Testimony (hidden when empty) → My Electeds →
+// Saved Electeds (hidden when empty; individually bookmarked officials,
+// kept separate from the address-derived My Electeds).
 // Deliberate deviations from iOS, all pre-decided:
 // - My Electeds stays a vertical list (iOS uses a swipe carousel — awkward
 //   with a mouse); Open for Testimony keeps the carousel.
@@ -87,7 +91,8 @@ const detailLine = (official: Official): string => {
 export default function DashboardScreen() {
   const router = useRouter();
   const { user } = useAuth();
-  const { savedOfficials } = useSavedOfficials();
+  const { profile } = useUserProfile();
+  const { myElecteds, savedElecteds, removeOfficial } = useSavedOfficials();
   const { getMatch } = useLegislatorMatch();
   const { billIds: openBillIds, isLoading: idsLoading } = useOpenTestimonyBillIds();
   const { width } = useWindowDimensions();
@@ -147,12 +152,20 @@ export default function DashboardScreen() {
     return openBills.filter((bill) => idSet.has(String(bill.id)));
   }, [openBills, openBillIds]);
 
-  const sortedOfficials = useMemo(
+  const sortedMyElecteds = useMemo(
     () =>
-      [...savedOfficials].sort(
+      [...myElecteds].sort(
         (a, b) => chamberSortOrder(a.chamber) - chamberSortOrder(b.chamber),
       ),
-    [savedOfficials],
+    [myElecteds],
+  );
+
+  const sortedSavedElecteds = useMemo(
+    () =>
+      [...savedElecteds].sort(
+        (a, b) => chamberSortOrder(a.chamber) - chamberSortOrder(b.chamber),
+      ),
+    [savedElecteds],
   );
 
   const onRefresh = async () => {
@@ -161,11 +174,104 @@ export default function DashboardScreen() {
     setRefreshing(false);
   };
 
+  // Prefer the first name the user set on their Profile; fall back to the
+  // one parsed from the Auth displayName (which can be a handle/username
+  // for social sign-ins — the profile field exists to override that).
+  const greetingName = profile.firstName.trim() || user?.firstName;
+
   const testimonyLoading = idsLoading || billsLoading;
   const showTestimonySection = testimonyLoading || visibleOpenBills.length > 0;
   // iOS: card width = max(240, screenWidth - 72) so the next card peeks.
   // Capped so desktop web doesn't produce absurdly wide carousel cards.
   const carouselCardWidth = Math.min(Math.max(240, width - 72), 340);
+
+  const handleRemoveSaved = (official: Official) => {
+    removeOfficial(official.id).catch((error) => {
+      const message =
+        error instanceof Error ? error.message : 'Unable to remove this official. Please try again.';
+      AppAlert.alert('Error', message);
+    });
+  };
+
+  // Shared by the My Electeds and Saved Electeds sections so the two buckets
+  // can never drift apart visually. `removable` adds the un-bookmark button —
+  // only the Saved Electeds bucket gets it; My Electeds change solely through
+  // a new address search.
+  const renderElectedCard = (official: Official, removable = false) => {
+    const imageAsset = getLegislatorImageAssetLocal(official.id);
+    const match = getMatch(official);
+    const partyColor = getPartyColor(official.party);
+    return (
+      <Pressable
+        key={official.id}
+        style={({ pressed }) => [
+          styles.electedCard,
+          { backgroundColor: surface, borderColor: cardBorder },
+          Shadows.sm,
+          pressed && styles.pressed,
+        ]}
+        onPress={() =>
+          router.push({ pathname: '/legislator-detail', params: { id: official.id } })
+        }
+      >
+        {imageAsset ? (
+          <Image
+            source={imageAsset}
+            style={[styles.photo, { borderColor: photoRing }]}
+            contentFit="cover"
+          />
+        ) : official.image ? (
+          <Image
+            source={{ uri: official.image }}
+            style={[styles.photo, { borderColor: photoRing }]}
+            contentFit="cover"
+          />
+        ) : (
+          <View
+            style={[
+              styles.photo,
+              styles.photoPlaceholder,
+              { backgroundColor: inputBackground, borderColor: photoRing },
+            ]}
+          >
+            <ThemedText style={[styles.photoInitials, { color: mutedText }]}>
+              {(official.givenName ?? '').charAt(0)}
+              {(official.familyName ?? '').charAt(0)}
+            </ThemedText>
+          </View>
+        )}
+
+        <View style={styles.electedContent}>
+          <ThemedText type="defaultSemiBold" style={styles.electedName} numberOfLines={1}>
+            {official.name}
+          </ThemedText>
+          <ThemedText style={[styles.electedTitle, { color: mutedText }]} numberOfLines={1}>
+            {normalizedTitle(official.chamber)}
+          </ThemedText>
+          <ThemedText type="caption" style={{ color: partyColor }} numberOfLines={1}>
+            {detailLine(official)}
+          </ThemedText>
+        </View>
+
+        {match ? <MatchScoreBadge percent={match.compositePercent} /> : null}
+
+        {removable && (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={`Remove ${official.name} from Saved Electeds`}
+            onPress={(e) => {
+              e.stopPropagation();
+              handleRemoveSaved(official);
+            }}
+            hitSlop={8}
+            style={styles.removeSavedButton}
+          >
+            <MaterialIcons name="bookmark" size={22} color={tint} />
+          </Pressable>
+        )}
+      </Pressable>
+    );
+  };
 
   return (
     <ThemedView style={styles.container}>
@@ -177,7 +283,7 @@ export default function DashboardScreen() {
         <ContentContainer>
           <View style={styles.header}>
             <ThemedText type="title">
-              {user?.firstName ? `Hi ${user.firstName}!` : 'Dashboard'}
+              {greetingName ? `Hi ${greetingName}!` : 'Dashboard'}
             </ThemedText>
           </View>
 
@@ -240,71 +346,12 @@ export default function DashboardScreen() {
             </View>
           )}
 
-          {/* ── My Electeds ── */}
+          {/* ── My Electeds (address-derived representatives) ── */}
           <View style={styles.section}>
             <ThemedText type="subtitle" style={styles.sectionTitle}>My Electeds</ThemedText>
 
-            {sortedOfficials.length > 0 ? (
-              sortedOfficials.map((official) => {
-                const imageAsset = getLegislatorImageAssetLocal(official.id);
-                const match = getMatch(official);
-                const partyColor = getPartyColor(official.party);
-                return (
-                  <Pressable
-                    key={official.id}
-                    style={({ pressed }) => [
-                      styles.electedCard,
-                      { backgroundColor: surface, borderColor: cardBorder },
-                      Shadows.sm,
-                      pressed && styles.pressed,
-                    ]}
-                    onPress={() =>
-                      router.push({ pathname: '/legislator-detail', params: { id: official.id } })
-                    }
-                  >
-                    {imageAsset ? (
-                      <Image
-                        source={imageAsset}
-                        style={[styles.photo, { borderColor: photoRing }]}
-                        contentFit="cover"
-                      />
-                    ) : official.image ? (
-                      <Image
-                        source={{ uri: official.image }}
-                        style={[styles.photo, { borderColor: photoRing }]}
-                        contentFit="cover"
-                      />
-                    ) : (
-                      <View
-                        style={[
-                          styles.photo,
-                          styles.photoPlaceholder,
-                          { backgroundColor: inputBackground, borderColor: photoRing },
-                        ]}
-                      >
-                        <ThemedText style={[styles.photoInitials, { color: mutedText }]}>
-                          {(official.givenName ?? '').charAt(0)}
-                          {(official.familyName ?? '').charAt(0)}
-                        </ThemedText>
-                      </View>
-                    )}
-
-                    <View style={styles.electedContent}>
-                      <ThemedText type="defaultSemiBold" style={styles.electedName} numberOfLines={1}>
-                        {official.name}
-                      </ThemedText>
-                      <ThemedText style={[styles.electedTitle, { color: mutedText }]} numberOfLines={1}>
-                        {normalizedTitle(official.chamber)}
-                      </ThemedText>
-                      <ThemedText type="caption" style={{ color: partyColor }} numberOfLines={1}>
-                        {detailLine(official)}
-                      </ThemedText>
-                    </View>
-
-                    {match ? <MatchScoreBadge percent={match.compositePercent} /> : null}
-                  </Pressable>
-                );
-              })
+            {sortedMyElecteds.length > 0 ? (
+              sortedMyElecteds.map((official) => renderElectedCard(official))
             ) : (
               <View style={[styles.emptyCard, { backgroundColor: surface, borderColor: cardBorder }, Shadows.sm]}>
                 <MaterialIcons name="groups" size={32} color={mutedText} />
@@ -328,6 +375,14 @@ export default function DashboardScreen() {
               </View>
             )}
           </View>
+
+          {/* ── Saved Electeds (individually bookmarked, hidden when empty) ── */}
+          {sortedSavedElecteds.length > 0 && (
+            <View style={styles.section}>
+              <ThemedText type="subtitle" style={styles.sectionTitle}>Saved Electeds</ThemedText>
+              {sortedSavedElecteds.map((official) => renderElectedCard(official, true))}
+            </View>
+          )}
         </ContentContainer>
       </ScrollView>
     </ThemedView>
@@ -406,6 +461,9 @@ const styles = StyleSheet.create({
     borderRadius: Radius.md,
     padding: Spacing.lg,
     marginBottom: Spacing.sm + 2, // iOS: 10pt card gap
+  },
+  removeSavedButton: {
+    padding: Spacing.xs,
   },
   photo: {
     width: 50,

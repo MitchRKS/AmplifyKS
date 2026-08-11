@@ -94,8 +94,10 @@ export function TestimonyForm({ billNumber, billTitle, committee }: TestimonyFor
     if (seededRef.current || !profileLoaded) return;
     seededRef.current = true;
     if (user) {
-      setFirstName((prev) => prev || user.firstName || '');
-      setLastName((prev) => prev || user.lastName || '');
+      // Profile names win over the Auth displayName (which can be a
+      // handle/username for social sign-ins).
+      setFirstName((prev) => prev || profile.firstName || user.firstName || '');
+      setLastName((prev) => prev || profile.lastName || user.lastName || '');
       setEmail((prev) => prev || user.email || '');
     }
     setStreetAddress((prev) => prev || profile.streetAddress || '');

@@ -147,7 +147,23 @@ export const getOfficialsByLocation = async (
   }
 
   const data: PeopleResponse = await response.json();
-  return data.results.map(transformPerson);
+  const officials = data.results.map(transformPerson);
+
+  // people.geo can miss federal officials for a point (boundary gaps in
+  // OpenStates' congressional shapefiles). U.S. Senators represent the whole
+  // state, so when none came back they can safely be filled in from the
+  // cached federal delegation. A missing U.S. House rep can't be — which one
+  // is right depends on the congressional district this point falls in.
+  if (!officials.some((official) => official.chamber === 'U.S. Senate')) {
+    try {
+      const delegation = await getKansasFederalDelegation();
+      officials.push(...delegation.filter((official) => official.chamber === 'U.S. Senate'));
+    } catch {
+      // Best-effort — the point lookup's own results still stand.
+    }
+  }
+
+  return officials;
 };
 
 interface OpenStatesOffice {

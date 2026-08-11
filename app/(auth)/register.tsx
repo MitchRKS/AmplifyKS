@@ -13,6 +13,7 @@ import {
 } from 'react-native';
 
 import { AppAlert } from '@/components/app-alert';
+import { AuthForm, type AuthFormHandle } from '@/components/auth-form';
 import { ContentContainer } from '@/components/content-container';
 import { SocialAuthButtons } from '@/components/social-auth-buttons';
 import { ThemedText } from '@/components/themed-text';
@@ -36,6 +37,7 @@ export default function RegisterScreen() {
   const emailRef = useRef<TextInput>(null);
   const passwordRef = useRef<TextInput>(null);
   const confirmPasswordRef = useRef<TextInput>(null);
+  const formRef = useRef<AuthFormHandle>(null);
 
   const surface = useThemeColor({ light: '#FFFFFF', dark: '#1C1F26' }, 'background');
   const inputBackground = useThemeColor({ light: '#F0F2F5', dark: '#1C1F26' }, 'background');
@@ -109,7 +111,7 @@ export default function RegisterScreen() {
                 Join Amplify to make your voice heard
               </ThemedText>
 
-              <View style={styles.form}>
+              <AuthForm ref={formRef} onSubmit={handleRegister} style={styles.form}>
                 <View style={styles.row}>
                   <View style={[styles.field, styles.halfField]}>
                     <ThemedText style={[styles.label, { color: mutedText }]}>First Name</ThemedText>
@@ -119,8 +121,9 @@ export default function RegisterScreen() {
                       placeholderTextColor={placeholder}
                       value={firstName}
                       onChangeText={setFirstName}
+                      nativeID="register-first-name"
                       textContentType="givenName"
-                      autoComplete="name-given"
+                      autoComplete={Platform.OS === 'web' ? 'given-name' : 'name-given'}
                       autoCapitalize="words"
                       returnKeyType="next"
                       onSubmitEditing={() => lastNameRef.current?.focus()}
@@ -136,8 +139,9 @@ export default function RegisterScreen() {
                       placeholderTextColor={placeholder}
                       value={lastName}
                       onChangeText={setLastName}
+                      nativeID="register-last-name"
                       textContentType="familyName"
-                      autoComplete="name-family"
+                      autoComplete={Platform.OS === 'web' ? 'family-name' : 'name-family'}
                       autoCapitalize="words"
                       returnKeyType="next"
                       onSubmitEditing={() => emailRef.current?.focus()}
@@ -154,8 +158,11 @@ export default function RegisterScreen() {
                     placeholderTextColor={placeholder}
                     value={email}
                     onChangeText={setEmail}
+                    nativeID="register-email"
                     textContentType="emailAddress"
-                    autoComplete="email"
+                    // 'username' is the token password managers key on when
+                    // saving the new credential (the email IS the username).
+                    autoComplete={Platform.OS === 'web' ? 'username' : 'email'}
                     keyboardType="email-address"
                     inputMode="email"
                     autoCapitalize="none"
@@ -173,6 +180,7 @@ export default function RegisterScreen() {
                     placeholderTextColor={placeholder}
                     value={password}
                     onChangeText={setPassword}
+                    nativeID="register-password"
                     textContentType="newPassword"
                     autoComplete="new-password"
                     secureTextEntry
@@ -190,10 +198,12 @@ export default function RegisterScreen() {
                     placeholderTextColor={placeholder}
                     value={confirmPassword}
                     onChangeText={setConfirmPassword}
+                    nativeID="register-confirm-password"
                     textContentType="newPassword"
+                    autoComplete="new-password"
                     secureTextEntry
                     returnKeyType="done"
-                    onSubmitEditing={handleRegister}
+                    onSubmitEditing={() => formRef.current?.submit()}
                   />
                 </View>
 
@@ -204,7 +214,7 @@ export default function RegisterScreen() {
                     { backgroundColor: canSubmit && !isSubmitting ? tint : inputBorder },
                     pressed && canSubmit && styles.buttonPressed,
                   ]}
-                  onPress={handleRegister}
+                  onPress={() => formRef.current?.submit()}
                   disabled={!canSubmit || isSubmitting}
                 >
                   {isSubmitting ? (
@@ -215,7 +225,7 @@ export default function RegisterScreen() {
                 </Pressable>
 
                 <SocialAuthButtons />
-              </View>
+              </AuthForm>
             </View>
 
             <View style={styles.footer}>

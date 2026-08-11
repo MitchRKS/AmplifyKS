@@ -88,6 +88,18 @@ service cloud.firestore {
       match /actionHistory/{recordId} {
         allow read, write: if isAuthenticated() && request.auth.uid == userId;
       }
+
+      // Private per-legislator notes (components/legislator-notes.tsx)
+      match /legislatorNotes/{legislatorId} {
+        allow read, write: if isAuthenticated() && request.auth.uid == userId;
+      }
+
+      // Private per-bill notes - written by the iOS app (BillNotesManager).
+      // This subcollection had no rule, so iOS cloud sync was silently
+      // rejected and notes lived only in local UserDefaults.
+      match /billNotes/{billId} {
+        allow read, write: if isAuthenticated() && request.auth.uid == userId;
+      }
     }
     
     // Open Bills collection - Read by all authenticated users, Write by admins only

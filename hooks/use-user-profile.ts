@@ -5,6 +5,10 @@ import { useAuth } from '@/contexts/auth-context';
 import { getFirestoreDb } from '@/services/firebase';
 
 export interface UserProfile {
+  // Preferred name, editable on Profile. Screens fall back to the name
+  // parsed from the Firebase Auth displayName when these are blank.
+  firstName: string;
+  lastName: string;
   phone: string;
   streetAddress: string;
   city: string;
@@ -14,6 +18,8 @@ export interface UserProfile {
 }
 
 const defaultProfile: UserProfile = {
+  firstName: '',
+  lastName: '',
   phone: '',
   streetAddress: '',
   city: '',

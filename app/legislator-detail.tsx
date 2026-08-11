@@ -5,6 +5,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Linking, Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
 import { AppAlert } from '@/components/app-alert';
+import { LegislatorNotes } from '@/components/legislator-notes';
 import { LegislatorRating } from '@/components/legislator-rating';
 import { MatchScoreBadge } from '@/components/legislator-match-detail';
 import { ContentContainer } from '@/components/content-container';
@@ -34,7 +35,7 @@ import { shareContent } from '@/services/share';
 type ProfileTab = 'contact' | 'committees' | 'bills' | 'votes';
 
 const TABS: { key: ProfileTab; label: string; icon: React.ComponentProps<typeof MaterialIcons>['name'] }[] = [
-  { key: 'contact', label: 'Contact', icon: 'contact-phone' },
+  { key: 'contact', label: 'Info', icon: 'info-outline' },
   { key: 'committees', label: 'Committees', icon: 'groups' },
   { key: 'bills', label: 'Bills', icon: 'description' },
   { key: 'votes', label: 'Votes', icon: 'how-to-vote' },
@@ -59,7 +60,7 @@ export default function LegislatorDetailScreen() {
   const [votesLoading, setVotesLoading] = useState(false);
   const votesLoaded = useRef(false);
 
-  const { saveOfficial, isSaved } = useSavedOfficials();
+  const { saveOfficial, removeOfficial, isSaved, isMyElected } = useSavedOfficials();
   const { recordAction } = useGamification();
   const { getMatch, computeScore, isMatchAvailable, bt50Loaded } = useLegislatorMatch();
 
@@ -169,11 +170,20 @@ export default function LegislatorDetailScreen() {
 
   const toggleSave = () => {
     if (!legislator) return;
-    if (saved) {
+    if (isMyElected(legislator.id)) {
       AppAlert.alert(
-        'Set by address',
-        'Your electeds are set from your address. Run a new search by address to change your My Electeds.',
+        'Part of My Electeds',
+        'This official is one of your My Electeds, which are set from your address. Save a new address to change them.',
       );
+      return;
+    }
+    if (saved) {
+      // A manual bookmark — tapping again un-saves it.
+      removeOfficial(legislator.id).catch((error) => {
+        const message =
+          error instanceof Error ? error.message : 'Unable to remove this official. Please try again.';
+        AppAlert.alert('Error', message);
+      });
       return;
     }
     saveOfficial(legislator);
@@ -203,7 +213,7 @@ export default function LegislatorDetailScreen() {
               <IconSymbol name="chevron.left" size={24} color={tint} />
             </Pressable>
             <ThemedText type="defaultSemiBold" style={styles.navTitle}>
-              Legislator
+              Elected
             </ThemedText>
             <View style={styles.navSpacer} />
           </View>
@@ -230,7 +240,7 @@ export default function LegislatorDetailScreen() {
             <IconSymbol name="chevron.left" size={24} color={tint} />
           </Pressable>
           <ThemedText type="defaultSemiBold" style={styles.navTitle}>
-            Legislator
+            Elected
           </ThemedText>
           <View style={styles.navActions}>
             <Pressable
@@ -316,8 +326,6 @@ export default function LegislatorDetailScreen() {
             </View>
           </View>
 
-          <LegislatorRating legislatorId={legislator.id} />
-
           {/* Tab Bar */}
           <View style={[styles.tabBar, { borderColor: border }]}>
             {TABS.map((tab) => {
@@ -352,16 +360,22 @@ export default function LegislatorDetailScreen() {
 
           {/* Tab Content */}
           {activeTab === 'contact' && (
-            <ContactTab
-              legislator={legislator}
-              capitolOffice={capitolOffice}
-              tint={tint}
-              mutedText={mutedText}
-              surface={surface}
-              border={border}
-              inputBackground={inputBackground}
-              onContact={(desc) => recordAction('Contact Legislator', desc)}
-            />
+            <>
+              <ContactTab
+                legislator={legislator}
+                capitolOffice={capitolOffice}
+                tint={tint}
+                mutedText={mutedText}
+                surface={surface}
+                border={border}
+                inputBackground={inputBackground}
+                onContact={(desc) => recordAction('Contact Legislator', desc)}
+              />
+              {/* Rating and personal notes live under the contact info on the
+                  Info tab (previously pinned above the tab bar). */}
+              <LegislatorRating legislatorId={legislator.id} />
+              <LegislatorNotes legislatorId={legislator.id} />
+            </>
           )}
           {activeTab === 'committees' && (
             <CommitteesTab

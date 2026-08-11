@@ -45,3 +45,6 @@ app-example
 
 # Local Netlify folder
 .netlify
+
+# Walkbook reports contain voter PII — never commit
+tools/walkbook-report/reports/

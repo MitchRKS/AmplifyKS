@@ -3,19 +3,24 @@ import { useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, View } from 'react-native';
 
 import { AppAlert } from '@/components/app-alert';
+import { LinkAccountModal } from '@/components/link-account-modal';
 import { ThemedText } from '@/components/themed-text';
 import { Radius, Spacing } from '@/constants/theme';
-import { useAuth } from '@/contexts/auth-context';
+import { useAuth, type PendingSocialLink } from '@/contexts/auth-context';
 import { useThemeColor } from '@/hooks/use-theme-color';
 
 /**
  * "Continue with Google / Apple" buttons shared by the login and register
  * screens. With OAuth providers, registering and signing in are the same
- * flow — Firebase creates the account on first provider sign-in.
+ * flow — Firebase creates the account on first provider sign-in. If the
+ * email already has an account under a different method, LinkAccountModal
+ * walks the user through signing in the original way and linking the new
+ * provider.
  */
 export function SocialAuthButtons() {
   const { loginWithGoogle, loginWithApple } = useAuth();
   const [pendingProvider, setPendingProvider] = useState<'google' | 'apple' | null>(null);
+  const [pendingLink, setPendingLink] = useState<PendingSocialLink | null>(null);
 
   const border = useThemeColor({ light: '#d5d5d5', dark: '#2D3139' }, 'background');
   const mutedText = useThemeColor({ light: '#5E6368', dark: '#9CA3AF' }, 'text');
@@ -27,8 +32,11 @@ export function SocialAuthButtons() {
     try {
       const action = provider === 'google' ? loginWithGoogle : loginWithApple;
       const result = await action();
-      // Cancelled popups return success:false with no error — stay quiet.
-      if (!result.success && result.error) {
+      if (result.pendingLink) {
+        // Existing account under a different method — offer to link.
+        setPendingLink(result.pendingLink);
+      } else if (!result.success && result.error) {
+        // Cancelled popups return success:false with no error — stay quiet.
         AppAlert.alert('Sign-in Failed', result.error);
       }
     } catch {
@@ -91,6 +99,10 @@ export function SocialAuthButtons() {
           )}
         </Pressable>
       </View>
+
+      {pendingLink && (
+        <LinkAccountModal link={pendingLink} onClose={() => setPendingLink(null)} />
+      )}
     </View>
   );
 }
