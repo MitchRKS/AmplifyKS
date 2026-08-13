@@ -1,8 +1,10 @@
+import { useEffect, useState } from 'react';
 import { Pressable, StyleSheet, View, type ViewStyle } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
 import { Radius, Shadows } from '@/constants/theme';
 import { useThemeColor } from '@/hooks/use-theme-color';
+import { fetchOverrides, tagBill } from '@/services/bill-category-tagger';
 
 /**
  * Shared bill list card, ported from the iOS app's BillCardView.swift so
@@ -80,6 +82,19 @@ export function BillCard({
 
   const identity = committeeName ? `${billNumber} - ${committeeName}` : billNumber;
 
+  // Issue-category topic chip from the app's own tagger (keyword heuristics
+  // + the billCategoryTags Firestore overrides) — purely informational, no
+  // scoring. Most bills tag to nothing and render no chip. The overrides
+  // fetch is deduped module-wide; the state bump re-tags once they land.
+  const [overridesLoaded, setOverridesLoaded] = useState(false);
+  useEffect(() => {
+    fetchOverrides()
+      .then(() => setOverridesLoaded(true))
+      .catch(() => {});
+  }, []);
+  void overridesLoaded;
+  const topic = tagBill(billNumber, description)?.category ?? null;
+
   const actionLine = (() => {
     const sanitized = lastAction ? sanitizeLastAction(lastAction) : '';
     if (!sanitized) return 'No recent action available.';
@@ -105,6 +120,14 @@ export function BillCard({
       <ThemedText style={[styles.description, { color: mutedText }]} numberOfLines={1}>
         {description}
       </ThemedText>
+
+      {topic && (
+        <View style={styles.topicRow}>
+          <View style={[styles.topicChip, { backgroundColor: tint + '14' }]}>
+            <ThemedText style={[styles.topicText, { color: tint }]}>{topic}</ThemedText>
+          </View>
+        </View>
+      )}
 
       <View style={[styles.divider, { backgroundColor: divider }]} />
 
@@ -135,6 +158,18 @@ const styles = StyleSheet.create({
   description: {
     fontSize: 15,
     lineHeight: 20,
+  },
+  topicRow: {
+    flexDirection: 'row',
+  },
+  topicChip: {
+    borderRadius: Radius.sm,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+  },
+  topicText: {
+    fontSize: 12,
+    fontWeight: '600',
   },
   divider: {
     height: StyleSheet.hairlineWidth,
