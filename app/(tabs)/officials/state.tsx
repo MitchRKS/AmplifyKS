@@ -463,7 +463,7 @@ const styles = StyleSheet.create({
   header: { paddingHorizontal: Spacing.xl, paddingTop: Spacing.md, paddingBottom: Spacing.md },
   subtitle: { fontSize: 15, marginTop: Spacing.xs },
   searchRow: { flexDirection: 'row', paddingHorizontal: Spacing.xl, paddingBottom: Spacing.md, gap: Spacing.sm },
-  searchInputWrapper: { flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderRadius: Radius.md, paddingHorizontal: Spacing.md, gap: Spacing.sm },
+  searchInputWrapper: { flex: 1, flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderRadius: Radius.md, paddingHorizontal: Spacing.md, gap: Spacing.sm },
   searchInput: { flex: 1, paddingVertical: 11, fontSize: 16 },
   filterButton: {
     width: 44,
