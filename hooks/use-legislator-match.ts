@@ -45,8 +45,15 @@ interface MatchState {
   computing: Set<string>;
 }
 
-export function useLegislatorMatch() {
-  const { result } = useQuiz();
+export function useLegislatorMatch(
+  // Callers that already hold a quiz result (e.g. the results screen right
+  // after submission) pass it in so matching never depends on this hook's
+  // own Firestore re-read of quizs/latest — which can lag or diverge from
+  // the result the caller is rendering (offline retake, first-submit race).
+  resultOverride?: ReturnType<typeof useQuiz>['result'],
+) {
+  const { result: innerResult } = useQuiz();
+  const result = resultOverride ?? innerResult;
   const [state, setState] = useState<MatchState>({
     bt50Scorecard: null,
     bt50Scores: [],
@@ -94,7 +101,10 @@ export function useLegislatorMatch() {
           compositePercent: matchPct,
           source: 'bt50',
           bt50Score: bt50,
-          votingRecordMatch: null,
+          // BT50 stays authoritative for the composite, but when a real
+          // voting-record analysis exists (computed via evenIfBt50Covered)
+          // expose it so consumers can show genuine per-issue detail.
+          votingRecordMatch: stateRef.current.votingRecordMatches[official.id] ?? null,
           userAlignmentScore: userAlignment,
         };
       }
@@ -122,8 +132,13 @@ export function useLegislatorMatch() {
   );
 
   const computeScore = useCallback(
-    async (official: Official) => {
+    async (official: Official, options: { evenIfBt50Covered?: boolean } = {}) => {
       if (!result || Object.keys(result.categoryScores).length === 0) return;
+
+      // Voting-record scans only make sense for state legislators — federal
+      // officials have no KS session votes, and resolvePeopleId's last-name
+      // fallback could misattribute a state legislator's record to them.
+      if (official.chamber !== 'House' && official.chamber !== 'Senate') return;
 
       const bt50 = matchLegislatorToScore(
         official.name,
@@ -131,7 +146,7 @@ export function useLegislatorMatch() {
         official.chamber,
         stateRef.current.bt50Scores,
       );
-      if (bt50) return;
+      if (bt50 && !options.evenIfBt50Covered) return;
 
       if (stateRef.current.votingRecordMatches[official.id]) return;
       if (stateRef.current.computing.has(official.id)) return;

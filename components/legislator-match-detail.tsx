@@ -15,7 +15,9 @@ import {
 
 type IconName = React.ComponentProps<typeof MaterialIcons>['name'];
 
-const scoreColor = (percent: number): string => {
+// Shared with the quiz results' electeds-by-issue breakdown so match colors
+// can't drift between screens.
+export const scoreColor = (percent: number): string => {
   if (percent >= 75) return '#4CAF50';
   if (percent >= 50) return '#ffc629';
   return '#fa3332';

@@ -1,6 +1,6 @@
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { useRouter } from 'expo-router';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Pressable,
@@ -20,9 +20,12 @@ import {
   type IssueCategory,
   type ResponseValue,
 } from '@/constants/quiz-questions';
+import { scoreColor } from '@/components/legislator-match-detail';
 import { Radius, Shadows, Spacing } from '@/constants/theme';
 import { useGamification } from '@/contexts/gamification-context';
+import { useLegislatorMatch } from '@/hooks/use-legislator-match';
 import { useQuiz } from '@/hooks/use-quiz';
+import { useSavedOfficials } from '@/hooks/use-saved-officials';
 import { positionText } from '@/services/legislator-match-engine';
 import { useThemeColor } from '@/hooks/use-theme-color';
 
@@ -383,42 +386,13 @@ function ResultsView({
             </ThemedText>
           </View>
 
-          <View style={[styles.card, { backgroundColor: surface, borderColor: border }, Shadows.sm]}>
-            <ThemedText type="subtitle" style={styles.sectionTitle}>
-              Your Positions
-            </ThemedText>
-
-            {ISSUE_CATEGORIES.map((cat) => {
-              const score = result.categoryScores[cat];
-              if (score == null) return null;
-              const label = positionText(score);
-              return (
-                <View key={cat} style={styles.categoryRow}>
-                  <View style={styles.categoryHeader}>
-                    <View style={styles.categoryLabelGroup}>
-                      <MaterialIcons
-                        name={CATEGORY_ICONS[cat as IssueCategory] as IconName}
-                        size={16}
-                        color={mutedText}
-                      />
-                      <ThemedText style={styles.categoryLabel}>{cat}</ThemedText>
-                    </View>
-                    <ThemedText style={[styles.categoryPct, { color: tint }]}>
-                      {label}
-                    </ThemedText>
-                  </View>
-                  <View style={[styles.barOuter, { backgroundColor: border + '40' }]}>
-                    <View
-                      style={[
-                        styles.barInner,
-                        { backgroundColor: tint, width: `${Math.round(((score - 1) / 4) * 100)}%` },
-                      ]}
-                    />
-                  </View>
-                </View>
-              );
-            })}
-          </View>
+          <ElectedsByIssueCard
+            result={result}
+            tint={tint}
+            mutedText={mutedText}
+            surface={surface}
+            border={border}
+          />
 
           <View style={styles.resultActions}>
             <Pressable
@@ -450,6 +424,156 @@ function ResultsView({
         </ContentContainer>
       </ScrollView>
     </ThemedView>
+  );
+}
+
+/* ── Electeds-by-Issue Breakdown ──
+   Replaces the old "Your Positions" list: for each issue category, how the
+   user aligns with each of their My Electeds. Per-issue rows exist only for
+   voting-record-scored legislators; BT50 scorecard matches are composite-only
+   by design (the API has no category data — never fabricate it), so those
+   electeds appear under a single "Overall Match" group instead. */
+
+function ElectedsByIssueCard({
+  result,
+  tint,
+  mutedText,
+  surface,
+  border,
+}: {
+  result: NonNullable<ReturnType<typeof useQuiz>['result']>;
+  tint: string;
+  mutedText: string;
+  surface: string;
+  border: string;
+}) {
+  const { myElecteds, isLoaded } = useSavedOfficials();
+  // Pass the rendered result in so matching uses exactly what's on screen,
+  // not the hook's own (possibly lagging) Firestore re-read.
+  const { getMatch, computeScore, isComputing } = useLegislatorMatch(result);
+
+  // Kick off voting-record analysis for each state elected. evenIfBt50Covered
+  // because BT50 covers essentially the whole KS Legislature and only has
+  // composite scores — the per-issue rows here need real vote data. The hook
+  // dedupes in-flight work, skips non-state chambers, and the underlying
+  // bill/roll-call fetches are cached and shared.
+  useEffect(() => {
+    myElecteds.forEach((official) => void computeScore(official, { evenIfBt50Covered: true }));
+  }, [myElecteds, computeScore]);
+
+  const matches = myElecteds.map((official) => ({ official, match: getMatch(official) }));
+  const vrMatches = matches.filter((m) => m.match?.votingRecordMatch != null);
+  const bt50Matches = matches.filter((m) => m.match != null && m.match.votingRecordMatch == null);
+  // Electeds with no scoreable data at all (federal delegation, governor —
+  // no KS session votes and no numeric-district BT50 row).
+  const unmatched = matches.filter((m) => m.match == null);
+  const anyComputing = myElecteds.some((official) => isComputing(official.id));
+
+  const categoryBlocks = ISSUE_CATEGORIES.map((cat) => {
+    const userScore = result.categoryScores[cat];
+    const rows = vrMatches.flatMap(({ official, match }) => {
+      const catScore = match?.votingRecordMatch?.categoryScores.find((s) => s.category === cat);
+      return catScore ? [{ official, percent: catScore.alignmentPercent }] : [];
+    });
+    return { cat, userScore, rows };
+  }).filter((block) => block.userScore != null && block.rows.length > 0);
+
+  const hasAnyContent = categoryBlocks.length > 0 || bt50Matches.length > 0;
+
+  const matchRow = (key: string, name: string, percent: number) => (
+    <View key={key} style={styles.electedMatchRow}>
+      <ThemedText type="caption" style={styles.electedMatchName} numberOfLines={1}>
+        {name}
+      </ThemedText>
+      <View style={[styles.barOuter, styles.electedMatchBar, { backgroundColor: border + '40' }]}>
+        <View
+          style={[styles.barInner, { backgroundColor: scoreColor(percent), width: `${percent}%` }]}
+        />
+      </View>
+      <ThemedText style={[styles.electedMatchPct, { color: scoreColor(percent) }]}>
+        {percent}%
+      </ThemedText>
+    </View>
+  );
+
+  return (
+    <View style={[styles.card, { backgroundColor: surface, borderColor: border }, Shadows.sm]}>
+      <ThemedText type="subtitle" style={styles.sectionTitle}>
+        How You Match Your Electeds
+      </ThemedText>
+
+      {!isLoaded ? (
+        <View style={styles.computingRow}>
+          <ActivityIndicator size="small" color={tint} />
+        </View>
+      ) : myElecteds.length === 0 ? (
+        <ThemedText type="caption" style={[styles.byIssueNote, { color: mutedText }]}>
+          Set your electeds with the address lookup on the Electeds tab, then come back to see how
+          you align with them on each issue.
+        </ThemedText>
+      ) : (
+        <>
+          {categoryBlocks.map(({ cat, userScore, rows }) => (
+            <View key={cat} style={styles.categoryRow}>
+              <View style={styles.categoryHeader}>
+                <View style={styles.categoryLabelGroup}>
+                  <MaterialIcons
+                    name={CATEGORY_ICONS[cat as IssueCategory] as IconName}
+                    size={16}
+                    color={mutedText}
+                  />
+                  <ThemedText style={styles.categoryLabel}>{cat}</ThemedText>
+                </View>
+                <ThemedText type="caption" style={{ color: mutedText }}>
+                  You: {positionText(userScore!)}
+                </ThemedText>
+              </View>
+              {rows.map(({ official, percent }) => matchRow(official.id, official.name, percent))}
+            </View>
+          ))}
+
+          {bt50Matches.length > 0 && (
+            <View style={styles.categoryRow}>
+              <View style={styles.categoryHeader}>
+                <View style={styles.categoryLabelGroup}>
+                  <MaterialIcons name="assessment" size={16} color={mutedText} />
+                  <ThemedText style={styles.categoryLabel}>Overall Match</ThemedText>
+                </View>
+              </View>
+              {bt50Matches.map(({ official, match }) =>
+                matchRow(official.id, official.name, match!.compositePercent),
+              )}
+              <ThemedText type="caption" style={[styles.byIssueNote, { color: mutedText }]}>
+                Scorecard-based matches don&apos;t include per-issue detail.
+              </ThemedText>
+            </View>
+          )}
+
+          {unmatched.length > 0 && !anyComputing && (
+            <ThemedText type="caption" style={[styles.byIssueNote, { color: mutedText }]}>
+              No scored voting record for{' '}
+              {unmatched.map((m) => m.official.name).join(', ')} — issue-level matching covers
+              Kansas state legislators.
+            </ThemedText>
+          )}
+
+          {anyComputing && (
+            <View style={styles.computingRow}>
+              <ActivityIndicator size="small" color={tint} />
+              <ThemedText type="caption" style={{ color: mutedText }}>
+                Analyzing voting records…
+              </ThemedText>
+            </View>
+          )}
+
+          {!hasAnyContent && !anyComputing && unmatched.length === 0 && (
+            <ThemedText type="caption" style={[styles.byIssueNote, { color: mutedText }]}>
+              No match data is available for your electeds yet.
+            </ThemedText>
+          )}
+        </>
+      )}
+    </View>
   );
 }
 
@@ -582,6 +706,35 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     fontSize: 48,
     fontWeight: '800',
+  },
+  electedMatchRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.sm,
+    marginTop: Spacing.xs,
+  },
+  electedMatchName: {
+    flexBasis: 110,
+    flexShrink: 0,
+  },
+  electedMatchBar: {
+    flex: 1,
+  },
+  electedMatchPct: {
+    fontSize: 13,
+    fontWeight: '700',
+    minWidth: 40,
+    textAlign: 'right',
+  },
+  computingRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.sm,
+    marginTop: Spacing.md,
+  },
+  byIssueNote: {
+    marginTop: Spacing.sm,
+    lineHeight: 18,
   },
   categoryRow: {
     marginBottom: Spacing.lg,
