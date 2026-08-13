@@ -52,6 +52,8 @@ const STATUS_MESSAGES: Record<string, { title: string; message: string }> = {
   },
 };
 
+// Same values as TestimonyDisposition — the position is set by admins per
+// bill (billTestimony/{billId}.disposition), no longer chosen by the user.
 type Position = 'support' | 'neutral' | 'oppose';
 
 const POSITION_LABELS: Record<Position, string> = {
@@ -68,9 +70,11 @@ interface TestimonyFormProps {
   billNumber: string;
   billTitle: string;
   committee: string;
+  /** Admin-set stance for this bill; defaults to neutral when unset. */
+  disposition?: Position | null;
 }
 
-export function TestimonyForm({ billNumber, billTitle, committee }: TestimonyFormProps) {
+export function TestimonyForm({ billNumber, billTitle, committee, disposition }: TestimonyFormProps) {
   const { user } = useAuth();
   const { profile, isLoaded: profileLoaded } = useUserProfile();
   const { recordAction } = useGamification();
@@ -81,7 +85,7 @@ export function TestimonyForm({ billNumber, billTitle, committee }: TestimonyFor
   const [city, setCity] = useState('');
   const [state, setState] = useState('KS');
   const [zipCode, setZipCode] = useState('');
-  const [position, setPosition] = useState<Position>('support');
+  const position: Position = disposition ?? 'neutral';
   const [testimony, setTestimony] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
@@ -382,27 +386,18 @@ export function TestimonyForm({ billNumber, billTitle, committee }: TestimonyFor
           <ThemedText style={[styles.stockText, { color: mutedText }]}>{city || '[Your City]'}</ThemedText>
         </View>
 
-        <ThemedText style={styles.label}>Position *</ThemedText>
-        <View style={styles.segment}>
-          {(['support', 'neutral', 'oppose'] as Position[]).map((choice) => {
-            const selected = position === choice;
-            return (
-              <Pressable
-                key={choice}
-                accessibilityRole="button"
-                accessibilityState={{ selected }}
-                style={[
-                  styles.segmentButton,
-                  { borderColor: selected ? tint : inputBorder, backgroundColor: selected ? tint : 'transparent' },
-                ]}
-                onPress={() => setPosition(choice)}
-              >
-                <ThemedText style={[styles.segmentText, selected && styles.segmentTextSelected]}>
-                  {POSITION_LABELS[choice]}
-                </ThemedText>
-              </Pressable>
-            );
-          })}
+        <ThemedText style={styles.label}>Position</ThemedText>
+        <View style={styles.positionRow}>
+          <View style={[styles.positionChip, { borderColor: tint, backgroundColor: tint + '15' }]}>
+            <ThemedText style={[styles.positionChipText, { color: tint }]}>
+              {POSITION_LABELS[position]}
+            </ThemedText>
+          </View>
+          <ThemedText type="caption" style={[styles.positionHint, { color: mutedText }]}>
+            {disposition
+              ? 'Set for this bill by Mainstream Coalition'
+              : 'Default position — no stance has been set for this bill'}
+          </ThemedText>
         </View>
       </View>
 
@@ -698,23 +693,23 @@ const styles = StyleSheet.create({
   field: {
     gap: Spacing.sm,
   },
-  segment: {
+  positionRow: {
     flexDirection: 'row',
-    gap: Spacing.sm,
+    alignItems: 'center',
+    gap: Spacing.md,
   },
-  segmentButton: {
-    flex: 1,
+  positionChip: {
     borderWidth: 1.5,
     borderRadius: Radius.full,
-    paddingVertical: 10,
-    alignItems: 'center',
+    paddingVertical: 8,
+    paddingHorizontal: Spacing.xl,
   },
-  segmentText: {
+  positionChipText: {
     fontWeight: '700',
     fontSize: 15,
   },
-  segmentTextSelected: {
-    color: '#fff',
+  positionHint: {
+    flex: 1,
   },
   submitButton: {
     borderRadius: Radius.md,

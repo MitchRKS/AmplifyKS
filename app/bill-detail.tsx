@@ -6,6 +6,7 @@ import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Switch, View } fr
 import { AppAlert } from '@/components/app-alert';
 import { ContentContainer } from '@/components/content-container';
 import { BillNotes } from '@/components/bill-notes';
+import { TalkingPointsCard } from '@/components/talking-points-card';
 import { TestimonyForm } from '@/components/testimony-form';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
@@ -53,7 +54,13 @@ export default function BillDetailScreen() {
   const [loading, setLoading] = useState(true);
   const [testimonyExpanded, setTestimonyExpanded] = useState(false);
   const { profile } = useUserProfile();
-  const { isOpen: testimonyOpen, isLoading: testimonyStatusLoading, toggleOpen } = useBillTestimonyStatus(params.id as string);
+  const {
+    isOpen: testimonyOpen,
+    disposition,
+    isLoading: testimonyStatusLoading,
+    toggleOpen,
+    setDisposition,
+  } = useBillTestimonyStatus(params.id as string);
   const { recordAction } = useGamification();
 
   useEffect(() => {
@@ -317,8 +324,55 @@ export default function BillDetailScreen() {
                   ? 'Users can draft and submit testimony for this bill.'
                   : 'Toggle on to allow users to submit testimony.'}
               </ThemedText>
+
+              {/* Organization stance — users' testimony position is locked to
+                  this instead of being chosen per submission. */}
+              <ThemedText type="caption" style={{ color: mutedText, marginTop: Spacing.md }}>
+                Testimony position
+              </ThemedText>
+              <View style={styles.dispositionRow}>
+                {(
+                  [
+                    { value: 'support', label: 'Favorable' },
+                    { value: 'neutral', label: 'Neutral' },
+                    { value: 'oppose', label: 'Opposition' },
+                  ] as const
+                ).map((option) => {
+                  const selected = disposition === option.value;
+                  return (
+                    <Pressable
+                      key={option.value}
+                      accessibilityRole="button"
+                      accessibilityState={{ selected }}
+                      style={[
+                        styles.dispositionButton,
+                        {
+                          borderColor: selected ? tint : border,
+                          backgroundColor: selected ? tint : 'transparent',
+                        },
+                        testimonyStatusLoading && styles.dispositionLoading,
+                      ]}
+                      onPress={() => void setDisposition(option.value)}
+                      disabled={testimonyStatusLoading}
+                    >
+                      <ThemedText
+                        style={[styles.dispositionText, selected && styles.dispositionTextSelected]}
+                      >
+                        {option.label}
+                      </ThemedText>
+                    </Pressable>
+                  );
+                })}
+              </View>
+              {!testimonyStatusLoading && !disposition && (
+                <ThemedText type="caption" style={{ color: mutedText, marginTop: Spacing.xs }}>
+                  No position set — testimony defaults to Neutral until one is chosen.
+                </ThemedText>
+              )}
             </View>
           )}
+
+          <TalkingPointsCard billId={Number(params.id)} isAdmin={isAdminRole(profile.role)} />
 
           {!testimonyStatusLoading && testimonyOpen && (
             <>
@@ -342,6 +396,7 @@ export default function BillDetailScreen() {
                     billNumber={bill.billNumber}
                     billTitle={bill.title}
                     committee={bill.committee}
+                    disposition={disposition}
                   />
                 </>
               ) : (
@@ -520,6 +575,28 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     gap: Spacing.lg,
+  },
+  dispositionRow: {
+    flexDirection: 'row',
+    gap: Spacing.sm,
+    marginTop: Spacing.xs,
+  },
+  dispositionButton: {
+    flex: 1,
+    borderWidth: 1.5,
+    borderRadius: Radius.full,
+    paddingVertical: 9,
+    alignItems: 'center',
+  },
+  dispositionText: {
+    fontWeight: '700',
+    fontSize: 14,
+  },
+  dispositionTextSelected: {
+    color: '#fff',
+  },
+  dispositionLoading: {
+    opacity: 0.4,
   },
   adminRow: {
     flexDirection: 'row',

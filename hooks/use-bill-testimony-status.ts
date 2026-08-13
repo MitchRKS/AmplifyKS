@@ -1,9 +1,19 @@
 import { doc, onSnapshot, setDoc } from 'firebase/firestore';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { getFirestoreDb } from '@/services/firebase';
 
 const COLLECTION = 'billTestimony';
+
+/**
+ * The organization's stance on a bill, set by admins — users no longer pick
+ * their own. Values reuse the testimony form's Position vocabulary; admin UI
+ * labels them Favorable / Neutral / Opposition.
+ */
+export type TestimonyDisposition = 'support' | 'neutral' | 'oppose';
+
+const isDisposition = (value: unknown): value is TestimonyDisposition =>
+  value === 'support' || value === 'neutral' || value === 'oppose';
 
 /**
  * Direct write used by the admin panel's bill list, where per-row hook
@@ -16,12 +26,17 @@ export async function setTestimonyOpen(billId: string | number, isOpen: boolean)
 
 interface BillTestimonyStatus {
   isOpen: boolean;
+  /** Admin-set stance for testimony on this bill; null until set. */
+  disposition: TestimonyDisposition | null;
   isLoading: boolean;
   toggleOpen: () => Promise<void>;
+  /** Admin-only (rules-enforced): set the organization's stance. */
+  setDisposition: (disposition: TestimonyDisposition) => Promise<void>;
 }
 
 export function useBillTestimonyStatus(billId: string | number): BillTestimonyStatus {
   const [isOpen, setIsOpen] = useState(false);
+  const [disposition, setDispositionState] = useState<TestimonyDisposition | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   const docId = String(billId);
@@ -39,14 +54,18 @@ export function useBillTestimonyStatus(billId: string | number): BillTestimonySt
       ref,
       (snapshot) => {
         if (snapshot.exists()) {
-          setIsOpen(snapshot.data().isOpen === true);
+          const data = snapshot.data();
+          setIsOpen(data.isOpen === true);
+          setDispositionState(isDisposition(data.disposition) ? data.disposition : null);
         } else {
           setIsOpen(false);
+          setDispositionState(null);
         }
         setIsLoading(false);
       },
       () => {
         setIsOpen(false);
+        setDispositionState(null);
         setIsLoading(false);
       },
     );
@@ -72,5 +91,26 @@ export function useBillTestimonyStatus(billId: string | number): BillTestimonySt
     }
   }, [docId, isOpen]);
 
-  return { isOpen, isLoading, toggleOpen };
+  const dispositionWriteSeq = useRef(0);
+  const setDisposition = useCallback(
+    async (next: TestimonyDisposition) => {
+      if (!docId) return;
+      const seq = ++dispositionWriteSeq.current;
+      const previous = disposition;
+      setDispositionState(next); // optimistic, reconciled by the listener
+      try {
+        await setDoc(doc(getFirestoreDb(), COLLECTION, docId), { disposition: next }, { merge: true });
+      } catch (error) {
+        // Only revert if no newer tap superseded this write — otherwise the
+        // revert would clobber the newer optimistic value with a stale one.
+        if (dispositionWriteSeq.current === seq) {
+          setDispositionState(previous);
+        }
+        console.error('Error setting testimony disposition:', error);
+      }
+    },
+    [docId, disposition],
+  );
+
+  return { isOpen, disposition, isLoading, toggleOpen, setDisposition };
 }
