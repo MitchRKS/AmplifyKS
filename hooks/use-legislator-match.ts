@@ -67,6 +67,25 @@ export function useLegislatorMatch(
   const isMatchAvailable =
     result != null && Object.keys(result.categoryScores).length > 0;
 
+  // Voting-record matches bake the user's category scores into their
+  // alignment math, so they go stale the moment an answer is edited. Clear
+  // them when the scores change — recomputation is cheap (the underlying
+  // bill/roll-call data stays cached), and consumers' computeScore effects
+  // re-fire because computeScore's identity changes with `result`.
+  const scoresKey = result ? JSON.stringify(result.categoryScores) : '';
+  const scoresKeyRef = useRef(scoresKey);
+  scoresKeyRef.current = scoresKey;
+  const prevScoresKeyRef = useRef(scoresKey);
+  useEffect(() => {
+    if (prevScoresKeyRef.current === scoresKey) return;
+    prevScoresKeyRef.current = scoresKey;
+    setState((s) =>
+      Object.keys(s.votingRecordMatches).length === 0
+        ? s
+        : { ...s, votingRecordMatches: {} },
+    );
+  }, [scoresKey]);
+
   useEffect(() => {
     if (stateRef.current.bt50Loaded) return;
     const load = async () => {
@@ -156,6 +175,10 @@ export function useLegislatorMatch(
         computing: new Set(s.computing).add(official.id),
       }));
 
+      // The user can edit quiz answers while this scan is in flight; a match
+      // computed against the old answers must not be written after the edit.
+      const scoresKeyAtStart = scoresKeyRef.current;
+
       try {
         await fetchOverrides();
 
@@ -177,7 +200,7 @@ export function useLegislatorMatch(
           mapped,
         );
 
-        if (matchScore) {
+        if (matchScore && scoresKeyRef.current === scoresKeyAtStart) {
           setState((s) => ({
             ...s,
             votingRecordMatches: {
@@ -194,10 +217,19 @@ export function useLegislatorMatch(
           next.delete(official.id);
           return { ...s, computing: next };
         });
+        if (scoresKeyRef.current !== scoresKeyAtStart) {
+          // The answers changed mid-scan, so this run's write was discarded —
+          // and the caller's re-fire was swallowed by the in-flight guard.
+          // Re-run through the ref so the LATEST closure (new result) does
+          // the recompute; the underlying vote data is cached, so it's fast.
+          void computeScoreRef.current?.(official, options);
+        }
       }
     },
     [result],
   );
+  const computeScoreRef = useRef<typeof computeScore | null>(null);
+  computeScoreRef.current = computeScore;
 
   return {
     isMatchAvailable,

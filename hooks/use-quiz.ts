@@ -172,6 +172,45 @@ export function useQuiz() {
 
   const isComplete = QUIZ_QUESTIONS.every((q) => state.responses[q.id] != null);
 
+  const persistQuiz = useCallback(
+    async (
+      finalResponses: Record<string, UserQuizResponse>,
+      result: QuizResultSummary,
+    ): Promise<void> => {
+      if (!user) return;
+
+      try {
+        const db = getFirestoreDb();
+        const ref = doc(collection(doc(db, 'users', user.uid), 'quizs'), 'latest');
+
+        const responsesArray = Object.values(finalResponses).map((r) => {
+          const entry: Record<string, unknown> = {
+            questionId: r.questionId,
+            timestamp: Timestamp.fromDate(r.timestamp),
+            isSkipped: r.isSkipped,
+          };
+          if (r.response != null) entry.response = r.response;
+          return entry;
+        });
+
+        const categoryScoresDict: Record<string, number> = {};
+        for (const [key, val] of Object.entries(result.categoryScores)) {
+          if (val != null) categoryScoresDict[key] = val;
+        }
+
+        await setDoc(ref, {
+          completedDate: Timestamp.fromDate(result.completedDate),
+          categoryScores: categoryScoresDict,
+          totalQuestionsAnswered: result.totalQuestionsAnswered,
+          responses: responsesArray,
+        });
+      } catch (err) {
+        console.error('Quiz Firebase save failed:', err);
+      }
+    },
+    [user],
+  );
+
   const submitQuiz = useCallback(async () => {
     const finalResponses = { ...stateRef.current.responses };
     for (const q of QUIZ_QUESTIONS) {
@@ -186,37 +225,23 @@ export function useQuiz() {
 
     setState((s) => ({ ...s, result, hasTakenQuiz: true, isSubmitting: false }));
 
-    if (!user) return;
+    await persistQuiz(finalResponses, result);
+  }, [persistQuiz]);
 
-    try {
-      const db = getFirestoreDb();
-      const ref = doc(collection(doc(db, 'users', user.uid), 'quizs'), 'latest');
-
-      const responsesArray = Object.values(finalResponses).map((r) => {
-        const entry: Record<string, unknown> = {
-          questionId: r.questionId,
-          timestamp: Timestamp.fromDate(r.timestamp),
-          isSkipped: r.isSkipped,
-        };
-        if (r.response != null) entry.response = r.response;
-        return entry;
-      });
-
-      const categoryScoresDict: Record<string, number> = {};
-      for (const [key, val] of Object.entries(result.categoryScores)) {
-        if (val != null) categoryScoresDict[key] = val;
-      }
-
-      await setDoc(ref, {
-        completedDate: Timestamp.fromDate(result.completedDate),
-        categoryScores: categoryScoresDict,
-        totalQuestionsAnswered: result.totalQuestionsAnswered,
-        responses: responsesArray,
-      });
-    } catch (err) {
-      console.error('Quiz Firebase save failed:', err);
-    }
-  }, [user]);
+  // Change a single answer after the quiz is complete — recomputes the
+  // result and persists, no retake required.
+  const editResponse = useCallback(
+    async (questionId: string, response: ResponseValue) => {
+      const updated = {
+        ...stateRef.current.responses,
+        [questionId]: { questionId, response, timestamp: new Date(), isSkipped: false },
+      };
+      const result = computeResults(updated);
+      setState((s) => ({ ...s, responses: updated, result, hasTakenQuiz: true }));
+      await persistQuiz(updated, result);
+    },
+    [persistQuiz],
+  );
 
   const resetQuiz = useCallback(() => {
     setState({
@@ -241,6 +266,7 @@ export function useQuiz() {
     skipQuestion,
     getResponse,
     submitQuiz,
+    editResponse,
     resetQuiz,
   };
 }

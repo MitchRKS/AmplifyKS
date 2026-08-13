@@ -96,6 +96,9 @@ export default function QuizScreen() {
     return (
       <ResultsView
         result={quiz.result}
+        questions={quiz.questions}
+        getResponse={quiz.getResponse}
+        editResponse={quiz.editResponse}
         onDone={() => router.back()}
         onRetake={handleRetake}
         onViewLegislators={() => {
@@ -328,6 +331,9 @@ function IntroView({
 
 function ResultsView({
   result,
+  questions,
+  getResponse,
+  editResponse,
   onDone,
   onRetake,
   onViewLegislators,
@@ -337,6 +343,9 @@ function ResultsView({
   border,
 }: {
   result: ReturnType<typeof useQuiz>['result'];
+  questions: ReturnType<typeof useQuiz>['questions'];
+  getResponse: ReturnType<typeof useQuiz>['getResponse'];
+  editResponse: ReturnType<typeof useQuiz>['editResponse'];
   onDone: () => void;
   onRetake: () => void;
   onViewLegislators: () => void;
@@ -388,6 +397,16 @@ function ResultsView({
 
           <ElectedsByIssueCard
             result={result}
+            tint={tint}
+            mutedText={mutedText}
+            surface={surface}
+            border={border}
+          />
+
+          <EditAnswersCard
+            questions={questions}
+            getResponse={getResponse}
+            editResponse={editResponse}
             tint={tint}
             mutedText={mutedText}
             surface={surface}
@@ -577,6 +596,112 @@ function ElectedsByIssueCard({
   );
 }
 
+/* ── Edit Answers ──
+   Per-question editing on the results screen: tap a question to reveal the
+   response options and change it without retaking the quiz. Edits recompute
+   the result (and the electeds breakdown above) immediately and persist. */
+
+function EditAnswersCard({
+  questions,
+  getResponse,
+  editResponse,
+  tint,
+  mutedText,
+  surface,
+  border,
+}: {
+  questions: ReturnType<typeof useQuiz>['questions'];
+  getResponse: ReturnType<typeof useQuiz>['getResponse'];
+  editResponse: ReturnType<typeof useQuiz>['editResponse'];
+  tint: string;
+  mutedText: string;
+  surface: string;
+  border: string;
+}) {
+  const [expandedId, setExpandedId] = useState<string | null>(null);
+
+  const responseLabel = (questionId: string): string => {
+    const value = getResponse(questionId);
+    if (value == null) return 'Skipped';
+    return RESPONSE_LEVELS.find((level) => level.value === value)?.label ?? 'Skipped';
+  };
+
+  return (
+    <View style={[styles.card, { backgroundColor: surface, borderColor: border }, Shadows.sm]}>
+      <ThemedText type="subtitle" style={styles.sectionTitle}>
+        Review Your Answers
+      </ThemedText>
+      <ThemedText type="caption" style={[styles.editAnswersHint, { color: mutedText }]}>
+        Tap a question to change your answer — your matches update instantly.
+      </ThemedText>
+
+      {questions.map((question) => {
+        const expanded = expandedId === question.id;
+        const current = getResponse(question.id);
+        const answered = current != null;
+        return (
+          <View key={question.id} style={[styles.editQuestionBlock, { borderTopColor: border + '60' }]}>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={`Edit answer for: ${question.text}`}
+              style={({ pressed }) => [styles.editQuestionRow, pressed && styles.pressed]}
+              onPress={() => setExpandedId(expanded ? null : question.id)}
+            >
+              <View style={styles.editQuestionText}>
+                <ThemedText type="caption" numberOfLines={expanded ? undefined : 2}>
+                  {question.text}
+                </ThemedText>
+                <ThemedText
+                  type="caption"
+                  style={{ color: answered ? tint : mutedText, fontWeight: '600' }}
+                >
+                  {responseLabel(question.id)}
+                </ThemedText>
+              </View>
+              <MaterialIcons
+                name={expanded ? 'expand-less' : 'expand-more'}
+                size={20}
+                color={mutedText}
+              />
+            </Pressable>
+
+            {expanded && (
+              <View style={styles.editOptions}>
+                {RESPONSE_LEVELS.map((level) => {
+                  const selected = current === level.value;
+                  return (
+                    <Pressable
+                      key={level.value}
+                      accessibilityRole="button"
+                      style={({ pressed }) => [
+                        styles.editOption,
+                        { borderColor: selected ? tint : border },
+                        selected && { backgroundColor: tint + '15' },
+                        pressed && styles.pressed,
+                      ]}
+                      onPress={() => {
+                        setExpandedId(null);
+                        void editResponse(question.id, level.value);
+                      }}
+                    >
+                      <ThemedText
+                        type="caption"
+                        style={{ color: selected ? tint : mutedText, fontWeight: selected ? '700' : '400' }}
+                      >
+                        {level.label}
+                      </ThemedText>
+                    </Pressable>
+                  );
+                })}
+              </View>
+            )}
+          </View>
+        );
+      })}
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -735,6 +860,35 @@ const styles = StyleSheet.create({
   byIssueNote: {
     marginTop: Spacing.sm,
     lineHeight: 18,
+  },
+  editAnswersHint: {
+    marginBottom: Spacing.md,
+    lineHeight: 18,
+  },
+  editQuestionBlock: {
+    borderTopWidth: StyleSheet.hairlineWidth,
+  },
+  editQuestionRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.sm,
+    paddingVertical: Spacing.md,
+  },
+  editQuestionText: {
+    flex: 1,
+    gap: 2,
+  },
+  editOptions: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: Spacing.sm,
+    paddingBottom: Spacing.md,
+  },
+  editOption: {
+    borderWidth: 1,
+    borderRadius: Radius.xl,
+    paddingHorizontal: Spacing.md,
+    paddingVertical: 7,
   },
   categoryRow: {
     marginBottom: Spacing.lg,
