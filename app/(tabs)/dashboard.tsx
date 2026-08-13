@@ -14,6 +14,7 @@ import {
 import { AppAlert } from '@/components/app-alert';
 import { BillCard } from '@/components/bill-card';
 import { ContentContainer } from '@/components/content-container';
+import { InstallPromptModal } from '@/components/install-prompt-modal';
 import { MatchScoreBadge } from '@/components/legislator-match-detail';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
@@ -21,6 +22,7 @@ import { Radius, Shadows, Spacing } from '@/constants/theme';
 import { useAuth } from '@/contexts/auth-context';
 import { useLegislatorMatch } from '@/hooks/use-legislator-match';
 import { useOpenTestimonyBillIds } from '@/hooks/use-open-testimony-bills';
+import { usePwaInstall } from '@/hooks/use-pwa-install';
 import { useSavedOfficials } from '@/hooks/use-saved-officials';
 import { useThemeColor } from '@/hooks/use-theme-color';
 import { useUserProfile } from '@/hooks/use-user-profile';
@@ -98,6 +100,20 @@ export default function DashboardScreen() {
   const { getMatch } = useLegislatorMatch();
   const { billIds: openBillIds, isLoading: idsLoading } = useOpenTestimonyBillIds();
   const { width } = useWindowDimensions();
+
+  const install = usePwaInstall();
+  const [showInstallPrompt, setShowInstallPrompt] = useState(false);
+
+  // Nudge browser-tab visitors to add the app to their home screen — only
+  // signed-in users (the signed-out auth prompt already owns that surface),
+  // only when eligible (web, installable platform, never seen standalone on
+  // this device, not dismissed within the cooldown), and after a beat so it
+  // doesn't slam the door open on first paint.
+  useEffect(() => {
+    if (!user || !install.shouldPrompt) return;
+    const timer = setTimeout(() => setShowInstallPrompt(true), 1500);
+    return () => clearTimeout(timer);
+  }, [user, install.shouldPrompt]);
 
   const [openBills, setOpenBills] = useState<OpenBill[]>([]);
   const [billsLoading, setBillsLoading] = useState(true);
@@ -397,6 +413,18 @@ export default function DashboardScreen() {
           )}
         </ContentContainer>
       </ScrollView>
+
+      {showInstallPrompt && (
+        <InstallPromptModal
+          platform={install.platform}
+          canPromptNative={install.canPromptNative}
+          onInstall={install.promptInstall}
+          onClose={() => {
+            install.dismiss();
+            setShowInstallPrompt(false);
+          }}
+        />
+      )}
     </ThemedView>
   );
 }
