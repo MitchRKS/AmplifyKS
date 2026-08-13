@@ -5,10 +5,12 @@ import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
 import { AppAlert } from '@/components/app-alert';
 import { ContentContainer } from '@/components/content-container';
+import { MatchScoreBadge } from '@/components/legislator-match-detail';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Radius, Shadows, Spacing } from '@/constants/theme';
 import { useAuth } from '@/contexts/auth-context';
+import { useLegislatorMatch } from '@/hooks/use-legislator-match';
 import { useSavedOfficials } from '@/hooks/use-saved-officials';
 import { useThemeColor } from '@/hooks/use-theme-color';
 import { districtLabel } from '@/services/district-label';
@@ -25,6 +27,7 @@ export default function SavedElectedsScreen() {
   const router = useRouter();
   const { user } = useAuth();
   const { savedElecteds, isLoaded, removeOfficial } = useSavedOfficials();
+  const { getMatch } = useLegislatorMatch();
 
   const surface = useThemeColor({ light: '#FFFFFF', dark: '#1C1F26' }, 'background');
   const inputBackground = useThemeColor({ light: '#F0F2F5', dark: '#1C1F26' }, 'background');
@@ -107,9 +110,15 @@ export default function SavedElectedsScreen() {
                 </View>
               ) : null}
             </View>
-            <ThemedText type="caption" style={{ color: mutedText }}>
-              {districtLabel(item.district)}
-            </ThemedText>
+            <View style={styles.districtRow}>
+              <ThemedText type="caption" style={{ color: mutedText }}>
+                {districtLabel(item.district)}
+              </ThemedText>
+              {(() => {
+                const match = getMatch(item);
+                return match ? <MatchScoreBadge percent={match.compositePercent} /> : null;
+              })()}
+            </View>
           </View>
         </View>
       </Pressable>
@@ -180,6 +189,7 @@ const styles = StyleSheet.create({
   partyBadge: { paddingHorizontal: Spacing.sm, paddingVertical: 3, borderRadius: Radius.sm },
   partyText: { fontSize: 12, fontWeight: '700' },
   chamberChip: { paddingHorizontal: Spacing.sm, paddingVertical: 3, borderRadius: Radius.sm },
+  districtRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   pressed: { opacity: 0.75, transform: [{ scale: 0.98 }] },
   emptyCard: {
     alignItems: 'center',
