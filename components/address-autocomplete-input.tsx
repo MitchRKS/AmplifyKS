@@ -122,7 +122,11 @@ export function AddressAutocompleteInput({
               ]}
               onPress={() => handleSelect(suggestion)}
             >
-              <MaterialIcons name="place" size={16} color={mutedText} />
+              <MaterialIcons
+                name={suggestion.verified ? 'check-circle' : 'place'}
+                size={16}
+                color={suggestion.verified ? '#4CAF50' : mutedText}
+              />
               <ThemedText style={styles.suggestionText} numberOfLines={1}>
                 {suggestion.label}
               </ThemedText>

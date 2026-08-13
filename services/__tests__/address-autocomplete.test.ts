@@ -1,5 +1,7 @@
 import {
   buildSuggestionLabel,
+  formatCensusAddress,
+  looksCompleteEnoughForCensus,
   MIN_QUERY_LENGTH,
   suggestKansasAddresses,
 } from '../address-autocomplete';
@@ -9,12 +11,25 @@ const feature = (
   coordinates: [number, number] = [-95.678, 39.048],
 ) => ({ properties, geometry: { coordinates } });
 
-const mockPhoton = (features: unknown[]) => {
-  global.fetch = jest.fn().mockResolvedValue({
-    ok: true,
-    json: () => Promise.resolve({ features }),
+// Routes by URL: Photon gets `features`, the Census geocoder gets `censusMatches`
+// (or a failure when null).
+const mockPhoton = (features: unknown[], censusMatches: unknown[] | null = []) => {
+  global.fetch = jest.fn((url: string) => {
+    if (String(url).includes('geocoding.geo.census.gov')) {
+      if (censusMatches === null) return Promise.resolve({ ok: false });
+      return Promise.resolve({
+        ok: true,
+        json: () => Promise.resolve({ result: { addressMatches: censusMatches } }),
+      });
+    }
+    return Promise.resolve({ ok: true, json: () => Promise.resolve({ features }) });
   }) as unknown as typeof fetch;
 };
+
+const censusMatch = (matchedAddress: string, lat: number, lng: number) => ({
+  matchedAddress,
+  coordinates: { x: lng, y: lat },
+});
 
 describe('buildSuggestionLabel', () => {
   it('prefers housenumber + street over the place name', () => {
@@ -88,5 +103,66 @@ describe('suggestKansasAddresses', () => {
   it('resolves to an empty list on network failure', async () => {
     global.fetch = jest.fn().mockRejectedValue(new Error('offline')) as unknown as typeof fetch;
     expect(await suggestKansasAddresses('300 SW 10th')).toEqual([]);
+  });
+
+  it('ranks verified Census matches first, formatted, above Photon results', async () => {
+    mockPhoton(
+      [feature({ osm_id: 1, housenumber: '9', street: 'Elm St', city: 'Salina', state: 'KS' }, [-97.6, 38.8])],
+      [censusMatch('1200 SW HARRISON ST, TOPEKA, KS, 66612', 39.0441, -95.6812)],
+    );
+    const results = await suggestKansasAddresses('1200 SW Harrison St Topeka');
+    expect(results[0]).toEqual({
+      id: 'census-1200 SW HARRISON ST, TOPEKA, KS, 66612',
+      label: '1200 SW Harrison St, Topeka, KS 66612',
+      lat: 39.0441,
+      lng: -95.6812,
+      verified: true,
+    });
+    expect(results[1].label).toBe('9 Elm St, Salina, KS');
+    expect(results[1].verified).toBeUndefined();
+  });
+
+  it('drops Photon suggestions that duplicate a verified match by proximity', async () => {
+    mockPhoton(
+      [feature({ osm_id: 1, housenumber: '1200', street: 'Southwest Harrison Street', city: 'Topeka', state: 'KS' }, [-95.6813, 39.0442])],
+      [censusMatch('1200 SW HARRISON ST, TOPEKA, KS, 66612', 39.0441, -95.6812)],
+    );
+    const results = await suggestKansasAddresses('1200 SW Harrison St Topeka');
+    expect(results).toHaveLength(1);
+    expect(results[0].verified).toBe(true);
+  });
+
+  it('skips the Census call for incomplete input', async () => {
+    mockPhoton([feature({ osm_id: 1, housenumber: '300', street: 'SW 10th Ave', city: 'Topeka', state: 'KS' })]);
+    await suggestKansasAddresses('300 SW 10th');
+    const urls = (global.fetch as jest.Mock).mock.calls.map((c) => String(c[0]));
+    expect(urls.some((u) => u.includes('census'))).toBe(false);
+  });
+
+  it('falls back to Photon-only when the Census request fails', async () => {
+    mockPhoton(
+      [feature({ osm_id: 1, housenumber: '1200', street: 'SW Harrison St', city: 'Topeka', state: 'KS' })],
+      null,
+    );
+    const results = await suggestKansasAddresses('1200 SW Harrison St Topeka');
+    expect(results).toHaveLength(1);
+    expect(results[0].verified).toBeUndefined();
+  });
+});
+
+describe('looksCompleteEnoughForCensus', () => {
+  it('requires a house number plus at least three more words', () => {
+    expect(looksCompleteEnoughForCensus('1200 SW Harrison St Topeka')).toBe(true);
+    expect(looksCompleteEnoughForCensus('1200 SW Harrison St')).toBe(true);
+    expect(looksCompleteEnoughForCensus('1200 SW Harrison')).toBe(false);
+    expect(looksCompleteEnoughForCensus('Main St Topeka Kansas')).toBe(false);
+  });
+});
+
+describe('formatCensusAddress', () => {
+  it('title-cases while preserving directionals, state, and the ZIP', () => {
+    expect(formatCensusAddress('1200 SW HARRISON ST, TOPEKA, KS, 66612')).toBe(
+      '1200 SW Harrison St, Topeka, KS 66612',
+    );
   });
 });

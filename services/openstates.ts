@@ -7,6 +7,7 @@ import {
   getOfficialDetailLocal,
   isLocalLegislatorId,
 } from './kansas-legislators';
+import { censusDistrictForPoint } from './census';
 import {
   readPersistentCache,
   writePersistentCache,
@@ -180,29 +181,14 @@ export const getOfficialsByLocation = async (
 };
 
 /**
- * Congressional district number for a point, via the Census Bureau's free
- * geocoder (no key). Returns e.g. "2" for Topeka, or null on any failure —
- * this only backs up OpenStates, it must never break a lookup.
+ * Congressional district number for a point — delegates to the shared Census
+ * client (services/census.ts), which routes web through the Netlify proxy:
+ * the Census API sends no CORS headers, so a direct browser fetch always
+ * failed silently here. Returns null on any failure — this only backs up
+ * OpenStates, it must never break a lookup.
  */
-const resolveCongressionalDistrict = async (lat: number, lng: number): Promise<string | null> => {
-  try {
-    const url = `https://geocoding.geo.census.gov/geocoder/geographies/coordinates?x=${lng}&y=${lat}&benchmark=Public_AR_Current&vintage=Current_Current&layers=54&format=json`;
-    const response = await fetch(url);
-    if (!response.ok) return null;
-    const data = await response.json();
-    const groups: Record<string, { BASENAME?: string }[]> = data?.result?.geographies ?? {};
-    for (const [name, entries] of Object.entries(groups)) {
-      // Group name carries the congress number ("119th Congressional
-      // Districts") — match loosely so a new congress doesn't break this.
-      if (/congressional districts/i.test(name) && entries?.[0]?.BASENAME) {
-        return String(entries[0].BASENAME);
-      }
-    }
-    return null;
-  } catch {
-    return null;
-  }
-};
+const resolveCongressionalDistrict = (lat: number, lng: number): Promise<string | null> =>
+  censusDistrictForPoint(lat, lng);
 
 interface OpenStatesOffice {
   name: string;
