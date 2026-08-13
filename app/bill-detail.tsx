@@ -5,6 +5,7 @@ import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Switch, View } fr
 
 import { AppAlert } from '@/components/app-alert';
 import { ContentContainer } from '@/components/content-container';
+import { BillNotes } from '@/components/bill-notes';
 import { TestimonyForm } from '@/components/testimony-form';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
@@ -252,6 +253,10 @@ export default function BillDetailScreen() {
               <ThemedText style={styles.infoValue}>{bill.committee}</ThemedText>
             </View>
           </View>
+
+          {/* Private per-bill notes, synced with the iOS app's BillNotesManager
+              (same users/{uid}/billNotes/{billId} docs). */}
+          <BillNotes billId={Number(params.id)} />
 
           <View style={[styles.card, { backgroundColor: surface, borderColor: border }, Shadows.sm]}>
             <ThemedText type="defaultSemiBold" style={styles.sectionTitle}>
