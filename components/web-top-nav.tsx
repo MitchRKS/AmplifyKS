@@ -27,6 +27,7 @@ const ELECTEDS_SUB_ROUTES = [
   '/officials/state',
   '/officials/federal',
   '/officials/committees',
+  '/officials/saved',
 ] as const;
 
 // Order matches the iOS tab bar (ContentView.swift):
@@ -47,6 +48,7 @@ const NAV_ITEMS: NavItem[] = [
       { route: '/officials/state', label: 'State' },
       { route: '/officials/federal', label: 'Federal' },
       { route: '/officials/committees', label: 'Committees' },
+      { route: '/officials/saved', label: 'Saved' },
     ],
   },
   { route: '/actions', label: 'Actions', icon: 'campaign' },

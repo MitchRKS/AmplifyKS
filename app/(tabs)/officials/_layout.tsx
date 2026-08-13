@@ -14,6 +14,7 @@ const SUBTABS = [
   { path: '/officials/state', label: 'State' },
   { path: '/officials/federal', label: 'Federal' },
   { path: '/officials/committees', label: 'Committees' },
+  { path: '/officials/saved', label: 'Saved' },
 ];
 
 export default function OfficialsLayout() {

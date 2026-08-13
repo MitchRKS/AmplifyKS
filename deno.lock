@@ -19,6 +19,7 @@
         "npm:@simplewebauthn/browser@^13.3.0",
         "npm:@simplewebauthn/server@^13.3.2",
         "npm:@types/jest@^29.5.14",
+        "npm:@types/react-test-renderer@^19.1.0",
         "npm:@types/react@19.1",
         "npm:eslint-config-expo@10.0",
         "npm:eslint@^9.25.0",
