@@ -46,7 +46,9 @@ const recordToOfficial = (rec: KSLegislatorRecord): Official => ({
   chamber: rec.chamber,
   district: String(rec.district),
   jurisdiction: 'Kansas',
-  contactDetails: [],
+  // Surface the capitol phone in the standard list shape so elected cards
+  // can show contact info without fetching the full detail record.
+  contactDetails: rec.officePhone ? [{ note: 'Capitol Office', voice: rec.officePhone }] : [],
   links: [],
   openstatesUrl: '',
 });

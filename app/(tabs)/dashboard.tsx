@@ -26,6 +26,7 @@ import { useThemeColor } from '@/hooks/use-theme-color';
 import { useUserProfile } from '@/hooks/use-user-profile';
 import { districtLabel } from '@/services/district-label';
 import { getLegislatorImageAssetLocal } from '@/services/kansas-legislators';
+import { officialPhone } from '@/services/official-contact';
 import * as LegiscanAPI from '@/services/legiscan';
 import type { Official } from '@/services/openstates';
 
@@ -252,6 +253,16 @@ export default function DashboardScreen() {
           <ThemedText type="caption" style={{ color: partyColor }} numberOfLines={1}>
             {detailLine(official)}
           </ThemedText>
+          {official.email ? (
+            <ThemedText type="caption" style={{ color: tint }} numberOfLines={1}>
+              {official.email}
+            </ThemedText>
+          ) : null}
+          {officialPhone(official) ? (
+            <ThemedText type="caption" style={{ color: mutedText }} numberOfLines={1}>
+              {officialPhone(official)}
+            </ThemedText>
+          ) : null}
         </View>
 
         {match ? <MatchScoreBadge percent={match.compositePercent} /> : null}

@@ -27,6 +27,7 @@ import { useSavedOfficials } from '@/hooks/use-saved-officials';
 import { useThemeColor } from '@/hooks/use-theme-color';
 import { districtLabel } from '@/services/district-label';
 import { geocodeAddress } from '@/services/elected-lookup';
+import { officialPhone } from '@/services/official-contact';
 import { getLegislatorImageAssetLocal } from '@/services/kansas-legislators';
 import { getOfficialsByLocation, type Official } from '@/services/openstates';
 
@@ -301,6 +302,9 @@ export default function LookupScreen() {
             </View>
             {item.email ? (
               <ThemedText type="caption" style={{ color: tint }} numberOfLines={1}>{item.email}</ThemedText>
+            ) : null}
+            {officialPhone(item) ? (
+              <ThemedText type="caption" style={{ color: mutedText }} numberOfLines={1}>{officialPhone(item)}</ThemedText>
             ) : null}
           </View>
         </View>

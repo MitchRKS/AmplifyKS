@@ -23,6 +23,7 @@ import { useResponsiveLayout } from '@/hooks/use-responsive-layout';
 import { useThemeColor } from '@/hooks/use-theme-color';
 import { districtLabel } from '@/services/district-label';
 import { geocodeAddress } from '@/services/elected-lookup';
+import { officialPhone } from '@/services/official-contact';
 import { getLegislatorImageAssetLocal } from '@/services/kansas-legislators';
 import { getOfficialsByLocation, type Official } from '@/services/openstates';
 
@@ -149,7 +150,7 @@ export default function LookupScreen() {
       });
     }
 
-    const phone = official.contactDetails.find((c) => c.voice)?.voice;
+    const phone = officialPhone(official);
     if (phone) {
       options.push({
         text: 'Call',
@@ -214,6 +215,11 @@ export default function LookupScreen() {
           {item.email ? (
             <ThemedText type="caption" style={{ color: tint }} numberOfLines={1}>
               {item.email}
+            </ThemedText>
+          ) : null}
+          {officialPhone(item) ? (
+            <ThemedText type="caption" style={{ color: mutedText }} numberOfLines={1}>
+              {officialPhone(item)}
             </ThemedText>
           ) : null}
         </View>

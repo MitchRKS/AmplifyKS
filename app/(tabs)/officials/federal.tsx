@@ -23,6 +23,7 @@ import { useLegislatorMatch } from '@/hooks/use-legislator-match';
 import { useSavedOfficials } from '@/hooks/use-saved-officials';
 import { useThemeColor } from '@/hooks/use-theme-color';
 import { districtLabel } from '@/services/district-label';
+import { officialPhone } from '@/services/official-contact';
 import { getKansasFederalDelegation, type Official } from '@/services/openstates';
 
 type ChamberFilter = 'All' | 'Senate' | 'House';
@@ -232,6 +233,9 @@ export default function FederalDelegationScreen() {
             </View>
             {item.email ? (
               <ThemedText type="caption" style={{ color: tint }} numberOfLines={1}>{item.email}</ThemedText>
+            ) : null}
+            {officialPhone(item) ? (
+              <ThemedText type="caption" style={{ color: mutedText }} numberOfLines={1}>{officialPhone(item)}</ThemedText>
             ) : null}
           </View>
         </View>
