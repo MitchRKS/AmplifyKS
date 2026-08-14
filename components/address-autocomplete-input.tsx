@@ -101,8 +101,12 @@ export function AddressAutocompleteInput({
         // Delay so a tap on a suggestion lands before the list unmounts.
         onBlur={() => setTimeout(() => setIsFocused(false), 150)}
         autoCapitalize="words"
-        autoComplete="street-address"
-        textContentType="fullStreetAddress"
+        // This field renders its own suggestion dropdown — the browser's
+        // saved-address overlay would sit exactly on top of it, so opt out
+        // of autofill here (street-address tokens invited that overlay).
+        // The profile's plain address fields keep normal autofill.
+        autoComplete="off"
+        textContentType="none"
         returnKeyType="search"
         onSubmitEditing={onSubmitEditing}
         accessibilityLabel="Address"
